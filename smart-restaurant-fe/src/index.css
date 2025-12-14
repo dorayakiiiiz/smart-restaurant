@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Momo+Trust+Display&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap');
+
+@import "tailwindcss";
+
+
+@theme {
+    --font-inter: 'Inter', sans-serif;
+    --font-momo: 'Momo Trust Display', sans-serif;
+    --font-quicksand: 'Quicksand', sans-serif;
+}
+
+/* đoạn này AI nha hj */
+@keyframes successSlide {
+
+    /* Bắt đầu: ngoài màn hình bên trái, mờ, chữ giãn nhẹ */
+    0% {
+        transform: translateX(-100%) scale(0.98);
+        opacity: 0;
+        letter-spacing: 0.12em;
+    }
+
+    /* Vào rất nhanh */
+    20% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+        letter-spacing: 0.02em;
+    }
+
+    /* Giữa: đứng yên, chữ bình thường */
+    50% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+        letter-spacing: 0.02em;
+    }
+
+    /* Ra ngoài bên phải, nhanh + giãn chữ */
+    100% {
+        transform: translateX(100%) scale(1.02);
+        opacity: 0;
+        letter-spacing: 0.15em;
+    }
+}
+
+.success-text {
+    display: inline-block;
+    animation: successSlide 2.8s ease-in-out forwards;
+}
+
+/* blink text */
+@keyframes blinkText {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.25;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.blink-text {
+    animation: blinkText 1.2s ease-in-out infinite;
+}
+
+/* success glow */
+@keyframes successGlow {
+    0% {
+        opacity: 1;
+        text-shadow: 0 0 0px #4ade80;
+    }
+    25% {
+        opacity: 0.75;
+        text-shadow: 0 0 0px #4ade80;
+    }
+    50% {
+        opacity: 0.5;
+        text-shadow: 0 0 0px #4ade80;
+    }
+    75% {
+        opacity: 0.75;
+        text-shadow: 0 0 0px #4ade80;
+    }
+    100% {
+        opacity: 1;
+        text-shadow: 0 0 8px #4ade80;
+    }
+}
+
+.success-glow {
+    animation: successGlow 1.5s ease-out infinite;
+}
+
+
+::-webkit-scrollbar {
+    width: 4px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-left {
+    direction: rtl;
+}
