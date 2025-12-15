@@ -11,7 +11,6 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [log, setLog] = useState({ type: '', content: '' });
-    const [justLoggedIn, setJustLoggedIn] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
@@ -25,10 +24,10 @@ export default function Login() {
     }, [log]);
 
     useEffect(() => {
-        if (isLogin && !justLoggedIn) {
+        if (isLogin) {
             navigate('/dashboard');
         }
-    }, [isLogin, justLoggedIn, navigate]);
+    }, [isLogin, navigate]);
 
     // Listen for popup messages (Google/FB)
     useEffect(() => {
@@ -36,15 +35,14 @@ export default function Login() {
             const { type, payload } = e.data;
             if (type === 'login_success') {
                 const token = payload.token;
-                login(token);
-                setJustLoggedIn(true);
+                
                 setLog({
                     type: 'success',
                     content: 'Login successfully! Redirecting...'
                 });
 
                 setTimeout(() => {
-                    navigate('/dashboard', { replace: true })
+                    login(token);
                 }, 2600);
             }
             else {
@@ -77,16 +75,14 @@ export default function Login() {
         try {
             setLoading(true);
             const { token } = await authService.login({ email, password });
-            login(token);
-            setJustLoggedIn(true);
-
+            
             setLog({
                 type: 'success',
                 content: 'Login successfully! Redirecting...'
             });
 
             setTimeout(() => {
-                navigate('/dashboard', { replace: true })
+                login(token);
             }, 2600);
 
         } catch (err) {
@@ -169,9 +165,7 @@ export default function Login() {
                         </div>
 
                         {/* Log Message */}
-                        <div 
-                            className={`min-h-[24px] my-2 text-center text-sm font-semibold ${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-green-600 success-text' : ''}`}
-                        >
+                        <div className={`min-h-[24px] my-2 text-center text-sm font-semibold ${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-green-600 success-text' : ''}`}>
                             {log.content}
                         </div>
 

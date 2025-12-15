@@ -6,9 +6,10 @@ import menuRouter from "./menu.mjs";
 import tableRouter from "./table.mjs";
 import orderRouter from "./order.mjs";
 import adminRouter from "./admin.mjs";
+import superAdminRouter from "./superAdmin.mjs";
 
 export default function route(app) {
-  app.use("/api/system/admin", adminRouter);
+  app.use("/api/super/admin", superAdminRouter);
 
   app.use("/api/auth", authRouter);
   app.use("/api/user", userRouter);

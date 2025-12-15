@@ -34,7 +34,8 @@ export default function ResetPassword() {
         const newOtp = [...otp];
         newOtp[index] = element.value;
         setOtp(newOtp);
-        if (element.value && index < 5) otpInputRefs.current[index + 1].focus();
+        if (element.value && index < 5) 
+            otpInputRefs.current[index + 1].focus();
     };
 
     const handleOtpKeyDown = (e, index) => {
@@ -45,14 +46,21 @@ export default function ResetPassword() {
 
     const handleSubmitStep1 = async (e) => {
         e.preventDefault();
-        const emailError = Validator.validateEmail(email);
-        if (emailError) return setLog({ type: 'error', content: emailError });
 
-        setLoading(true);
+        const emailError = Validator.validateEmail(email);
+        if (emailError) {
+            setLog({ type: 'error', content: emailError });
+            return;
+        }
+
         try {
+            setLoading(true);
             await authService.forgotPassword(email);
             setLog({ type: 'success', content: 'OTP sent to your email.' });
-            setStep(2);
+            setTimeout(() => {
+                setStep(2);
+                setLog({ type: '', content: '' });
+            }, 2600);
         } catch (err) {
             setLog({ type: 'error', content: err.response?.data?.message || 'Failed to send OTP' });
         } finally {
@@ -62,12 +70,21 @@ export default function ResetPassword() {
 
     const handleSubmitStep2 = async (e) => {
         e.preventDefault();
-        const otpValue = otp.join('');
-        if (otpValue.length < 6) return setLog({ type: 'error', content: 'Please enter valid OTP' });
-        if (newPassword.length < 6) return setLog({ type: 'error', content: 'Password too short' });
 
-        setLoading(true);
+        const otpValue = otp.join('');
+        if (otpValue.length !== 6) {
+            setLog({ type: 'error', content: 'Please enter full 6-digit OTP.' });
+            return;
+        }
+        
+        const passwordError = Validator.validatePassword(newPassword);
+        if (passwordError) {
+            setLog({ type: 'error', content: passwordError });
+            return;
+        }
+
         try {
+            setLoading(true);
             await authService.resetPassword({ email, otp: otpValue, newPassword });
             setLog({ type: 'success', content: 'Password reset successfully!' });
             setTimeout(() => navigate('/auth/login'), 2000);
@@ -93,19 +110,23 @@ export default function ResetPassword() {
             {/* Right Side */}
             <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 md:p-16 bg-[#fff]">
                 <div className="w-full max-w-[450px]">
-                    <div className="lg:hidden text-center mb-10">
-                        <h1 className="font-momo text-4xl text-[#800020] font-bold">Smart Restaurant</h1>
+
+                    <div className="flex justify-center items-center gap-2 text-2xl md:text-3xl lg:hidden text-center mb-8">
+                        <i className="fa-solid fa-utensils text-yellow-600"></i>
+                        <h1 className="font-momo text-[#800020] font-bold">Smart Restaurant</h1>
                     </div>
 
                     {step === 1 ? (
                         <>
                             <div className="mb-8">
-                                <h2 className="text-3xl font-bold text-gray-900 mb-2">Reset Password</h2>
+                                <h2 className="text-2xl font-momo md:text-3xl text-gray-900 mb-2">Reset Password</h2>
                                 <p className="text-gray-500">Enter your email to receive a recovery code.</p>
                             </div>
                             <form className="flex flex-col gap-4" onSubmit={handleSubmitStep1}>
                                 <Input type="email" value={email} placeholder="Enter your email" setState={setEmail} />
-                                <div className={`min-h-[24px] text-sm font-semibold ${log.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>{log.content}</div>
+                                <div className={`min-h-[24px] text-center font-semibold ${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-green-600 success-glow' : ''}`}>
+                                    {log.content}
+                                </div>
                                 <Button backgrond={{ normal: "#1a1a1a", hover: "#800020" }} color="#fff" text={loading ? "Sending..." : "Send Code"} onClick={handleSubmitStep1} disabled={loading} />
                             </form>
                         </>
@@ -115,7 +136,7 @@ export default function ResetPassword() {
                                 <h2 className="text-3xl font-bold text-gray-900 mb-2">Verify & Reset</h2>
                                 <p className="text-gray-500">Enter the 6-digit code sent to {email}.</p>
                             </div>
-                            <form className="flex flex-col gap-6" onSubmit={handleSubmitStep2}>
+                            <form className="flex flex-col gap-6 w-full" onSubmit={handleSubmitStep2}>
                                 <div className="flex gap-2 justify-center">
                                     {otp.map((data, index) => (
                                         <input
@@ -131,8 +152,13 @@ export default function ResetPassword() {
                                         />
                                     ))}
                                 </div>
+
                                 <Input type="password" value={newPassword} placeholder="New password" setState={setNewPassword} />
-                                <div className={`min-h-[24px] text-sm font-semibold ${log.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>{log.content}</div>
+                               
+                                <div className={`min-h-[24px] mb-2 flex justify-center items-center text-center font-semibold ${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-green-600 success-glow' : ''}`}>
+                                    {log.content}
+                                </div>
+                                
                                 <Button backgrond={{ normal: "#1a1a1a", hover: "#800020" }} color="#fff" text={loading ? "Verifying..." : "Reset Password"} onClick={handleSubmitStep2} disabled={loading} />
                                 <div className="text-center text-sm text-gray-500 hover:text-black cursor-pointer mt-2" onClick={() => setStep(1)}>Back to Email</div>
                             </form>
@@ -141,7 +167,7 @@ export default function ResetPassword() {
 
                     <div className="mt-8 text-center text-sm text-gray-500">
                         Remember your password? 
-                        <Link to="/auth/login" className="ml-1 font-bold text-[#800020] hover:underline">Log in</Link>
+                        <Link to="/auth/system/login" className="ml-1 font-bold text-[#800020] hover:underline">Log in</Link>
                     </div>
                 </div>
             </div>

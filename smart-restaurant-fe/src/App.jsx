@@ -21,6 +21,12 @@ import DashboardRedirector from "./pages/DashboardRedirector";
 import AdminManagementPage from "./pages/SuperAdminDashboard/AdminManagementPage";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard"; // Trang Analytics
 
+// Restaurant Admin Pages
+import DashboardOverview from "./pages/AdminDashboard/DashboardOverview";
+// import MenuManagementPage from "./pages/AdminDashboard/MenuManagementPage";
+import { TablesPage, MenuPage, OrdersPage, KDSPage, StaffPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
+import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
+import SettingsPage from "./pages/AdminDashboard/SettingsPage"; // Import trang mới tạo
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -51,9 +57,9 @@ function App() {
                     <Route path="/dashboard" element={<DashboardRedirector />} />
 
                     {/* RESTAURANT SYSTEM ROUTES */}
-                    <Route path="/system" element={<ProtectedRoute allowedRoles={['super_admin']} />}>
+                    <Route path="/system" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']} />}>
                         {/* cho super admin */}
-                        <Route path="super-admin" element={<SuperAdminDashboardLayout />}>
+                        <Route path="super/admin" element={<SuperAdminDashboardLayout />}>
                             <Route index element={<Navigate to="dashboard" replace />} />
                             <Route path="dashboard" element={<SuperAdminDashboard />} />
                             <Route path="admins" element={<AdminManagementPage />} />
@@ -61,6 +67,19 @@ function App() {
                         </Route>
 
                         {/* cho admin restaurant */}
+                        <Route path="admin/setup" element={<RestaurantSetupPage />} />
+                        
+                        <Route path="admin" element={<AdminDashboardLayout />}>
+                            <Route index element={<Navigate to="dashboard" replace />} />
+                            <Route path="dashboard" element={<DashboardOverview />} />
+                            <Route path="menu" element={<MenuPage />} />
+                            <Route path="tables" element={<TablesPage />} />
+                            <Route path="orders" element={<OrdersPage />} />
+                            <Route path="kds" element={<KDSPage />} />
+                            <Route path="staff" element={<StaffPage />} />
+                            <Route path="reports" element={<ReportsPage />} />
+                            <Route path="settings" element={<SettingsPage />} />
+                        </Route>
                     </Route>
 
                 </Routes>
