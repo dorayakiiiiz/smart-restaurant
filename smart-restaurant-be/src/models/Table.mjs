@@ -9,8 +9,9 @@ const TableSchema = new Schema({
     },
     name: { type: String, required: true }, // Bàn 1, Bàn 2, VIP 1...
     capacity: { type: Number, default: 4 }, // Số ghế
+    location: { type: String, default: 'Main Hall' }, // Khu vực: Indoor, Outdoor, VIP...
     
-    // Token để sinh QR Code, đảm bảo bảo mật
+    // Token JWT để sinh QR Code, đảm bảo bảo mật
     token: { type: String, required: true, unique: true },
     
     status: {
@@ -18,6 +19,9 @@ const TableSchema = new Schema({
         enum: ['free', 'occupied', 'reserved'], // Trống, Có khách, Đã đặt
         default: 'free'
     },
+
+    // Soft delete
+    isActive: { type: Boolean, default: true },
     
     // Link tới Order hiện tại (nếu đang có khách)
     currentOrderId: {
@@ -26,5 +30,8 @@ const TableSchema = new Schema({
         default: null
     }
 }, { timestamps: true });
+
+// Đảm bảo tên bàn là duy nhất trong 1 nhà hàng (khi chưa bị xóa)
+TableSchema.index({ restaurantId: 1, name: 1, isActive: 1 }, { unique: true });
 
 export default mongoose.model('Table', TableSchema);
