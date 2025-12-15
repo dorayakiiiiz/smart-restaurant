@@ -10,6 +10,7 @@ const TableSchema = new Schema({
     name: { type: String, required: true }, // Bàn 1, Bàn 2, VIP 1...
     capacity: { type: Number, default: 4 }, // Số ghế
     location: { type: String, default: 'Main Hall' }, // Khu vực: Indoor, Outdoor, VIP...
+    description: { type: String },
     
     // Token JWT để sinh QR Code, đảm bảo bảo mật
     token: { type: String, required: true, unique: true },

@@ -81,12 +81,10 @@ class AuthController {
             res.status(500).json({ error: err.message });
         }
     }
-
     
     // [POST] /auth/forgot-password
     async forgotPassword(req, res, next) {
         try {
-
             const { email } = req.body;
             const user = await User.findOne({ email });
             if (!user) 
