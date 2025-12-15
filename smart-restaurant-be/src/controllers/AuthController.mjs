@@ -48,32 +48,6 @@ class AuthController {
         }
     }
 
-    // [POST] /auth/system/register -> của nhà hàng đki acc cho kds/staff...
-    // TODO: xử lí validate data ng dùng gửi lên
-    async registerSystem(req, res, next) {
-        try {
-
-            const { email, displayName, password } = req.body;
-            
-            const user = await User.findOne({ email });
-            if (user) 
-                return res.status(400).json({ message: 'User existed.'});
-            
-            const hashPassword = await bcrypt.hash(password, saltRounds);
-            
-            const newUser = await User.create({
-                email,
-                displayName,
-                password: hashPassword
-            });
-
-            res.json({ message: 'Register successfully!', userId: newUser._id });
-            
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
-    }
-
     // [POST] /auth/login
     async login(req, res, next) {
         try {

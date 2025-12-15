@@ -7,9 +7,7 @@ const router = Router();
 
 // Auth bằng pass
 router.post('/login', authController.login);
-router.post('/register', authController.register);
-// đăng kí cho bên nhà hàng -> TODO: cần middleware chặn lại check role
-router.post('/system/register', authController.registerSystem);
+router.post('/register', authController.register); // customer register
 
 // reset password
 router.post('/forgot-password', authController.forgotPassword);

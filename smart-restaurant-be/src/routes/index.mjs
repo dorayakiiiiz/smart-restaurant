@@ -5,18 +5,18 @@ import categoryRouter from "./category.mjs";
 import menuRouter from "./menu.mjs";
 import tableRouter from "./table.mjs";
 import orderRouter from "./order.mjs";
-import adminRouter from "./admin.mjs";
 import superAdminRouter from "./superAdmin.mjs";
+import staffRouter from "./staff.mjs"; 
 
 export default function route(app) {
-  app.use("/api/super/admin", superAdminRouter);
+    app.use("/api/super/admin", superAdminRouter);
 
-  app.use("/api/auth", authRouter);
-  app.use("/api/user", userRouter);
-  app.use("/api/restaurant", restaurantRouter);
-  app.use("/api/categories", categoryRouter);
-  app.use("/api/menu", menuRouter);
-  app.use("/api/tables", tableRouter);
-  app.use("/api/orders", orderRouter); 
-  // app.use("/api/admin", adminRouter); // super admin
+    app.use("/api/auth", authRouter);
+    app.use("/api/user", userRouter);
+    app.use("/api/restaurant", restaurantRouter);
+    app.use("/api/categories", categoryRouter);
+    app.use("/api/menu", menuRouter);
+    app.use("/api/tables", tableRouter);
+    app.use("/api/orders", orderRouter); 
+    app.use("/api/staff", staffRouter);
 }
