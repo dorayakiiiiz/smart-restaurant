@@ -8,10 +8,13 @@ export default function DashboardRedirector() {
         return <Navigate to="/auth/system/login" replace />;
 
     if (user.role === 'super_admin') 
-        return <Navigate to="/system/super-admin/dashboard" replace />;
+        return <Navigate to="/system/super/admin/dashboard" replace />;
     
     if (user.role === 'admin') {
-        return <Navigate to="/system/admin" replace />;
+        if (!user.restaurant) {
+            return <Navigate to="/system/admin/setup" replace />;
+        }
+        return <Navigate to="/system/admin/dashboard" replace />;
     }
 
     // Waiter/Kitchen logic sau này

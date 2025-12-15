@@ -8,9 +8,9 @@ export default function Sidebar() {
     const navigate = useNavigate();
     
     const menuItems = [
-        { label: 'Dashboard', icon: 'fa-chart-line', path: '/system/super-admin/dashboard' },
-        { label: 'Restaurants', icon: 'fa-store', path: '/system/super-admin/admins' },
-        { label: 'Settings', icon: 'fa-gear', path: '/system/super-admin/settings' },
+        { label: 'Dashboard', icon: 'fa-chart-line', path: '/system/super/admin/dashboard' },
+        { label: 'Restaurants', icon: 'fa-store', path: '/system/super/admin/admins' },
+        { label: 'Settings', icon: 'fa-gear', path: '/system/super/admin/settings' },
     ];
 
     const isActive = (path) => location.pathname.includes(path);

@@ -1,27 +1,27 @@
 import api from "./api";
 
 const getAllAdmins = async () => {
-    const response = await api.get('/system/admin');
+    const response = await api.get('/super/admin');
     return response.data;
 }
 
 const createAdmin = async (data) => {
-    const response = await api.post('/system/admin', data);
+    const response = await api.post('/super/admin', data);
     return response.data;
 }
 
 const deleteAdmin = async (id) => {
-    const response = await api.delete(`/system/admin/${id}`);
+    const response = await api.delete(`/super/admin/${id}`);
     return response.data;
 }
 
 const getSystemStats = async () => {
-    const response = await api.get('/system/admin/stats');
+    const response = await api.get('/super/admin/stats');
     return response.data;
 }
 
 const toggleLockAdmin = async (userId) => {
-    const response = await api.patch(`/system/admin/${userId}/lock`);
+    const response = await api.patch(`/super/admin/${userId}/lock`);
     return response.data;
 }
 
