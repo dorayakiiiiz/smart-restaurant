@@ -24,9 +24,10 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard
 // Restaurant Admin Pages
 import DashboardOverview from "./pages/AdminDashboard/DashboardOverview";
 // import MenuManagementPage from "./pages/AdminDashboard/MenuManagementPage";
-import { TablesPage, MenuPage, OrdersPage, KDSPage, StaffPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
+import { MenuPage, OrdersPage, KDSPage, StaffPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
 import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
 import SettingsPage from "./pages/AdminDashboard/SettingsPage"; // Import trang mới tạo
+import TablesPage from "./pages/AdminDashboard/TablesPage"; // Import trang mới tạo
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -68,7 +69,7 @@ function App() {
 
                         {/* cho admin restaurant */}
                         <Route path="admin/setup" element={<RestaurantSetupPage />} />
-                        
+
                         <Route path="admin" element={<AdminDashboardLayout />}>
                             <Route index element={<Navigate to="dashboard" replace />} />
                             <Route path="dashboard" element={<DashboardOverview />} />
