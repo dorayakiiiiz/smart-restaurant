@@ -58,7 +58,7 @@ class AuthController {
                 return res.status(404).json({ message: 'Email does not exist.'});
 
             if (user.isLocked)
-                return res.status(403).json({ message: 'Your account has been locked due to violation.'})
+                return res.status(403).json({ message: 'Your account has been locked.'})
 
             const match = await bcrypt.compare(password, user.password);
             if (!match) 
