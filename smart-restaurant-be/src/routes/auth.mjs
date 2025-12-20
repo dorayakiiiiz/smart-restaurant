@@ -8,6 +8,7 @@ const router = Router();
 // Auth bằng pass
 router.post('/login', authController.login);
 router.post('/register', authController.register); // customer register
+router.post('/refresh-token', authController.refreshToken);
 
 // reset password
 router.post('/forgot-password', authController.forgotPassword);
@@ -20,7 +21,7 @@ router.get('/google',
     })
 );
 router.get('/google/redirect', 
-    passport.authenticate('google', {session: false}),
+    passport.authenticate('google', { session: false }),
     authController.google
 );
 
