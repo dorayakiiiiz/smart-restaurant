@@ -10,11 +10,13 @@ const authMiddleware = (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    try {
+    if (!token)
+        return res.status(401).json({ message: 'Access token required.' });
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        // gán thông tin user trong jwt nhận dc từ client vào req của
-        // các route chạy sau middleware này
+    const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
+    
+    try {
+        const decoded = jwt.verify(token, accessTokenSecret);
         req.user = decoded;
         next();
         

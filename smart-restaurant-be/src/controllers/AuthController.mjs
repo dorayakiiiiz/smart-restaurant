@@ -64,21 +64,46 @@ class AuthController {
             if (!match) 
                 return res.status(400).json({ message: 'Incorrect password.' });
 
-            const token = jwt.sign(
-                { 
-                    id: user._id
-                },
-                process.env.JWT_SECRET,
-                { expiresIn: "7d" }
-            );
+            const access_token_secret = process.env.ACCESS_TOKEN_SECRET;
+            const refresh_token_secret = process.env.REFRESH_TOKEN_SECRET;
+
+            const accessToken = jwt.sign({ id: user._id }, access_token_secret, { expiresIn: '15m' }); // Short life
+            const refreshToken = jwt.sign({ id: user._id }, refresh_token_secret, { expiresIn: '7d' }); // Long life
+
 
             res.json({
                 message: 'Login successfully!',
-                token
+                accessToken,
+                refreshToken
             });
 
         } catch (err) {
             res.status(500).json({ error: err.message });
+        }
+    }
+
+    // [POST] /auth/refresh-token
+    async refreshToken(req, res, next) {
+        try {
+            const { refreshToken } = req.body;
+            if (!refreshToken)
+                return res.status(401).json({ message: 'No refresh token provided.' });
+
+            const access_token_secret = process.env.ACCESS_TOKEN_SECRET;
+            const refresh_token_secret = process.env.REFRESH_TOKEN_SECRET;
+
+            const decoded = jwt.verify(refreshToken, refresh_token_secret);
+
+            const newAccessToken = jwt.sign(
+                { id: decoded.id },
+                access_token_secret,
+                { expiresIn: '15m' }
+            );
+
+            res.json({ accessToken: newAccessToken });
+
+        } catch (err) {
+            res.status(403).json({ error: err.message });
         }
     }
     

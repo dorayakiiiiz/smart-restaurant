@@ -34,7 +34,7 @@ export default function Login() {
         const receiveMessageFromPopUp = async(e) => {
             const { type, payload } = e.data;
             if (type === 'login_success') {
-                const token = payload.token;
+                const { refreshToken, accessToken } = payload;
                 
                 setLog({
                     type: 'success',
@@ -42,7 +42,7 @@ export default function Login() {
                 });
 
                 setTimeout(() => {
-                    login(token);
+                    login(refreshToken, accessToken);
                 }, 2600);
             }
             else {
@@ -74,7 +74,7 @@ export default function Login() {
         
         try {
             setLoading(true);
-            const { token } = await authService.login({ email, password });
+            const { refreshToken, accessToken } = await authService.login({ email, password });
             
             setLog({
                 type: 'success',
@@ -82,7 +82,7 @@ export default function Login() {
             });
 
             setTimeout(() => {
-                login(token);
+                login(refreshToken, accessToken);
             }, 2600);
 
         } catch (err) {
