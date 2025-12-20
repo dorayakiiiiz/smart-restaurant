@@ -2,11 +2,13 @@ import mongoose from "mongoose";
 const { Schema } = mongoose;
 
 const MenuItemSchema = new Schema({
+    //Thuộc nhà hàng nào
     restaurantId: {
         type: Schema.Types.ObjectId,
         ref: "Restaurant",
         required: true,
     },
+    //Thuộc danh mục nào
     categoryId: {
         type: Schema.Types.ObjectId,
         ref: "Category",

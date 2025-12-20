@@ -25,7 +25,7 @@ export default function AdminManagementPage() {
     const [deleteId, setDeleteId] = useState(null);
 
 
-    // Fetch Admins
+    // Fetch Admins (thay thế useContext + useEffect)
     const { data, isLoading } = useQuery({
         queryKey: ['admins'],
         queryFn: superAdminService.getAllAdmins
@@ -59,6 +59,7 @@ export default function AdminManagementPage() {
     const columns = [
         {
             header: "Admin Name",
+            //item ở đây là 1 object admin
             render: (item) => (
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs text-gray-600">
@@ -185,6 +186,7 @@ function CreateAdminModal({ onClose, onSuccess }) {
     })
 
     const handleSubmit = async (e) => {
+        // Ngăn chặn reload trang
         e.preventDefault();
 
         // validate data
@@ -215,8 +217,12 @@ function CreateAdminModal({ onClose, onSuccess }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
-            <div className="bg-white rounded-2xl w-full max-w-xl p-10 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" 
+            onClick={onClose}
+        >
+            <div className="bg-white rounded-2xl w-full max-w-xl p-10 shadow-2xl" 
+                onClick={e => e.stopPropagation()}
+            >
                 <h3 className="text-2xl font-bold font-momo text-[#800020] mb-6">Create New Owner</h3>
                 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-1">
@@ -258,3 +264,6 @@ function CreateAdminModal({ onClose, onSuccess }) {
         </div>
     );
 }
+
+
+

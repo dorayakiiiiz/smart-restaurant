@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
+// Dùng để lưu mã OTP tạm thời cho việc xác thực email hoặc thay đổi mật khẩu
 const OtpSchema = new Schema({
     email: { 
         type: String, 

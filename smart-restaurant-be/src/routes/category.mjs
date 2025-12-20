@@ -8,5 +8,6 @@ router.use(authMiddleware);
 router.get('/', categoryController.getCategories);
 router.post('/', categoryController.createCategory);
 router.delete('/:id', categoryController.deleteCategory);
+router.patch('/:id', categoryController.updateCategory);
 
 export default router;

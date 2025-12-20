@@ -15,6 +15,7 @@ const OrderItemSchema = new Schema({
 
     note: String, // Ghi chú: "Không hành", "Ít đá"
 
+    //Status dành cho bếp
     status: {
         type: String,
         enum: ['pending', 'confirmed', 'preparing', 'ready', 'served', 'cancelled'],

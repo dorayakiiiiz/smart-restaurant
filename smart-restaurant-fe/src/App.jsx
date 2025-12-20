@@ -23,11 +23,12 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard
 
 // Restaurant Admin Pages
 import DashboardOverview from "./pages/AdminDashboard/DashboardOverview";
-// import MenuManagementPage from "./pages/AdminDashboard/MenuManagementPage";
+import MenuManagement from "./pages/AdminDashboard/MenuManagement";
 import { MenuPage, OrdersPage, KDSPage, StaffPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
 import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
 import SettingsPage from "./pages/AdminDashboard/SettingsPage"; // Import trang mới tạo
 import TablesPage from "./pages/AdminDashboard/TablesPage"; // Import trang mới tạo
+import Test from "./pages/AdminDashboard/Test";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -73,13 +74,15 @@ function App() {
                         <Route path="admin" element={<AdminDashboardLayout />}>
                             <Route index element={<Navigate to="dashboard" replace />} />
                             <Route path="dashboard" element={<DashboardOverview />} />
-                            <Route path="menu" element={<MenuPage />} />
+                            <Route path="menu" element={<MenuManagement />} />
                             <Route path="tables" element={<TablesPage />} />
                             <Route path="orders" element={<OrdersPage />} />
                             <Route path="kds" element={<KDSPage />} />
                             <Route path="staff" element={<StaffPage />} />
                             <Route path="reports" element={<ReportsPage />} />
                             <Route path="settings" element={<SettingsPage />} />
+                            <Route path="test" element={< Test/>} />
+
                         </Route>
                     </Route>
 
