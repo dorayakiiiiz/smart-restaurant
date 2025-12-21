@@ -27,7 +27,7 @@ class MenuController {
     // [POST] /api/menu
     async createMenuItem(req, res) {
         try {
-            const { name, price, description, categoryId, prepTime, modifiers, isAvailable } = req.body;
+            const { name, price, description, categoryId, prepTime, modifiers, isAvailable, isSoldOut } = req.body;
             
             // 1. Validate input cơ bản
             if (!name || !price || !categoryId) {
@@ -54,7 +54,9 @@ class MenuController {
                 price: Number(price),
                 description,
                 prepTime: prepTime ? Number(prepTime) : 15,
+                // Parse boolean từ string (do FormData gửi string)
                 isAvailable: isAvailable === 'true' || isAvailable === true,
+                isSoldOut: isSoldOut === 'true' || isSoldOut === true,
                 modifiers: modifiers ? JSON.parse(modifiers) : []
             };
 
@@ -80,6 +82,7 @@ class MenuController {
         try {
             const { id } = req.params;
             const updates = { ...req.body };
+            console.log("Update Data:", updates);
             
             // 1. Tìm nhà hàng để đảm bảo quyền sở hữu
             const restaurant = await Restaurant.findOne({ adminId: req.user.id });
@@ -94,6 +97,13 @@ class MenuController {
             if (updates.modifiers) updates.modifiers = JSON.parse(updates.modifiers);
             if (updates.price) updates.price = Number(updates.price);
             if (updates.prepTime) updates.prepTime = Number(updates.prepTime);
+            // Parse boolean cho update
+            if (updates.isAvailable !== undefined) {
+                updates.isAvailable = updates.isAvailable === 'true' || updates.isAvailable === true;
+            }
+            if (updates.isSoldOut !== undefined) {
+                updates.isSoldOut = updates.isSoldOut === 'true' || updates.isSoldOut === true;
+            }
             
             // Xử lý category nếu có thay đổi
             if (updates.categoryId) {
@@ -101,6 +111,7 @@ class MenuController {
                 if (!category) return res.status(400).json({ message: "Invalid category" });
             }
 
+            //Update món ăn
             const updatedItem = await MenuItem.findByIdAndUpdate(id, updates, { new: true })
                 .populate('categoryId', 'name'); // Populate lại category chỉ trả về name
 
