@@ -19,4 +19,9 @@ export default function route(app) {
     app.use("/api/tables", tableRouter);
     app.use("/api/orders", orderRouter); 
     app.use("/api/staff", staffRouter);
+
+    app.use("/api/health", (req, res) => {
+        console.log('[PING]');
+        res.status(200).send('OK');
+    });
 }
