@@ -9,7 +9,7 @@ import archiver from "archiver";
 const generateTableToken = (tableId, restaurantId) => {
     return jwt.sign(
         { tableId, restaurantId, createdAt: Date.now() },
-        process.env.JWT_SECRET
+        process.env.ACCESS_TOKEN_SECRET
     );
 }
 
