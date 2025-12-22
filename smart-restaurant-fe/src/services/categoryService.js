@@ -16,8 +16,25 @@ const deleteCategory = async (id) => {
     return response.data;
 };
 
-const updateCategory = async (id, name) => {
-    const response = await api.patch(`/categories/${id}`, { name });
+// data: { name, description, order, isActive }
+const updateCategory = async (id, data) => {
+    const response = await api.patch(`/categories/${id}`, data);
+    return response.data;
+};
+
+
+const forceDeleteCategory = async (id) => {
+    const response = await api.delete(`/categories/${id}/force`);
+    return response.data;
+};
+
+const restoreCategory = async (id) => {
+    const response = await api.patch(`/categories/${id}/restore`);
+    return response.data;
+};
+
+const getTrashCategories = async () => {
+    const response = await api.get('/categories/trash');
     return response.data;
 };
 
@@ -27,4 +44,7 @@ export const categoryService = {
     createCategory,
     deleteCategory,
     updateCategory,
+    forceDeleteCategory,
+    restoreCategory,
+    getTrashCategories,
 };

@@ -6,18 +6,33 @@ import authMiddleware from "../middleware/AuthMiddleware.mjs";
 const router = Router();
 router.use(authMiddleware);
 
-// Áp dụng middleware xác thực cho tất cả các route menu
-router.use(authMiddleware);
-
 // Lấy danh sách menu
 router.get('/', menuController.getMenu);
 
-// Tạo món mới (có upload ảnh)
-router.post('/', uploadMenu.single('image'), menuController.createMenuItem);
+// Lấy danh sách thùng rác
+router.get('/trash', menuController.getTrashMenu);
 
-// Cập nhật món (có upload ảnh)
-router.patch('/:id', uploadMenu.single('image'), menuController.updateMenuItem);
+// Lấy chi tiết món ăn
+router.get('/:id', menuController.getMenuItem);
 
-// Xóa món
+// Tạo món mới (upload nhiều ảnh - tối đa 10)
+router.post('/', uploadMenu.array('images', 10), menuController.createMenuItem);
+
+// Cập nhật món (upload thêm ảnh)
+router.patch('/:id', uploadMenu.array('images', 10), menuController.updateMenuItem);
+
+// Khôi phục món ăn
+router.patch('/:id/restore', menuController.restoreMenuItem);
+
+// Xóa mềm món ăn
 router.delete('/:id', menuController.deleteMenuItem);
+
+// Xóa cứng món ăn
+router.delete('/:id/force', menuController.forceDeleteMenuItem);
+
+// Xóa ảnh cụ thể của món
+router.delete('/:id/images/:imageId', menuController.deleteMenuImage);
+
+// Set ảnh chính
+router.patch('/:id/images/:imageId/primary', menuController.setPrimaryImage);
 export default router;

@@ -29,6 +29,8 @@ import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
 import SettingsPage from "./pages/AdminDashboard/SettingsPage"; // Import trang mới tạo
 import TablesPage from "./pages/AdminDashboard/TablesPage"; // Import trang mới tạo
 import Test from "./pages/AdminDashboard/Test";
+import MenuItemDetail from "./pages/AdminDashboard/MenuItemDetail";
+
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -75,6 +77,7 @@ function App() {
                             <Route index element={<Navigate to="dashboard" replace />} />
                             <Route path="dashboard" element={<DashboardOverview />} />
                             <Route path="menu" element={<MenuManagement />} />
+                            <Route path="menu/:id" element={<MenuItemDetail />} />
                             <Route path="tables" element={<TablesPage />} />
                             <Route path="orders" element={<OrdersPage />} />
                             <Route path="kds" element={<KDSPage />} />

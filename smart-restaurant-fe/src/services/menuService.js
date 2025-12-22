@@ -29,10 +29,41 @@ const deleteMenuItem = async (id) => {
     return response.data;
 };
 
+const deleteMenuImage = async (itemId, imageId) => {
+    const response = await api.delete(`/menu/${itemId}/images/${imageId}`);
+    return response.data;
+};
+
+const setPrimaryImage = async (itemId, imageId) => {
+    const response = await api.patch(`/menu/${itemId}/images/${imageId}/primary`);
+    return response.data;
+};
+
+
+const getTrashMenu = async () => {
+    const response = await api.get('/menu/trash');
+    return response.data;
+};
+
+const restoreMenuItem = async (id) => {
+    const response = await api.patch(`/menu/${id}/restore`);
+    return response.data;
+};
+
+const forceDeleteMenuItem = async (id) => {
+    const response = await api.delete(`/menu/${id}/force`);
+    return response.data;
+};
+
 export const menuService = {
     getMenu,
     getMenuItem,
     createMenuItem,
     updateMenuItem,
-    deleteMenuItem
+    deleteMenuItem,
+    deleteMenuImage,
+    setPrimaryImage,
+    getTrashMenu,
+    restoreMenuItem,
+    forceDeleteMenuItem
 };

@@ -6,11 +6,15 @@ import { categoryService } from "../../services/categoryService";
 import Button from "../../components/Shared/Button";
 import MenuModal from "../../components/Modal/MenuModal";
 import CategoryModal from "../../components/Modal/CategoryModal"; 
+import { useNavigate } from "react-router-dom";
+import MenuTrashModal from "./Modal/MenuTrashModal";
 
 export default function MenuManagement() {
+    const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false); 
+    const [isTrashOpen, setIsTrashOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null); // Món ăn đang chỉnh sửa
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("All");
@@ -19,7 +23,7 @@ export default function MenuManagement() {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 2;
+    const itemsPerPage = 8;
 
     // 1. Fetch Data
     // Lấy menu items khi cache bị invalidated
@@ -40,7 +44,7 @@ export default function MenuManagement() {
 
     // 2. Mutations for Menu
     const createMenuMutation = useMutation({
-        mutationFn: menuService.createMenuItem,
+        mutationFn: (data) => menuService.createMenuItem(data),
         onSuccess: () => queryClient.invalidateQueries(['menu'])
     });
 
@@ -56,7 +60,7 @@ export default function MenuManagement() {
 
     // 3. Mutations for Category
     const createCategoryMutation = useMutation({
-        mutationFn: categoryService.createCategory,
+        mutationFn: (data) => categoryService.createCategory(data),
         onSuccess: () => queryClient.invalidateQueries(['categories'])
     });
 
@@ -70,7 +74,9 @@ export default function MenuManagement() {
 
     // Mutation Update Category
     const updateCategoryMutation = useMutation({
-        mutationFn: ({ id, name }) => categoryService.updateCategory(id, name),
+        //data ở đây là object { name, description, order, isActive }
+        //destructure id và data từ object truyền vào
+        mutationFn: ({ id, data }) => categoryService.updateCategory(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries(['categories']);
             queryClient.invalidateQueries(['menu']); 
@@ -78,8 +84,8 @@ export default function MenuManagement() {
     });
 
     // Handlers
-    const handleAddCategory = async (name) => {
-        await createCategoryMutation.mutateAsync({ name });
+    const handleAddCategory = async (data) => {
+        await createCategoryMutation.mutateAsync(data);
     };
 
     const handleDeleteCategory = async (id) => {
@@ -88,8 +94,9 @@ export default function MenuManagement() {
         }
     };
 
-    const handleEditCategory = async (id, name) => {
-        await updateCategoryMutation.mutateAsync({ id, name });
+    //data là object { name, description, order, isActive }
+    const handleEditCategory = async (id, data) => {
+        await updateCategoryMutation.mutateAsync({id, data}); //Gói vào object
     };
 
     const handleSaveMenu = async (formData) => {
@@ -124,7 +131,6 @@ export default function MenuManagement() {
         const matchesCategory = selectedCategory === "All" || (item.categoryId && item.categoryId._id === selectedCategory);
         //Filter status
         const matchesStatus = status === "All" || handleStatusText(item) === status;
-        console.log(selectedCategory, item.categoryId._id)
         return matchesSearch && matchesCategory && matchesStatus;
     });
 
@@ -183,6 +189,13 @@ export default function MenuManagement() {
                         color="#fff"
                         text="+ Add Item" 
                         onClick={() => { setEditingItem(null); setIsModalOpen(true); }} 
+                    />
+                    {/* Nút trash */}
+                    <Button 
+                        backgrond={{ normal: "#1a1a1a", hover: "#333" }}
+                        color="#fff"
+                        text="Trash Bin"    
+                        onClick={() => {setIsTrashOpen(true)}} 
                     />
                 </div>
             </div>
@@ -252,63 +265,90 @@ export default function MenuManagement() {
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {paginatedItems.map(item => (
-                            <div key={item._id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all border border-gray-100 flex flex-col group relative">
-                                {/* Image Section */}
-                                <div className="h-[180px] rounded-xl bg-gray-100 mb-4 overflow-hidden relative">
-                                    {item.imageUrl ? (
-                                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-gray-300 bg-gray-50">
-                                            <i className="fa-solid fa-utensils text-4xl"></i>
+                            <div key={item._id} 
+                                className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all border border-gray-100 flex flex-col group relative h-full"
+                            >
+                                <div onClick={() => navigate(`/system/admin/menu/${item._id}`)}>
+                                    {/* Image Section */}
+                                    <div className="h-[180px] rounded-xl bg-gray-100 mb-4 overflow-hidden relative shrink-0">
+                                        {item.images && item.images.length > 0 ? (
+                                            <img
+                                                src={
+                                                    item.images.find(img => img.isPrimary)?.url 
+                                                    || item.images[0].url
+                                                }
+                                                alt={item.name}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-300 bg-gray-50">
+                                                <i className="fa-solid fa-utensils text-4xl"></i>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Chef Recommendation Badge - Góc trên phải */}
+                                        {item.isChefRecommended && (
+                                            <div className="absolute top-2 right-2 bg-[#D4AF37] text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-lg flex items-center gap-1 z-10">
+                                                <i className="fa-solid fa-hat-chef"></i>
+                                                <span>Chef's Choice</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Content Container - Flex grow để đẩy nút xuống dưới cùng */}
+                                    <div className="flex flex-col flex-grow">
+                                        {/* Title and Status */}
+                                        <div className="flex justify-between items-start mb-1 gap-2">
+                                            <h3 className="font-bold text-lg text-[#1a1a1a] line-clamp-2 h-[56px] leading-tight" title={item.name}>
+                                                {item.name}
+                                            </h3>
+                                            <span 
+                                                className={`text-[10px] font-bold px-2 py-1 rounded-lg uppercase whitespace-nowrap shrink-0 ${
+                                                    item.isSoldOut 
+                                                        ? 'bg-red-50 text-red-500 border border-red-100' 
+                                                        : (!item.isAvailable 
+                                                            ? 'bg-gray-100 text-gray-500 border border-gray-200' 
+                                                            : 'bg-green-50 text-green-600 border border-green-100')
+                                                }`}
+                                            >
+                                                {item.isSoldOut ? 'Sold Out' : (!item.isAvailable || !item.categoryId?.isActive ? 'Unavailable' : 'Available')}
+                                            </span>
                                         </div>
-                                    )}
-                                </div>
 
-                                {/* Title and Status */}
-                                <div className="flex justify-between items-start mb-1">
-                                    <h3 className="font-bold text-lg text-[#1a1a1a] line-clamp-2" title={item.name}>{item.name}</h3>
-                                    <span 
-                                        className={`text-[10px] font-bold px-2 py-1 rounded-lg uppercase whitespace-nowrap ${
-                                            item.isSoldOut 
-                                                ? 'bg-red-50 text-red-500 border border-red-100' 
-                                                : (!item.isAvailable 
-                                                    ? 'bg-gray-100 text-gray-500 border border-gray-200' 
-                                                    : 'bg-green-50 text-green-600 border border-green-100')
-                                        }`}
-                                    >
-                                        {item.isSoldOut ? 'Sold Out' : (!item.isAvailable ? 'Unavailable' : 'Available')}
-                                </span>
-                                </div>
+                                        {/* Category */}
+                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
+                                            {(item.categoryId?.name || 'Uncategorized')}
+                                        </p>
 
-                                {/* Category */}
-                                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
-                                    {item.categoryId?.name || 'Uncategorized'}
-                                </p>
+                                        {/* Description - Fixed height */}
+                                        <p className="text-sm text-gray-500 mb-4 line-clamp-2 h-[40px] overflow-hidden">
+                                            {item.description || "No description available."}
+                                        </p>
 
-                                {/* Description */}
-                                <p className="text-sm text-gray-500 mb-4 line-clamp-2 h-[40px]">{item.description}</p>
+                                        {/* Price and Prep Time */}
+                                        <div className="flex justify-between items-center mb-3 mt-auto">
+                                            <div className="text-xl font-bold text-red-500">
+                                                ${item.price.toFixed(2)}
+                                            </div>
+                                            <div className="flex items-center text-gray-400 text-sm">
+                                                <i className="fa-regular fa-clock mr-1"></i>
+                                                <span>{item.prepTime || 15} min</span>
+                                            </div>
+                                        </div>
 
-                                {/* Price and Prep Time */}
-                                <div className="flex justify-between items-center mb-3">
-                                    <div className="text-xl font-bold text-red-500">
-                                        ${item.price.toFixed(2)}
-                                    </div>
-                                    <div className="flex items-center text-gray-400 text-sm">
-                                        <i className="fa-regular fa-clock mr-1"></i>
-                                        <span>{item.prepTime || 15} min</span>
+                                        {/* Rating and Orders */}
+                                        <div className="flex items-center text-sm text-gray-500 mb-4">
+                                            <i className="fa-solid fa-star text-yellow-400 mr-1"></i>
+                                            <span className="font-bold text-gray-700 mr-1">4.5</span>
+                                            <span className="text-gray-400 mr-3">(32)</span>
+                                            <span>76 orders</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Rating and Orders (Mock data for now) */}
-                                <div className="flex items-center text-sm text-gray-500 mb-4">
-                                    <i className="fa-solid fa-star text-yellow-400 mr-1"></i>
-                                    <span className="font-bold text-gray-700 mr-1">4.5</span>
-                                    <span className="text-gray-400 mr-3">(32)</span>
-                                    <span>76 orders</span>
-                                </div>
-
-                                {/* Action Buttons */}
+                                {/* Action Buttons - Luôn ở dưới cùng */}
                                 <div className="flex gap-2 pt-4 border-t border-gray-100 mt-auto">
+                                    {/* Edit button */}
                                     <button 
                                         onClick={() => { setEditingItem(item); setIsModalOpen(true); }}
                                         className="flex-1 py-2 rounded-lg bg-gray-50 text-gray-600 hover:bg-[#1a1a1a] hover:text-white font-medium text-sm transition-all"
@@ -386,6 +426,12 @@ export default function MenuManagement() {
                     onAdd={handleAddCategory}
                     onDelete={handleDeleteCategory}
                     onEdit={handleEditCategory}
+                />
+            )}
+
+            {isTrashOpen && (
+                <MenuTrashModal 
+                    onClose={() => setIsTrashOpen(false)}
                 />
             )}
         </div>
