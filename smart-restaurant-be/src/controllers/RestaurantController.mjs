@@ -2,6 +2,7 @@ import Restaurant from "../models/Restaurant.mjs";
 
 class RestaurantController {
     // [POST] /api/restaurant
+    //Chỉ có admin (chủ quán) mới được tạo nhà hàng
     async createRestaurant(req, res) {
         try {
             const { name, address, bio } = req.body;
@@ -17,6 +18,7 @@ class RestaurantController {
                 bio
             };
 
+            // Xử lí upload hình ảnh nếu có
             if (req.files?.logo?.[0]) data.logoUrl = req.files.logo[0].path;
             if (req.files?.cover?.[0]) data.coverUrl = req.files.cover[0].path;
 

@@ -80,6 +80,7 @@ class UserController {
             const { displayName } = req.body;
             const userId = req.user.id;
 
+            //Chỉ update fullName (displayName)
             const user = await User.findByIdAndUpdate(userId, { displayName }, { new: true });
 
             const userResponse = {

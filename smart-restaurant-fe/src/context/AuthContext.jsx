@@ -131,7 +131,7 @@ export const AuthProvider = ({ children }) => {
     if (isLoading) {
         return (
             <div className="h-screen w-full flex justify-center items-center bg-red-800 text-3xl md:text-5xl text-[#fff] font-momo">
-                Smart restaurant is loading
+                Smart restaurant is loading...
             </div>
         )
     }

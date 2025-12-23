@@ -25,6 +25,7 @@ class TableController {
                 restaurantId: restaurant._id
             }).sort({ name: 1 });
 
+            //Tất cả bàn của nhà hàng
             res.status(200).json({ tables });
         } catch (err) {
             res.status(500).json({ error: err.message });
@@ -32,6 +33,7 @@ class TableController {
     }
 
     // [POST] /api/tables
+    //Chỉ admin (chủ quán) mới được tạo bàn
     async createTable(req, res) {
         try {
             const { name, capacity, location, description } = req.body;
@@ -122,7 +124,7 @@ class TableController {
             const table = await Table.findById(req.params.id);
             if (!table) return res.status(404).json({ message: "Table not found" });
 
-            // Tạo token mới -> Token cũ sẽ vô hiệu (về mặt logic so sánh trong DB)
+            // Tạo token mới -> Token   cũ sẽ vô hiệu (về mặt logic so sánh trong DB)
             table.token = generateTableToken(table._id, table.restaurantId);
             await table.save();
 

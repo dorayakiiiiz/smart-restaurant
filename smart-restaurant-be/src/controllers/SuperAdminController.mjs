@@ -12,11 +12,12 @@ class SuperAdminController {
     async getAllRestaurantAdmins(req, res) {
         try {
             const admins = await User.find({ role: 'admin' })
-                .select('-password')
+                .select('-password') // Không trả về password
                 .sort({ createdAt: -1 });
 
             // Lấy thêm thông tin nhà hàng của từng owner (nếu có)
             const adminWithRestaurant = await Promise.all(admins.map(async (admin) => {
+                // Tìm nhà hàng do admin này sở hữu chỉ trả về tên và trạng thái kích hoạt
                 const restaurant = await Restaurant.findOne({ adminId: admin._id }).select('name isActive');
                 return {
                     ...admin.toObject(),

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 const { Schema } = mongoose;
 
+//cha của tất cả các lượt gọi món trong một phiên ăn uống tại bàn
 const OrderSessionSchema = new Schema({
     restaurantId: { type: Schema.Types.ObjectId, ref: "Restaurant", required: true },
     tableId: { type: Schema.Types.ObjectId, ref: "Table", required: true },
