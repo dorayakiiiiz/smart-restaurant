@@ -44,7 +44,7 @@ export default function Sidebar() {
             </div>
 
             {/* Menu */}
-            <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto no-scrollbar">
+            <div className="flex-1 py-2 px-3 space-y-1 overflow-y-auto no-scrollbar">
                 {menuItems.map((item, index) => (
                     <Link 
                         key={index}
