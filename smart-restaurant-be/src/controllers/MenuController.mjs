@@ -104,7 +104,6 @@ class MenuController {
                     isPrimary: index === 0 // Ảnh đầu tiên là ảnh chính
                 }));
             }
-
             // 4. Chuẩn bị dữ liệu
             const data = {
                 restaurantId: restaurant._id,

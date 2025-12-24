@@ -24,6 +24,7 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard
 // Restaurant Admin Pages
 import DashboardOverview from "./pages/AdminDashboard/DashboardOverview";
 import MenuManagement from "./pages/AdminDashboard/MenuManagement";
+import  CategoriesManagement  from "./pages/AdminDashboard/CategoriesManagement";
 import { MenuPage, OrdersPage, KDSPage, StaffPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
 import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
 import SettingsPage from "./pages/AdminDashboard/SettingsPage"; // Import trang mới tạo
@@ -77,6 +78,7 @@ function App() {
                             <Route index element={<Navigate to="dashboard" replace />} />
                             <Route path="dashboard" element={<DashboardOverview />} />
                             <Route path="menu" element={<MenuManagement />} />
+                            <Route path="categories" element={<CategoriesManagement />} />
                             <Route path="menu/:id" element={<MenuItemDetail />} />
                             <Route path="tables" element={<TablesPage />} />
                             <Route path="orders" element={<OrdersPage />} />
