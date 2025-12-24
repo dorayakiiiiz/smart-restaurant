@@ -10,6 +10,7 @@ export default function Sidebar() {
     const menuItems = [
         { label: 'Dashboard', icon: 'fa-chart-pie', path: '/system/admin/dashboard' },
         { label: 'Menu Management', icon: 'fa-book-open', path: '/system/admin/menu' },
+        { label: 'Categories', icon: 'fa-list', path: '/system/admin/categories' },
         { label: 'Tables & QR', icon: 'fa-chair', path: '/system/admin/tables' },
         { label: 'Live Orders', icon: 'fa-bell-concierge', path: '/system/admin/orders' },
         { label: 'Kitchen View (KDS)', icon: 'fa-fire-burner', path: '/system/admin/kds' },

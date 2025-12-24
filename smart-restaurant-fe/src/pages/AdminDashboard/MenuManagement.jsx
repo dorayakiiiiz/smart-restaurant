@@ -5,7 +5,6 @@ import { menuService } from "../../services/menuService";
 import { categoryService } from "../../services/categoryService";
 import Button from "../../components/Shared/Button";
 import MenuModal from "../../components/Modal/MenuModal";
-import CategoryModal from "../../components/Modal/CategoryModal"; 
 import { useNavigate } from "react-router-dom";
 import MenuTrashModal from "./Modal/MenuTrashModal";
 
@@ -13,7 +12,6 @@ export default function MenuManagement() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false); 
     const [isTrashOpen, setIsTrashOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null); // Món ăn đang chỉnh sửa
     const [searchTerm, setSearchTerm] = useState("");
@@ -58,47 +56,6 @@ export default function MenuManagement() {
         onSuccess: () => queryClient.invalidateQueries(['menu'])
     });
 
-    // 3. Mutations for Category
-    const createCategoryMutation = useMutation({
-        mutationFn: (data) => categoryService.createCategory(data),
-        onSuccess: () => queryClient.invalidateQueries(['categories'])
-    });
-
-    const deleteCategoryMutation = useMutation({
-        mutationFn: categoryService.deleteCategory,
-        onSuccess: () => {
-            queryClient.invalidateQueries(['categories']);
-            queryClient.invalidateQueries(['menu']); // Refresh menu vì món ăn có thể bị ảnh hưởng
-        }
-    });
-
-    // Mutation Update Category
-    const updateCategoryMutation = useMutation({
-        //data ở đây là object { name, description, order, isActive }
-        //destructure id và data từ object truyền vào
-        mutationFn: ({ id, data }) => categoryService.updateCategory(id, data),
-        onSuccess: () => {
-            queryClient.invalidateQueries(['categories']);
-            queryClient.invalidateQueries(['menu']); 
-        }
-    });
-
-    // Handlers
-    const handleAddCategory = async (data) => {
-        await createCategoryMutation.mutateAsync(data);
-    };
-
-    const handleDeleteCategory = async (id) => {
-        if (window.confirm("Delete this category? Items in this category will be uncategorized.")) {
-            await deleteCategoryMutation.mutateAsync(id);
-        }
-    };
-
-    //data là object { name, description, order, isActive }
-    const handleEditCategory = async (id, data) => {
-        await updateCategoryMutation.mutateAsync({ id, data }); //Gói vào object
-    };
-
     const handleSaveMenu = async (formData) => {
         if (editingItem) {
             await updateMenuMutation.mutateAsync({ id: editingItem._id, data: formData });
@@ -115,8 +72,8 @@ export default function MenuManagement() {
 
     //Handle status text
     const handleStatusText = (item) => {
-        if (item.isSoldOut) return 'Sold out';
         if (!item.isAvailable) return 'Unavailable';
+        if (item.isSoldOut) return 'Sold out';
         return 'Available';
     }
 
@@ -175,14 +132,6 @@ export default function MenuManagement() {
                     <p className="text-gray-500">Organize your menu and categories</p>
                 </div>
                 <div className="flex gap-3">
-                    {/* Nút quản lý category */}
-                    <Button 
-                        backgrond={{ normal: "#fff", hover: "#f9fafb" }}
-                        color="#1a1a1a"
-                        text="Manage Categories" 
-                        onClick={() => setIsCategoryModalOpen(true)} 
-                        className="border border-gray-200"
-                    />
                     {/* Nút add menu */}
                     <Button 
                         backgrond={{ normal: "#1a1a1a", hover: "#333" }}
@@ -416,16 +365,6 @@ export default function MenuManagement() {
                     onSuccess={handleSaveMenu}
                     initialData={editingItem}
                     categories={categories}
-                />
-            )}
-
-            {isCategoryModalOpen && (
-                <CategoryModal
-                    onClose={() => setIsCategoryModalOpen(false)}
-                    categories={categories}
-                    onAdd={handleAddCategory}
-                    onDelete={handleDeleteCategory}
-                    onEdit={handleEditCategory}
                 />
             )}
 
