@@ -56,6 +56,111 @@ class StaffController {
             res.status(500).json({ error: err.message });
         }
     }
+
+    // [GET] /api/staff
+    // Lấy danh sách nhân viên của nhà hàng (Admin quản lý)
+    async getAllStaff(req, res) {
+        try {
+            const adminId = req.user.id;
+
+            // 1. Tìm nhà hàng của Admin
+            const restaurant = await Restaurant.findOne({ adminId });
+            if (!restaurant) {
+                return res.status(404).json({ message: "Restaurant not found." });
+            }
+
+            // 2. Lấy tất cả staff thuộc nhà hàng này (role: waiter hoặc kitchen)
+            const staff = await User.find({ 
+                restaurantId: restaurant._id,
+                role: { $in: ['waiter', 'kitchen'] }
+            })
+                .select('-password') // Không trả về password
+                .sort({ createdAt: -1 });
+
+            // 3. Thêm thông tin restaurant vào mỗi staff (để hiển thị cột Restaurant)
+            const staffWithRestaurant = staff.map(s => ({
+                ...s.toObject(),
+                restaurant: {
+                    _id: restaurant._id,
+                    name: restaurant.name,
+                    isActive: restaurant.isActive
+                }
+            }));
+
+            res.status(200).json({ staff: staffWithRestaurant });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
+    // [PATCH] /api/staff/:id/lock
+    // Khóa/Mở khóa tài khoản Staff
+    async toggleLockStaff(req, res) {
+        try {
+            const { id } = req.params;
+            const adminId = req.user.id;
+
+            // 1. Tìm nhà hàng của Admin
+            const restaurant = await Restaurant.findOne({ adminId });
+            if (!restaurant) {
+                return res.status(404).json({ message: "Restaurant not found." });
+            }
+
+            // 2. Tìm staff và kiểm tra có thuộc nhà hàng này không
+            const staff = await User.findOne({ 
+                _id: id, 
+                restaurantId: restaurant._id,
+                role: { $in: ['waiter', 'kitchen'] }
+            });
+
+            if (!staff) {
+                return res.status(404).json({ message: "Staff not found or unauthorized." });
+            }
+
+            // 3. Toggle trạng thái lock
+            staff.isLocked = !staff.isLocked;
+            await staff.save();
+
+            res.status(200).json({ 
+                message: staff.isLocked ? "Staff account locked successfully." : "Staff account unlocked successfully.",
+                isLocked: staff.isLocked 
+            });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
+    // [DELETE] /api/staff/:id
+    // Xóa tài khoản Staff
+    async deleteStaff(req, res) {
+        try {
+            const { id } = req.params;
+            const adminId = req.user.id;
+
+            // 1. Tìm nhà hàng của Admin
+            const restaurant = await Restaurant.findOne({ adminId });
+            if (!restaurant) {
+                return res.status(404).json({ message: "Restaurant not found." });
+            }
+
+            // 2. Xóa staff (chỉ xóa nếu thuộc nhà hàng này)
+            const deletedStaff = await User.findOneAndDelete({ 
+                _id: id, 
+                restaurantId: restaurant._id,
+                role: { $in: ['waiter', 'kitchen'] }
+            });
+
+            if (!deletedStaff) {
+                return res.status(404).json({ message: "Staff not found or unauthorized." });
+            }
+
+            // TODO: Sau này có thể thêm logic kiểm tra staff có order đang xử lý không
+
+            res.status(200).json({ message: "Staff account deleted successfully." });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
 }
 
 export default new StaffController();
