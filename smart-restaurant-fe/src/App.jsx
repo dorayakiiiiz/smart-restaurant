@@ -25,7 +25,8 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard
 import DashboardOverview from "./pages/AdminDashboard/DashboardOverview";
 import MenuManagement from "./pages/AdminDashboard/MenuManagement";
 import  CategoriesManagement  from "./pages/AdminDashboard/CategoriesManagement";
-import { MenuPage, OrdersPage, KDSPage, StaffPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
+import { MenuPage, OrdersPage, KDSPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
+import StaffManagementPage from "./pages/AdminDashboard/StaffManagementPage";
 import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
 import SettingsPage from "./pages/AdminDashboard/SettingsPage"; // Import trang mới tạo
 import TablesPage from "./pages/AdminDashboard/TablesPage"; // Import trang mới tạo
@@ -83,7 +84,7 @@ function App() {
                             <Route path="tables" element={<TablesPage />} />
                             <Route path="orders" element={<OrdersPage />} />
                             <Route path="kds" element={<KDSPage />} />
-                            <Route path="staff" element={<StaffPage />} />
+                            <Route path="staff" element={<StaffManagementPage />} />
                             <Route path="reports" element={<ReportsPage />} />
                             <Route path="settings" element={<SettingsPage />} />
                             <Route path="test" element={< Test/>} />
