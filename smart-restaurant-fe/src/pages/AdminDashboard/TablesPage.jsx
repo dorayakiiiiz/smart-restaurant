@@ -50,9 +50,11 @@ export default function TablesPage() {
     });
 
     // Stats Calculation
-    const totalTables = tables.length;
-    const occupiedTables = tables.filter(t => t.status === 'occupied').length;
-    const freeTables = tables.filter(t => t.status === 'free').length;
+    const activeTables = tables.filter(t => t.isActive !== false); // treat undefined as active
+    const totalTables = activeTables.length;
+    const occupiedTables = activeTables.filter(t => t.status === 'occupied').length;
+    const freeTables = activeTables.filter(t => t.status === 'free').length;
+    const inactiveTables = tables.length - totalTables; // optional: number of deactivated tables
 
     // Filter Logic
     const filteredTables = tables.filter(t => {
@@ -87,8 +89,7 @@ export default function TablesPage() {
             <div className="mb-8">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold font-momo text-[#1a1a1a]">Table Management</h1>
-                        <p className="text-gray-500 text-sm">Manage seating layout and QR codes.</p>
+                        <p className="text-gray-500 text-lg font-bold">Manage seating layout and QR codes.</p>
                     </div>
                     <div className="flex gap-2">
                         {/* Nút Batch Operations Mới */}
@@ -115,7 +116,7 @@ export default function TablesPage() {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     <StatCard 
                         title="Total Tables" 
                         value={totalTables} 
@@ -138,6 +139,14 @@ export default function TablesPage() {
                         color="bg-white border border-gray-200" 
                         textColor="text-gray-800"
                         iconColor="text-green-500"
+                    />
+                    <StatCard 
+                        title="Inactive" 
+                        value={inactiveTables} 
+                        icon="fa-ban" 
+                        color="bg-gray-300" 
+                        textColor="text-gray-800"
+                        iconColor="text-red-300"
                     />
                 </div>
             </div>

@@ -96,7 +96,7 @@ export default function MenuManagement() {
 
     //data là object { name, description, order, isActive }
     const handleEditCategory = async (id, data) => {
-        await updateCategoryMutation.mutateAsync({id, data}); //Gói vào object
+        await updateCategoryMutation.mutateAsync({ id, data }); //Gói vào object
     };
 
     const handleSaveMenu = async (formData) => {
