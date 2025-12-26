@@ -3,12 +3,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Contexts
 import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 
 // Layouts
 import BaseLayout from "./layouts/BaseLayout";
 import BlankLayout from "./layouts/BlankLayout";
 import AdminDashboardLayout from "./layouts/AdminDashboardLayout";
 import SuperAdminDashboardLayout from "./layouts/SuperAdminDashboardLayout";
+import CustomerLayout from "./layouts/CustomerLayout";
 
 // Pages
 import Home from "./pages/Home";
@@ -25,14 +27,22 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard
 import DashboardOverview from "./pages/AdminDashboard/DashboardOverview";
 import MenuManagement from "./pages/AdminDashboard/MenuManagement";
 import  CategoriesManagement  from "./pages/AdminDashboard/CategoriesManagement";
-import { MenuPage, OrdersPage, KDSPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
+import { OrdersPage, KDSPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
 import StaffManagementPage from "./pages/AdminDashboard/StaffManagementPage";
 import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
-import SettingsPage from "./pages/AdminDashboard/SettingsPage"; // Import trang mới tạo
-import TablesPage from "./pages/AdminDashboard/TablesPage"; // Import trang mới tạo
+import SettingsPage from "./pages/AdminDashboard/SettingsPage"; 
+import TablesPage from "./pages/AdminDashboard/TablesPage"; 
 import Test from "./pages/AdminDashboard/Test";
 import MenuItemDetail from "./pages/AdminDashboard/MenuItemDetail";
 
+// Customer Pages
+import MenuPage from "./pages/Customer/MenuPage";
+import CartPage from "./pages/Customer/CartPage";
+import OrderTrackingPage from "./pages/Customer/OrderTrackingPage";
+
+// Import Pages mới
+import WaiterDashboard from "./pages/Waiter/WaiterDashboard";
+import KitchenDashboard from "./pages/Kitchen/KitchenDashboard";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -47,52 +57,75 @@ function App() {
     return (
         <QueryClientProvider client={queryClient}>
             <AuthProvider>
-                <Routes>
-                    {/* Public Routes */}
-                    <Route element={<BaseLayout />}>
-                        <Route path="/" element={<Home />} />
-                    </Route>
-
-                    {/* Auth Routes for restaurant system */}
-                    <Route element={<BlankLayout />}>
-                        <Route path="/auth/system/login" element={<Login />} />
-                        <Route path="/auth/system/reset-password" element={<ResetPassword />} />
-                    </Route>
-
-                    {/* Redirector */}
-                    <Route path="/dashboard" element={<DashboardRedirector />} />
-
-                    {/* RESTAURANT SYSTEM ROUTES */}
-                    <Route path="/system" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']} />}>
-                        {/* cho super admin */}
-                        <Route path="super/admin" element={<SuperAdminDashboardLayout />}>
-                            <Route index element={<Navigate to="dashboard" replace />} />
-                            <Route path="dashboard" element={<SuperAdminDashboard />} />
-                            <Route path="admins" element={<AdminManagementPage />} />
-                            <Route path="settings" element={<div className="p-10 text-center text-gray-500">Settings Page (Coming Soon)</div>} />
+                <CartProvider>
+                    <Routes>
+                        {/* Public Routes */}
+                        <Route element={<BaseLayout />}>
+                            <Route path="/" element={<Home />} />
                         </Route>
 
-                        {/* cho admin restaurant */}
-                        <Route path="admin/setup" element={<RestaurantSetupPage />} />
-
-                        <Route path="admin" element={<AdminDashboardLayout />}>
-                            <Route index element={<Navigate to="dashboard" replace />} />
-                            <Route path="dashboard" element={<DashboardOverview />} />
-                            <Route path="menu" element={<MenuManagement />} />
-                            <Route path="categories" element={<CategoriesManagement />} />
-                            <Route path="menu/:id" element={<MenuItemDetail />} />
-                            <Route path="tables" element={<TablesPage />} />
-                            <Route path="orders" element={<OrdersPage />} />
-                            <Route path="kds" element={<KDSPage />} />
-                            <Route path="staff" element={<StaffManagementPage />} />
-                            <Route path="reports" element={<ReportsPage />} />
-                            <Route path="settings" element={<SettingsPage />} />
-                            <Route path="test" element={< Test/>} />
-
+                        {/* Auth Routes for restaurant system */}
+                        <Route element={<BlankLayout />}>
+                            <Route path="/auth/system/login" element={<Login />} />
+                            <Route path="/auth/system/reset-password" element={<ResetPassword />} />
                         </Route>
-                    </Route>
 
-                </Routes>
+                        {/* Redirector */}
+                        <Route path="/dashboard" element={<DashboardRedirector />} />
+
+                        {/* RESTAURANT SYSTEM ROUTES */}
+                        <Route path="/system" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']} />}>
+                            {/* cho super admin */}
+                            <Route path="super/admin" element={<SuperAdminDashboardLayout />}>
+                                <Route index element={<Navigate to="dashboard" replace />} />
+                                <Route path="dashboard" element={<SuperAdminDashboard />} />
+                                <Route path="admins" element={<AdminManagementPage />} />
+                                <Route path="settings" element={<div className="p-10 text-center text-gray-500">Settings Page (Coming Soon)</div>} />
+                            </Route>
+
+                            {/* cho admin restaurant */}
+                            <Route path="admin/setup" element={<RestaurantSetupPage />} />
+
+                            <Route path="admin" element={<AdminDashboardLayout />}>
+                                <Route index element={<Navigate to="dashboard" replace />} />
+                                <Route path="dashboard" element={<DashboardOverview />} />
+                                <Route path="menu" element={<MenuManagement />} />
+                                <Route path="categories" element={<CategoriesManagement />} />
+                                <Route path="menu/:id" element={<MenuItemDetail />} />
+                                <Route path="tables" element={<TablesPage />} />
+                                <Route path="orders" element={<OrdersPage />} />
+                                <Route path="kds" element={<KDSPage />} />
+                                <Route path="staff" element={<StaffManagementPage />} />
+                                <Route path="reports" element={<ReportsPage />} />
+                                <Route path="settings" element={<SettingsPage />} />
+                                <Route path="test" element={< Test/>} />
+
+                            </Route>
+                        </Route>
+
+                        {/* CUSTOMER ROUTES */}
+                        <Route element={<CustomerLayout />}>
+                            <Route path="/menu" element={<MenuPage />} />
+                            <Route path="/cart" element={<CartPage />} />
+                            <Route path="/orders" element={<OrderTrackingPage />} /> {/* Đã thay thế placeholder */}
+                        </Route>
+
+                        {/* WAITER ROUTES */}
+                        <Route path="/waiter" element={<ProtectedRoute allowedRoles={['waiter', 'admin']} />}>
+                            <Route index element={<Navigate to="dashboard" replace />} />
+                            <Route path="dashboard" element={<WaiterDashboard />} />
+                            {/* Team có thể thêm route con: /waiter/tables, /waiter/history... */}
+                        </Route>
+
+                        {/* KITCHEN ROUTES */}
+                        <Route path="/kitchen" element={<ProtectedRoute allowedRoles={['kitchen', 'admin']} />}>
+                            <Route index element={<Navigate to="dashboard" replace />} />
+                            <Route path="dashboard" element={<KitchenDashboard />} />
+                            {/* Team có thể thêm route con: /kitchen/history... */}
+                        </Route>
+
+                    </Routes>
+                </CartProvider>
             </AuthProvider>
         </QueryClientProvider>
     );
