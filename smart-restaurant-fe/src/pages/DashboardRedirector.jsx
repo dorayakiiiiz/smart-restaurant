@@ -7,9 +7,11 @@ export default function DashboardRedirector() {
     if (!user) 
         return <Navigate to="/auth/system/login" replace />;
 
+    // 1. Super Admin
     if (user.role === 'super_admin') 
         return <Navigate to="/system/super/admin/dashboard" replace />;
     
+    // 2. Restaurant Owner (Admin)
     if (user.role === 'admin') {
         if (!user.restaurant) {
             return <Navigate to="/system/admin/setup" replace />;
@@ -17,6 +19,16 @@ export default function DashboardRedirector() {
         return <Navigate to="/system/admin/dashboard" replace />;
     }
 
-    // Waiter/Kitchen logic sau này
+    // 3. Waiter (MỚI)
+    if (user.role === 'waiter') {
+        return <Navigate to="/waiter/dashboard" replace />;
+    }
+
+    // 4. Kitchen (MỚI)
+    if (user.role === 'kitchen') {
+        return <Navigate to="/kitchen/dashboard" replace />;
+    }
+
+    // Default fallback
     return <Navigate to="/" replace />;
 }

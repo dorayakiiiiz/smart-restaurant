@@ -7,6 +7,8 @@ import tableRouter from "./table.mjs";
 import orderRouter from "./order.mjs";
 import superAdminRouter from "./superAdmin.mjs";
 import staffRouter from "./staff.mjs"; 
+import waiterRouter from "./waiter.mjs";
+import kitchenRouter from "./kitchen.mjs";
 
 export default function route(app) {
     app.use("/api/super/admin", superAdminRouter);
@@ -19,6 +21,8 @@ export default function route(app) {
     app.use("/api/tables", tableRouter);
     app.use("/api/orders", orderRouter); 
     app.use("/api/staff", staffRouter);
+    app.use("/api/waiter", waiterRouter);
+    app.use("/api/kitchen", kitchenRouter);
 
     app.use("/api/health", (req, res) => {
         console.log('[PING]');
