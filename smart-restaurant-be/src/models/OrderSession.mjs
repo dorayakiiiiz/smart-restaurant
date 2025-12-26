@@ -1,18 +1,20 @@
 import mongoose from "mongoose";
 const { Schema } = mongoose;
 
-//cha của tất cả các lượt gọi món trong một phiên ăn uống tại bàn
 const OrderSessionSchema = new Schema({
     restaurantId: { type: Schema.Types.ObjectId, ref: "Restaurant", required: true },
     tableId: { type: Schema.Types.ObjectId, ref: "Table", required: true },
     
-    // Khách hàng chủ trì phiên này (có thể là Guest hoặc Customer)
-    customerId: { type: Schema.Types.ObjectId, ref: "User" },
+    // Ai là người mở bàn này đầu tiên (có thể null nếu là Guest)
+    customerId: { type: Schema.Types.ObjectId, ref: "User", default: null },
     
+    // Token bàn dùng để verify session này thuộc về QR nào (bảo mật thêm)
+    tableToken: { type: String },
+
     startTime: { type: Date, default: Date.now },
     endTime: { type: Date },
     
-    // Tổng tiền tạm tính của tất cả các Order con
+    // Tổng tiền (Backend tự tính, không tin Frontend)
     totalAmount: { type: Number, default: 0 },
     
     status: {
@@ -21,7 +23,7 @@ const OrderSessionSchema = new Schema({
         default: 'active'
     },
     
-    paymentMethod: { type: String, default: null }, // cash, momo, stripe...
+    paymentMethod: { type: String, default: null },
     paymentStatus: {
         type: String,
         enum: ['unpaid', 'paid'],
