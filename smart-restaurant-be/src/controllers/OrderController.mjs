@@ -1,43 +1,55 @@
-import Order from "../models/Order.mjs";
-import OrderSession from "../models/OrderSession.mjs";
 import Table from "../models/Table.mjs";
+import OrderSession from "../models/OrderSession.mjs";
+import Order from "../models/Order.mjs";
 import MenuItem from "../models/MenuItem.mjs";
-import Restaurant from "../models/Restaurant.mjs";
 
 class OrderController {
     
     // [POST] /api/orders/session/start
     // Body: { tableToken }
+    // Logic: Quét QR -> Gọi API này
     async startSession(req, res) {
         try {
             const { tableToken } = req.body;
             
-            // 1. Tìm bàn dựa trên Token QR
-            const table = await Table.findOne({ token: tableToken });
+            // 1. Tìm bàn từ Token
+            const table = await Table.findOne({ token: tableToken }).populate('restaurantId');
             if (!table) return res.status(404).json({ message: "Invalid QR Code" });
 
-            // 2. Nếu bàn đang có khách (Occupied) -> Trả về Session hiện tại
+            let session;
+
+            // 2. Nếu bàn đang có khách -> Join session cũ
             if (table.status === 'occupied' && table.currentSessionId) {
-                const session = await OrderSession.findById(table.currentSessionId)
-                    .populate('tableId')
+                session = await OrderSession.findById(table.currentSessionId)
+                    .populate('tableId') // Populate để lấy tên bàn
                     .populate('restaurantId');
-                return res.status(200).json({ message: "Session resumed", session });
             }
 
-            // 3. Nếu bàn trống -> Tạo Session mới
-            const newSession = await OrderSession.create({
-                restaurantId: table.restaurantId,
-                tableId: table._id,
-                customerId: req.user ? req.user.id : null, // Có thể là null nếu là Guest chưa login
-                status: 'active'
+            // 3. Nếu chưa có -> Tạo session mới
+            if (!session || session.status !== 'active') {
+                session = await OrderSession.create({
+                    restaurantId: table.restaurantId._id,
+                    tableId: table._id,
+                    tableToken: tableToken,
+                    customerId: req.user ? req.user.id : null,
+                    status: 'active'
+                });
+                
+                // Cập nhật trạng thái bàn
+                table.status = 'occupied';
+                table.currentSessionId = session._id;
+                await table.save();
+
+                // QUAN TRỌNG: Populate lại để Frontend có tên bàn hiển thị
+                session = await session.populate('tableId');
+                session = await session.populate('restaurantId');
+            }
+
+            res.status(200).json({ 
+                message: "Session active", 
+                session,
+                restaurant: table.restaurantId
             });
-
-            // Cập nhật trạng thái bàn
-            table.status = 'occupied';
-            table.currentSessionId = newSession._id;
-            await table.save();
-
-            res.status(201).json({ message: "Session started", session: newSession });
 
         } catch (err) {
             res.status(500).json({ error: err.message });
@@ -48,58 +60,71 @@ class OrderController {
     // Body: { sessionId, items: [{ menuItemId, quantity, modifiers, note }] }
     async placeOrder(req, res) {
         try {
-            const { sessionId, items } = req.body;
+            const { sessionId, items, customerNote } = req.body;
 
             const session = await OrderSession.findById(sessionId);
             if (!session || session.status !== 'active') {
-                return res.status(400).json({ message: "Session is not active" });
+                return res.status(400).json({ message: "Session is not active or closed." });
             }
 
-            // 1. Tính toán giá tiền server-side (để tránh hack giá từ frontend)
+            // 1. Tính toán giá tiền server-side
             let orderItems = [];
-            let orderTotal = 0;
+            let currentOrderTotal = 0;
 
             for (const item of items) {
                 const menuItem = await MenuItem.findById(item.menuItemId);
-                if (!menuItem) continue;
+                if (!menuItem) continue; 
 
                 let itemPrice = menuItem.price;
-                
-                // Tính tiền modifiers (Size, Topping)
-                // Logic này cần khớp với cấu trúc modifiers bạn gửi lên
-                if (item.modifiers) {
+                let modifiersTotal = 0;
+
+                // Logic tính tiền modifier đơn giản
+                if (item.modifiers && Array.isArray(item.modifiers)) {
                     item.modifiers.forEach(mod => {
-                        itemPrice += (mod.price || 0);
+                        modifiersTotal += (mod.price || 0);
                     });
                 }
 
+                const finalItemPrice = itemPrice + modifiersTotal;
+                currentOrderTotal += finalItemPrice * item.quantity;
+
                 orderItems.push({
                     menuItemId: menuItem._id,
-                    name: menuItem.name,
-                    price: itemPrice,
+                    name: menuItem.name, 
+                    price: finalItemPrice,
                     quantity: item.quantity,
-                    modifiers: item.modifiers,
-                    note: item.note,
+                    modifiers: item.modifiers || [],
+                    note: item.note || "",
                     status: 'pending'
                 });
+            }
 
-                orderTotal += itemPrice * item.quantity;
+            if (orderItems.length === 0) {
+                return res.status(400).json({ message: "No valid items in order" });
             }
 
             // 2. Tạo Order con
             const newOrder = await Order.create({
                 restaurantId: session.restaurantId,
                 sessionId: session._id,
-                orderedBy: req.user ? req.user.id : null,
+                orderedBy: req.user ? req.user.id : null, // Nếu guest thì null
                 items: orderItems,
-                status: 'pending' // Chờ Waiter duyệt
+                status: 'pending',
+                note: customerNote
             });
 
             // 3. Cập nhật tổng tiền vào Session cha
-            session.totalAmount += orderTotal;
+            session.totalAmount += currentOrderTotal;
             await session.save();
 
-            // TODO: Emit Socket.IO tới Waiter/Kitchen tại đây
+            // 4. REAL-TIME SOCKET EMIT 
+            const io = req.app.get('socketio');
+            
+            // Báo cho Waiter/Kitchen (Room: restaurant_ID)
+            io.to(`restaurant_${session.restaurantId}`).emit('new_order_alert', newOrder);
+            
+            // Báo cho Customer cùng bàn (Room: session_ID)
+            io.to(`session_${sessionId}`).emit('order_update', newOrder);
 
             res.status(201).json({ message: "Order placed successfully", order: newOrder });
 
@@ -109,18 +134,18 @@ class OrderController {
     }
 
     // [GET] /api/orders/session/:sessionId
-    // Lấy chi tiết hóa đơn (gồm tất cả các lần gọi món)
+    // Lấy lịch sử gọi món của bàn (để hiển thị tab "Đã gọi")
     async getSessionDetails(req, res) {
         try {
             const { sessionId } = req.params;
             
             const session = await OrderSession.findById(sessionId)
-                .populate('tableId')
-                .populate('restaurantId');
+                .populate('tableId', 'name')
+                .populate('restaurantId', 'name currency');
 
-            // Lấy tất cả các order con thuộc session này
+            if (!session) return res.status(404).json({ message: "Session not found" });
+
             const orders = await Order.find({ sessionId }).sort({ createdAt: -1 });
-
             res.status(200).json({ session, orders });
         } catch (err) {
             res.status(500).json({ error: err.message });
@@ -141,7 +166,13 @@ class OrderController {
             session.paymentMethod = paymentMethod;
             await session.save();
 
-            // TODO: Emit Socket tới Waiter để mang bill ra
+           // Socket báo Waiter
+            const io = req.app.get('socketio');
+            io.to(`restaurant_${session.restaurantId}`).emit('payment_request', { 
+                sessionId: session._id,
+                tableId: session.tableId,
+                method: paymentMethod
+            });
 
             res.status(200).json({ message: "Bill requested", session });
         } catch (err) {

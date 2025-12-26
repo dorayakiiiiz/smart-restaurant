@@ -124,7 +124,7 @@ class TableController {
             const table = await Table.findById(req.params.id);
             if (!table) return res.status(404).json({ message: "Table not found" });
 
-            // Tạo token mới -> Token   cũ sẽ vô hiệu (về mặt logic so sánh trong DB)
+            // Tạo token mới -> Token cũ sẽ vô hiệu (về mặt logic so sánh trong DB)
             table.token = generateTableToken(table._id, table.restaurantId);
             await table.save();
 
