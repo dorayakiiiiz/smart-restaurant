@@ -1,13 +1,23 @@
+import ProductModal from "../../components/Modal/ProductModal"; // import modal
 import { useCart } from "../../context/CartContext";
 import { orderService } from "../../services/orderService";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { menuService } from "../../services/menuService";
 
 export default function CartPage() {
-    const { cartItems, updateQuantity, removeFromCart, cartTotal, sessionInfo, clearCart } = useCart();
+    const { cartItems, updateQuantity, removeFromCart, cartTotal, sessionInfo, clearCart, updateCartItem } = useCart();
     const [loading, setLoading] = useState(false);
     const [note, setNote] = useState("");
-    const navigate = useNavigate();
+    const [editingItem, setEditingItem] = useState(null);
+
+    // Fetch menu data (có thể dùng chung với MenuPage)
+    const { data: menuData } = useQuery({
+        queryKey: ['customer-menu'],
+        queryFn: menuService.getMenu
+    });
+    const menuItems = menuData?.items || [];
 
     const handlePlaceOrder = async () => {
         if (!sessionInfo?.session?._id) return alert("Session expired. Please rescan QR.");
@@ -65,21 +75,33 @@ export default function CartPage() {
                         <button onClick={() => removeFromCart(item.uniqueKey)} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition">
                             <i className="fa-solid fa-trash-can"></i>
                         </button>
-
+                        <button
+                            onClick={() => setEditingItem(item)}
+                            className="absolute top-4 right-12 text-gray-400 hover:text-blue-500 transition"
+                            title="Edit"
+                        >
+                            <i className="fa-solid fa-pen-to-square"></i>
+                        </button>
                         <div className="flex gap-4">
                             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0">
                                 <img src={item.image || "https://via.placeholder.com/100"} className="w-full h-full object-cover" alt={item.name} />
                             </div>
                             <div className="flex-1 pr-6">
                                 <h3 className="font-bold text-gray-800">{item.name}</h3>
-                                <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                                    {item.modifiers && item.modifiers.map((m, idx) => (
-                                        <div key={idx}>+ {m.name}</div>
-                                    ))}
-                                </div>
+                                {/* Hiển thị modifiers */}
+                                {item.modifiers && item.modifiers.length > 0 && (
+                                    <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                                        {item.modifiers.map((m, idx) => (
+                                            <div key={idx}>+ {m.name}{m.option ? `: ${m.option}` : ""}{m.price ? ` (+$${m.price})` : ""}</div>
+                                        ))}
+                                    </div>
+                                )}
+                                {/* Hiển thị note */}
+                                {item.note && (
+                                    <div className="text-xs text-gray-400 italic mt-1">Note: {item.note}</div>
+                                )}
                                 <div className="flex justify-between items-center mt-3">
                                     <span className="font-bold text-[#1a1a1a]">${(item.price * item.quantity).toFixed(2)}</span>
-                                    
                                     <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border border-gray-200">
                                         <button onClick={() => updateQuantity(item.uniqueKey, -1)} className="w-7 h-7 flex items-center justify-center font-bold text-gray-600 hover:bg-white rounded-md transition">-</button>
                                         <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
@@ -105,7 +127,7 @@ export default function CartPage() {
             </div>
 
             {/* Total & Checkout */}
-            <div className="fixed bottom-[90px] left-6 right-6 bg-[#1a1a1a] p-5 rounded-2xl shadow-2xl text-white z-30">
+            <div className="fixed bottom-[100px] left-6 right-6 bg-[#1a1a1a] p-5 rounded-2xl shadow-2xl text-white z-30">
                 <div className="flex justify-between mb-4 items-center">
                     <span className="text-gray-400 text-sm">Total Amount</span>
                     <span className="font-momo font-bold text-2xl text-[#D4AF37]">${cartTotal.toFixed(2)}</span>
@@ -118,6 +140,27 @@ export default function CartPage() {
                     {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : "Place Order"}
                 </button>
             </div>
+
+            {/* ProductModal để edit */}
+            {editingItem && (
+                <ProductModal
+                    item={{
+                        // Lấy object gốc từ menu (để có đủ modifiers)
+                        ...(menuItems.find(m => m._id === editingItem.menuItemId) || {}),
+                        // Gộp thêm các trường đã chọn
+                        ...editingItem
+                    }}
+                    onClose={() => setEditingItem(null)}
+                    onAddToCart={(product, quantity, modifiers, note) => {
+                        updateCartItem(editingItem.uniqueKey, { quantity, modifiers, note });
+                        setEditingItem(null);
+                    }}
+                    initialQuantity={editingItem.quantity}
+                    initialModifiers={editingItem.modifiers}
+                    initialNote={editingItem.note}
+                    isEdit
+                />
+            )}
         </div>
     );
 }
