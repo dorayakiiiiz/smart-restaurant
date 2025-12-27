@@ -24,10 +24,10 @@ const TableSchema = new Schema({
     // Soft delete
     isActive: { type: Boolean, default: true },
     
-    // Link tới Order hiện tại (nếu đang có khách)
-    currentOrderId: {
+    // Link tới Order session hiện tại (nếu đang có khách)
+    currentSessionId: {
         type: Schema.Types.ObjectId,
-        ref: "Order",
+        ref: "OrderSession",
         default: null
     }
 }, { timestamps: true });

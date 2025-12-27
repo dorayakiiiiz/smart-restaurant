@@ -89,7 +89,8 @@ export default function TablesPage() {
             <div className="mb-8">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <p className="text-gray-500 text-lg font-bold">Manage seating layout and QR codes.</p>
+                        <h1 className="text-2xl font-bold font-momo text-[#1a1a1a]">Table & QR</h1>
+                        <p className="text-gray-500">Manage seating layout and QR codes.</p>
                     </div>
                     <div className="flex gap-2">
                         {/* Nút Batch Operations Mới */}

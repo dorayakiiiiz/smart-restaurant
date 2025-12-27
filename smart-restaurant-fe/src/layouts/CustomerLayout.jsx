@@ -40,7 +40,7 @@ export default function CustomerLayout() {
                     <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] mt-0.5">
                         <span className="bg-[#FFF8E1] px-2 py-0.5 rounded-md border border-[#FCEabb]">
                             {/* Lấy tên bàn an toàn */}
-                            TABLE {sessionInfo?.session?.tableId?.name || sessionInfo?.session?.tableId || "..."}
+                            TABLE {sessionInfo?.session?.tableId?.name || "..."}
                         </span>
                     </div>
                 </div>

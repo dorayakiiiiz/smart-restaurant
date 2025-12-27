@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { menuService } from "../../services/menuService";
@@ -14,10 +14,13 @@ export default function MenuPage() {
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
 
+    const calledRef = useRef(false);
+
     // 1. Init Session (Chạy 1 lần khi quét QR)
     useEffect(() => {
         const initSession = async () => {
-            if (tableToken) {
+            if (tableToken && !calledRef.current) {
+                calledRef.current = true;
                 try {
                     // Gọi API startSession để lấy thông tin bàn và session ID
                     const data = await orderService.startSession(tableToken);
