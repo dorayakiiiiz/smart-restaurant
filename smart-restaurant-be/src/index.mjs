@@ -39,9 +39,17 @@ io.on("connection", (socket) => {
     });
 
     // Waiter/Kitchen join room theo Restaurant ID (để nhận order mới)
-    socket.on("join_restaurant", (restaurantId) => {
-        socket.join(`restaurant_${restaurantId}`);
-        console.log(`Socket ${socket.id} joined restaurant_${restaurantId}`);
+    socket.on("join_kitchen", (restaurantId) => {
+        const kitchenRoomName = `restaurant_${restaurantId}_kitchen`;
+        socket.join(kitchenRoomName);
+        console.log(`Socket ${socket.id} joined Kitchen Room: ${kitchenRoomName}`);
+    });
+
+    // 2. Waiter chỉ join room phục vụ
+    socket.on("join_waiter", (restaurantId) => {
+        const waiterRoomName = `restaurant_${restaurantId}_waiter`;
+        socket.join(waiterRoomName);
+        console.log(`Socket ${socket.id} joined Waiter Room: ${waiterRoomName}`);
     });
 
     socket.on("disconnect", () => {
