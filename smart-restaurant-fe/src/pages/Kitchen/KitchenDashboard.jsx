@@ -1,19 +1,266 @@
-import { useEffect } from "react";
-// import { socket } from "../../services/socket";
+import React, { useState, useEffect } from "react";
+import { 
+    FaClock, 
+    FaCheckCircle, 
+    FaFire, 
+    FaBell, 
+    FaUtensils, 
+    FaCog, 
+    FaSignOutAlt, 
+    FaVolumeUp,
+    FaExclamationTriangle,
+    FaUndo,
+    FaHistory,
+    FaTimes,
+    FaCheckSquare,
+    FaSquare
+} from "react-icons/fa";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { kitchenService } from "../../services/kitchenService";
+import { socket } from "../../services/socket";
+import { useAuth } from "../../context/AuthContext";
+import OrderCard from "./Components/OrderCard";
+import Column from "./Components/Column";
+import StatItem from "./Components/StatItem";
+import RecycleBinModal from "./Components/RecyckeBinModal";
 
 export default function KitchenDashboard() {
+    const { logout } = useAuth();
+    const queryClient = useQueryClient();
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [showHistory, setShowHistory] = useState(false);
 
-    // TODO: Team Member B code UI ở đây (KDS Screen)
-    // 1. useEffect join room 'restaurant_ID' qua socket
-    // 2. Lắng nghe 'new_order_alert' -> Thêm vào list
-    // 3. Giao diện thẻ bài (Kanban board) cho các món đang nấu
+    // --- Queries ---
+
+    //orders
+    const { data: orders = [], isLoading: loadingOrders } = useQuery({
+        queryKey: ['kitchenOrders'],
+        queryFn: async () => {
+            const res = await kitchenService.getIncomingOrders();
+            return Array.isArray(res.data) ? res.data : [];
+        },
+        refetchInterval: 30000, // Fallback polling every 30s
+    });
+
+    //history orders
+    const { data: historyOrders = [], refetch: refetchHistory } = useQuery({
+        queryKey: ['kitchenHistory'],
+        queryFn: async () => {
+            const res = await kitchenService.getHistory();
+            return Array.isArray(res.data) ? res.data : [];
+        },
+        enabled: showHistory, // Only fetch when modal is open
+    });
+
+    // --- Mutations ---
+
+    const acceptOrderMutation = useMutation({
+        mutationFn: (orderId) => kitchenService.updateOrderStatus(orderId, 'preparing'),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['kitchenOrders']);
+        }
+    });
+
+    const updateItemStatusMutation = useMutation({
+        mutationFn: ({ orderId, itemId, status }) => kitchenService.updateItemStatus(orderId, itemId, status),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries(['kitchenOrders']);
+            if (variables.status === 'served') {
+                queryClient.invalidateQueries(['kitchenHistory']);
+            }
+        }
+    });
+
+    //Xem lại logic recall
+    const recallOrderMutation = useMutation({
+        mutationFn: (orderId) => kitchenService.updateOrderStatus(orderId, 'preparing'),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['kitchenOrders']);
+            queryClient.invalidateQueries(['kitchenHistory']);
+            setShowHistory(false);
+        }
+    });
+
+    // --- Effects ---
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    
+    useEffect(() => {
+        socket.connect();
+        
+        const handleNewOrder = () => {
+            queryClient.invalidateQueries(['kitchenOrders']);
+            // playNotificationSound();
+        };
+
+        const handleOrderUpdate = () => {
+            queryClient.invalidateQueries(['kitchenOrders']);
+        };
+
+        socket.on('kitchen:new_order', handleNewOrder);
+        socket.on('kitchen:order_update', handleOrderUpdate);
+
+        return () => {
+            socket.off('kitchen:new_order', handleNewOrder);
+            socket.off('kitchen:order_update', handleOrderUpdate);
+            socket.disconnect();
+        };
+    }, [queryClient]);
+
+    // --- Actions ---
+
+    const playNotificationSound = () => {
+        // const audio = new Audio('/sounds/bell.mp3');
+        // audio.play();
+    };
+
+    // --- Helpers ---
+
+    const formatTime = (date) => {
+        return date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    };
+
+    // Stats
+    const stats = {
+        pending: orders.filter(o => o.status === 'pending').length,
+        cooking: orders.filter(o => o.status === 'cooking').length,
+        ready: orders.filter(o => o.status === 'ready').length,
+        overdue: orders.filter(o => {
+            const elapsed = (new Date() - new Date(o.createdAt)) / 1000 / 60;
+            return elapsed > 15 && o.status !== 'ready';
+        }).length,
+    };
 
     return (
-        <div className="p-6 bg-gray-900 min-h-screen text-white">
-            <h1 className="text-2xl font-bold mb-4 text-[#D4AF37]">Kitchen Display System (KDS)</h1>
-            <div className="p-10 border-2 border-dashed border-gray-700 rounded-xl text-center text-gray-500">
-                Placeholder for Kitchen UI (Incoming Tickets)
-            </div>
+        <div className="flex flex-col h-screen bg-[#111827] text-white font-inter overflow-hidden">
+            
+            {/* --- HEADER --- */}
+            <header className="h-20 bg-[#1F2937] border-b border-gray-700 flex items-center justify-between px-6 shadow-xl z-20">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30">
+                        <FaUtensils className="text-2xl text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-gray-100">Kitchen Display</h1>
+                        <p className="text-xs text-gray-400 font-medium tracking-wider uppercase">Smart Restaurant System</p>
+                    </div>
+                </div>
+
+                {/* Stats Bar */}
+                <div className="flex bg-[#111827] rounded-xl p-1.5 border border-gray-700 shadow-inner">
+                    <StatItem label="PENDING" count={stats.pending} color="text-amber-500" />
+                    <div className="w-px bg-gray-700 mx-2 h-8 self-center"></div>
+                    <StatItem label="COOKING" count={stats.cooking} color="text-blue-500" />
+                    <div className="w-px bg-gray-700 mx-2 h-8 self-center"></div>
+                    <StatItem label="READY" count={stats.ready} color="text-emerald-500" />
+                    <div className="w-px bg-gray-700 mx-2 h-8 self-center"></div>
+                    <StatItem label="OVERDUE" count={stats.overdue} color="text-rose-500" animate={stats.overdue > 0} />
+                </div>
+
+                <div className="flex items-center gap-6">
+                    <div className="text-right hidden md:block">
+                        <div className="text-3xl font-mono font-bold text-gray-200 tracking-widest leading-none">
+                            {formatTime(currentTime)}
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={() => setShowHistory(true)}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 bg-gray-700/50 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:text-white"
+                        >
+                            <FaHistory />
+                            <span>Recycle Bin</span>
+                        </button>
+                        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 bg-emerald-500/10 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/20">
+                            <FaVolumeUp />
+                            <span>Sound ON</span>
+                        </button>
+                        <button 
+                            onClick={logout}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 bg-rose-500/10 text-rose-400 border border-rose-500/50 hover:bg-rose-500/20"
+                        >
+                            <FaSignOutAlt />
+                            <span>Exit</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* --- MAIN BOARD --- */}
+            <main className="flex-1 p-6 overflow-hidden flex gap-6 relative">
+                
+                {loadingOrders && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-[#111827]/80 z-50">
+                        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div>
+                    </div>
+                )}
+
+                {/* COLUMN: RECEIVED (Pending Orders) */}
+                <Column 
+                    title="RECEIVED" 
+                    count={stats.pending} 
+                    color="amber" 
+                    icon={<FaBell />}
+                >
+                    {orders.filter(o => o.status === 'pending').map(order => (
+                        <OrderCard 
+                            key={order.id} 
+                            order={order} 
+                            type="pending"
+                            onAction={() => acceptOrderMutation.mutate(order.id)}
+                        />
+                    ))}
+                </Column>
+
+                {/* COLUMN: PREPARING (Cooking Items) */}
+                <Column 
+                    title="PREPARING" 
+                    count={stats.cooking} 
+                    color="blue" 
+                    icon={<FaFire />}
+                >
+                    {orders.filter(o => o.status === 'cooking').map(order => (
+                        <OrderCard 
+                            key={order.id} 
+                            order={order} 
+                            type="cooking"
+                            onItemAction={(itemId, status) => updateItemStatusMutation.mutate({ orderId: order.id, itemId, status })}
+                        />
+                    ))}
+                </Column>
+
+                {/* COLUMN: READY (Ready Items) */}
+                <Column 
+                    title="READY" 
+                    count={stats.ready} 
+                    color="emerald" 
+                    icon={<FaCheckCircle />}
+                >
+                    {orders.filter(o => o.status === 'ready').map(order => (
+                        <OrderCard 
+                            key={order.id} 
+                            order={order} 
+                            type="ready"
+                            onItemAction={(itemId, status) => updateItemStatusMutation.mutate({ orderId: order.id, itemId, status })}
+                        />
+                    ))}
+                </Column>
+
+            </main>
+
+            {/* --- RECYCLE BIN MODAL --- */}
+            <RecycleBinModal 
+                show={showHistory} 
+                onClose={() => setShowHistory(false)} 
+                historyOrders={historyOrders} 
+                onRecall={(orderId) => recallOrderMutation.mutate(orderId)} 
+            />
         </div>
     );
 }
+
