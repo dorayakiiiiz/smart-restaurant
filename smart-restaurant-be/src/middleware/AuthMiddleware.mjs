@@ -1,9 +1,10 @@
 // Kiểm tra JWT token, phân quyền
 
 import jwt from "jsonwebtoken"
+import User from "../models/User.mjs";
 
-// Để xác nhận người dùng đã đăng nhập
-const authMiddleware = (req, res, next) => {
+// Middleware xác thực người dùng đã đăng nhập
+const authMiddleware = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader)
         return res.status(401).json({ message: "Missing token" });
@@ -17,7 +18,14 @@ const authMiddleware = (req, res, next) => {
     
     try {
         const decoded = jwt.verify(token, accessTokenSecret);
-        req.user = decoded;
+        
+        // Load user từ database để có đầy đủ thông tin (bao gồm restaurantId)
+        const user = await User.findById(decoded.id).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        
+        req.user = user;
         next();
         
     } catch (err) {
