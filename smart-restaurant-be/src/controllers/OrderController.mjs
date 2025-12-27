@@ -117,15 +117,18 @@ class OrderController {
                 note: customerNote
             });
 
-            // 3. Cập nhật tổng tiền vào Session cha
-            session.totalAmount += currentOrderTotal;
-            await session.save();
+            // 3. KHÔNG cộng tiền ngay, chỉ cộng khi waiter accept
+            // session.totalAmount sẽ được cập nhật trong WaiterController.updateOrderStatus
 
             // 4. REAL-TIME SOCKET EMIT 
             const io = req.app.get('socketio');
+            const restaurantId = session.restaurantId.toString();
             
             // CHỈ GỬI CHO BẾP (Kitchen) để nấu
-            io.to(`restaurant_${session.restaurantId}_kitchen`).emit('new_order_alert', newOrder);
+            io.to(`restaurant_${restaurantId}_kitchen`).emit('new_order_alert', newOrder);
+
+            // Gửi cho WAITER để duyệt
+            io.to(`restaurant_${restaurantId}_waiter`).emit('new_order_alert', newOrder);
             
             // Báo cho Customer cùng bàn (Room: session_ID)
             io.to(`session_${sessionId}`).emit('order_update', newOrder);

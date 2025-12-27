@@ -117,6 +117,9 @@ export const AuthProvider = ({ children }) => {
         setAccessToken(accessTokenValue);
         setRefreshToken(refreshTokenValue);
 
+        // Force clear any cached user data
+        setUser(null);
+
         // reload lại tránh đứng yên khi vừa login
         window.location.reload();
     }
