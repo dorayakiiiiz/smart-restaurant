@@ -124,8 +124,8 @@ class OrderController {
             // 4. REAL-TIME SOCKET EMIT 
             const io = req.app.get('socketio');
             
-            // Báo cho Waiter/Kitchen (Room: restaurant_ID)
-            io.to(`restaurant_${session.restaurantId}`).emit('new_order_alert', newOrder);
+            // CHỈ GỬI CHO BẾP (Kitchen) để nấu
+            io.to(`restaurant_${session.restaurantId}_kitchen`).emit('new_order_alert', newOrder);
             
             // Báo cho Customer cùng bàn (Room: session_ID)
             io.to(`session_${sessionId}`).emit('order_update', newOrder);
@@ -172,7 +172,7 @@ class OrderController {
 
            // Socket báo Waiter
             const io = req.app.get('socketio');
-            io.to(`restaurant_${session.restaurantId}`).emit('payment_request', { 
+            io.to(`restaurant_${session.restaurantId}_waiter`).emit('payment_request', { 
                 sessionId: session._id,
                 tableId: session.tableId,
                 method: paymentMethod
