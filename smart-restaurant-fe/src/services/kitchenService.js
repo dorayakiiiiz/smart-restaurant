@@ -1,15 +1,25 @@
 import api from "./api";
 
-// TODO: Team Member B điền code gọi API vào đây
 const getIncomingOrders = async () => {
-    // return api.get('/kitchen/orders');
+    return api.get('/kitchen/orders');
 };
 
-const updateItemStatus = async (itemId, status) => {
-    // return api.patch(...);
+const updateOrderStatus = async (orderId, status) => {
+    return api.patch(`/kitchen/orders/${orderId}/status`, { status });
+};
+
+// update status của từng Item trong Order
+const updateItemStatus = async (orderId, itemId, status) => {
+    return api.patch(`/kitchen/orders/${orderId}/status`, { itemId, status });
+};
+
+const getHistory = async () => {
+    return api.get('/kitchen/history');
 };
 
 export const kitchenService = {
     getIncomingOrders,
-    updateItemStatus
+    updateOrderStatus,
+    updateItemStatus, // Export it
+    getHistory
 };
