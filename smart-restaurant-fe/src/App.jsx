@@ -42,6 +42,10 @@ import OrderTrackingPage from "./pages/Customer/OrderTrackingPage";
 
 // Import Pages mới
 import WaiterDashboard from "./pages/Waiter/WaiterDashboard";
+import PendingOrders from "./pages/Waiter/PendingOrders";
+import AcceptedOrders from "./pages/Waiter/AcceptedOrders";
+import ReadyToServe from "./pages/Waiter/ReadyToServe";
+import MyTables from "./pages/Waiter/MyTables";
 import KitchenDashboard from "./pages/Kitchen/KitchenDashboard";
 
 const queryClient = new QueryClient({
@@ -112,9 +116,14 @@ function App() {
 
                         {/* WAITER ROUTES */}
                         <Route path="/waiter" element={<ProtectedRoute allowedRoles={['waiter', 'admin']} />}>
-                            <Route index element={<Navigate to="dashboard" replace />} />
-                            <Route path="dashboard" element={<WaiterDashboard />} />
-                            {/* Team có thể thêm route con: /waiter/tables, /waiter/history... */}
+                            <Route index element={<Navigate to="dashboard/pending" replace />} />
+                            <Route path="dashboard" element={<WaiterDashboard />}>
+                                <Route index element={<Navigate to="pending" replace />} />
+                                <Route path="pending" element={<PendingOrders />} />
+                                <Route path="accepted" element={<AcceptedOrders />} />
+                                <Route path="ready" element={<ReadyToServe />} />
+                                <Route path="tables" element={<MyTables />} />
+                            </Route>
                         </Route>
 
                         {/* KITCHEN ROUTES */}
