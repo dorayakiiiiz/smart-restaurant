@@ -204,7 +204,7 @@ export default function KitchenDashboard() {
                 <Column 
                     title="RECEIVED" 
                     count={stats.pending} 
-                    color="amber" 
+                    color="amber" //Sửa màu ở đây
                     icon={<FaBell />}
                 >
                     {orders.filter(o => o.status === 'pending').map(order => (

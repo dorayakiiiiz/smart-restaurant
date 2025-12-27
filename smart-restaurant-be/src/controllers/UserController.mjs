@@ -31,6 +31,7 @@ class UserController {
                     fullName: user.fullName,
                     role: user.role,
                     isLocked: user.isLocked,
+                    restaurantId: user.restaurantId, 
                     // Trả về object restaurant rút gọn để FE biết user này đã có quán chưa
                     restaurant: restaurant ? {
                         id: restaurant._id,
