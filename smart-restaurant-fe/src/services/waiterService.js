@@ -32,8 +32,16 @@ const markAsServed = async (orderId) => {
     return api.patch(`/waiter/orders/${orderId}/serve`);
 };
 
+const markOrderComplete = async (orderId) => {
+    return api.patch(`/waiter/orders/${orderId}/complete`);
+};
+
 const getTables = async () => {
     return api.get('/waiter/tables');
+};
+
+const getSessionOrders = async (sessionId) => {
+    return api.get(`/orders/session/${sessionId}`);
 };
 
 const confirmPayment = async (sessionId) => {
@@ -47,6 +55,8 @@ export const waiterService = {
     acceptOrder,
     rejectOrder,
     markAsServed,
+    markOrderComplete,
     getTables,
+    getSessionOrders,
     confirmPayment
 };
