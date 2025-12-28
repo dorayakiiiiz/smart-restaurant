@@ -121,7 +121,16 @@ class KitchenController {
                 });
             }
 
-            // 2. Notify Waiter (waiter room)
+            // 2. Notify Waiter (waiter room) - Emit cho mọi update
+            io.to(`restaurant_${order.restaurantId}_waiter`).emit('kitchen:order_update', {
+                id: order._id,
+                status: order.status,
+                itemId: itemId,
+                itemStatus: status,
+                updatedAt: new Date()
+            });
+            
+            // 2b. Emit event đặc biệt khi có item ready
             if (status === 'ready' || order.status === 'ready') {
                 io.to(`restaurant_${order.restaurantId}_waiter`).emit('waiter:order_ready', {
                     orderId: order._id,

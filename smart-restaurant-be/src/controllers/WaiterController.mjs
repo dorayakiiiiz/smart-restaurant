@@ -3,309 +3,400 @@ import OrderSession from "../models/OrderSession.mjs";
 import Table from "../models/Table.mjs";
 
 class WaiterController {
-    
-    // [GET] /api/waiter/orders?status=pending|accepted|ready (single or comma-separated: pending,accepted)
-    // Consolidated endpoint to get orders by status
-    async getOrdersByStatus(req, res) {
-        try {
-            const { status } = req.query;
-            const restaurantId = req.user.restaurantId;
+  // [GET] /api/waiter/orders?status=pending|accepted|ready (single or comma-separated: pending,accepted)
+  // Consolidated endpoint to get orders by status
+  async getOrdersByStatus(req, res) {
+    try {
+      const { status } = req.query;
+      const restaurantId = req.user.restaurantId;
 
-            if (!status) {
-                return res.status(400).json({ 
-                    message: "Status parameter is required. Use 'pending', 'accepted', 'ready', or comma-separated like 'pending,accepted'" 
-                });
-            }
+      if (!status) {
+        return res.status(400).json({
+          message:
+            "Status parameter is required. Use 'pending', 'accepted', 'ready', or comma-separated like 'pending,accepted'",
+        });
+      }
 
-            // Parse status: support single or comma-separated values
-            const statusArray = status.split(',').map(s => s.trim());
-            const validStatuses = ['pending', 'accepted', 'ready'];
-            
-            // Validate all statuses
-            const invalidStatuses = statusArray.filter(s => !validStatuses.includes(s));
-            if (invalidStatuses.length > 0) {
-                return res.status(400).json({ 
-                    message: `Invalid status: ${invalidStatuses.join(', ')}. Use 'pending', 'accepted', or 'ready'` 
-                });
-            }
+      // Parse status: support single or comma-separated values
+      const statusArray = status.split(",").map((s) => s.trim());
+      const validStatuses = ["pending", "accepted", "ready"];
 
-            // Build base query
-            const query = {};
-            if (restaurantId) {
-                query.restaurantId = restaurantId;
-            }
+      // Validate all statuses
+      const invalidStatuses = statusArray.filter(
+        (s) => !validStatuses.includes(s)
+      );
+      if (invalidStatuses.length > 0) {
+        return res.status(400).json({
+          message: `Invalid status: ${invalidStatuses.join(
+            ", "
+          )}. Use 'pending', 'accepted', or 'ready'`,
+        });
+      }
 
-            let orders = [];
+      // Build base query
+      const query = {};
+      if (restaurantId) {
+        query.restaurantId = restaurantId;
+      }
 
-            // Handle each status type
-            for (const statusType of statusArray) {
-                if (statusType === 'pending') {
-                    // Get pending orders
-                    const pendingOrders = await Order.find({ ...query, status: 'pending' })
-                        .populate({
-                            path: 'sessionId',
-                            populate: { path: 'tableId', select: 'name' }
-                        })
-                        .sort({ createdAt: -1 });
-                    orders.push(...pendingOrders);
+      let orders = [];
 
-                } else if (statusType === 'accepted') {
-                    // Get accepted orders (in kitchen, not all items ready)
-                    const acceptedOrders = await Order.find({ ...query, status: { $in: ['accepted', 'preparing'] } })
-                        .populate({
-                            path: 'sessionId',
-                            populate: { path: 'tableId', select: 'name' }
-                        })
-                        .sort({ createdAt: -1 });
+      // Handle each status type
+      for (const statusType of statusArray) {
+        if (statusType === "pending") {
+          // Get pending orders
+          const pendingOrders = await Order.find({
+            ...query,
+            status: "pending",
+          })
+            .populate({
+              path: "sessionId",
+              populate: { path: "tableId", select: "name" },
+            })
+            .sort({ createdAt: -1 });
+          orders.push(...pendingOrders);
+        } else if (statusType === "accepted") {
+          // Get accepted orders (in kitchen, not all items ready)
+          const acceptedOrders = await Order.find({
+            ...query,
+            status: { $in: ["accepted", "preparing"] },
+          })
+            .populate({
+              path: "sessionId",
+              populate: { path: "tableId", select: "name" },
+            })
+            .sort({ createdAt: -1 });
 
-                    // Filter: Loại bỏ orders có tất cả items đã ready hoặc served
-                    const filteredAccepted = acceptedOrders.filter(order => 
-                        !order.items.every(item => ['ready', 'served'].includes(item.status))
-                    );
-                    orders.push(...filteredAccepted);
+          // Filter: Loại bỏ orders có tất cả items đã ready hoặc served
+          const filteredAccepted = acceptedOrders.filter(
+            (order) =>
+              !order.items.every((item) =>
+                ["ready", "served"].includes(item.status)
+              )
+          );
+          orders.push(...filteredAccepted);
+        } else if (statusType === "ready") {
+          // Get ready orders (items ready to serve)
+          // Tìm cả accepted, preparing và ready vì order có thể chưa full ready nhưng có món ready
+          const acceptedOrders = await Order.find({
+            ...query,
+            status: { $in: ["accepted", "preparing", "ready"] },
+          })
+            .populate({
+              path: "sessionId",
+              populate: { path: "tableId", select: "name" },
+            })
+            .sort({ createdAt: -1 });
 
-                } else if (statusType === 'ready') {
-                    // Get ready orders (items ready to serve)
-                    // Tìm cả accepted, preparing và ready vì order có thể chưa full ready nhưng có món ready
-                    const acceptedOrders = await Order.find({ ...query, status: { $in: ['accepted', 'preparing', 'ready'] } })
-                        .populate({
-                            path: 'sessionId',
-                            populate: { path: 'tableId', select: 'name' }
-                        })
-                        .sort({ createdAt: -1 });
+          // Filter: Lấy orders có ít nhất 1 item ready HOẶC tất cả items served (chưa complete)
+          const filteredReady = acceptedOrders.filter((order) => {
+            if (order.items.length === 0) return false;
 
-                    // Filter: Lấy orders có ít nhất 1 item ready
-                    const filteredReady = acceptedOrders.filter(order => 
-                        order.items.length > 0 && 
-                        order.items.some(item => item.status === 'ready')
-                    );
-                    orders.push(...filteredReady);
-                }
-            }
-
-            // Remove duplicates by order ID (in case of overlapping queries)
-            const uniqueOrders = Array.from(
-                new Map(orders.map(order => [order._id.toString(), order])).values()
+            const hasReadyItems = order.items.some(
+              (item) => item.status === "ready"
+            );
+            const allServed = order.items.every(
+              (item) => item.status === "served"
+            );
+            const hasPreparingItems = order.items.some(
+              (item) => item.status === "preparing"
             );
 
-            res.status(200).json({ orders: uniqueOrders });
-
-        } catch (err) {
-            console.error('Error in getOrdersByStatus:', err);
-            res.status(500).json({ error: err.message });
+            // Hiển thị nếu: có ready items HOẶC (tất cả served VÀ không còn preparing)
+            return hasReadyItems || (allServed && !hasPreparingItems);
+          });
+          orders.push(...filteredReady);
         }
+      }
+
+      // Remove duplicates by order ID (in case of overlapping queries)
+      const uniqueOrders = Array.from(
+        new Map(orders.map((order) => [order._id.toString(), order])).values()
+      );
+
+      res.status(200).json({ orders: uniqueOrders });
+    } catch (err) {
+      console.error("Error in getOrdersByStatus:", err);
+      res.status(500).json({ error: err.message });
     }
+  }
 
-    // [PATCH] /api/waiter/orders/:id/status
-    // Update order status: accept hoặc reject
-    async updateOrderStatus(req, res) {
-        try {
-            const { id } = req.params;
-            const { status, rejectionReason } = req.body;
+  // [PATCH] /api/waiter/orders/:id/status
+  // Update order status: accept hoặc reject
+  async updateOrderStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status, rejectionReason } = req.body;
 
-            // Validate status
-            if (!status || !['accepted', 'rejected'].includes(status)) {
-                return res.status(400).json({ 
-                    message: "Invalid status. Use 'accepted' or 'rejected'" 
-                });
-            }
+      // Validate status
+      if (!status || !["accepted", "rejected"].includes(status)) {
+        return res.status(400).json({
+          message: "Invalid status. Use 'accepted' or 'rejected'",
+        });
+      }
 
-            const order = await Order.findById(id).populate('sessionId');
-            if (!order) return res.status(404).json({ message: "Order not found" });
+      const order = await Order.findById(id).populate({
+        path: "sessionId",
+        populate: { path: "tableId", select: "name" },
+      });
+      if (!order) return res.status(404).json({ message: "Order not found" });
 
-            const io = req.app.get('socketio');
-            const restaurantId = order.restaurantId.toString();
-            const sessionId = order.sessionId._id.toString();
+      const io = req.app.get("socketio");
+      const restaurantId = order.restaurantId.toString();
+      const sessionId = order.sessionId._id.toString();
 
-            if (status === 'accepted') {
-                // Waiter accept order → Gửi vào bếp
-                order.status = 'accepted';
-                await order.save();
+      if (status === "accepted") {
+        // Waiter accept order → Gửi vào bếp
+        order.status = "accepted";
+        await order.save();
 
-                // Cập nhật tổng tiền vào Session (chỉ khi accept)
-                const session = order.sessionId;
-                let orderTotal = 0;
-                order.items.forEach(item => {
-                    orderTotal += item.price * item.quantity;
-                });
-                session.totalAmount += orderTotal;
-                await session.save();
+        // Cập nhật tổng tiền vào Session (chỉ khi accept)
+        const session = order.sessionId;
+        let orderTotal = 0;
+        order.items.forEach((item) => {
+          orderTotal += item.price * item.quantity;
+        });
+        session.totalAmount += orderTotal;
+        await session.save();
 
-                // Emit socket tới waiter, kitchen và customer
-                io.to(`restaurant_${restaurantId}_waiter`).emit('order_accepted', order);
-                io.to(`restaurant_${restaurantId}_kitchen`).emit('order_accepted', order);
-                io.to(`session_${sessionId}`).emit('order_update', order);
+        // Emit socket tới waiter, kitchen và customer
+        io.to(`restaurant_${restaurantId}_waiter`).emit(
+          "order_accepted",
+          order
+        );
+        io.to(`restaurant_${restaurantId}_kitchen`).emit(
+          "order_accepted",
+          order
+        );
+        io.to(`session_${sessionId}`).emit("order_update", order);
 
-                res.status(200).json({ message: "Order accepted", order });
+        res.status(200).json({ message: "Order accepted", order });
+      } else if (status === "rejected") {
+        // Waiter reject order
+        order.status = "rejected";
+        order.rejectionReason = rejectionReason || "No reason provided";
+        await order.save();
 
-            } else if (status === 'rejected') {
-                // Waiter reject order
-                order.status = 'rejected';
-                order.rejectionReason = rejectionReason || 'No reason provided';
-                await order.save();
+        // Emit socket tới waiter và customer
+        io.to(`restaurant_${restaurantId}_waiter`).emit(
+          "order_rejected",
+          order
+        );
+        io.to(`session_${sessionId}`).emit("order_update", order);
 
-                // Emit socket tới waiter và customer
-                io.to(`restaurant_${restaurantId}_waiter`).emit('order_rejected', order);
-                io.to(`session_${sessionId}`).emit('order_update', order);
+        res.status(200).json({ message: "Order rejected", order });
+      }
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
 
-                res.status(200).json({ message: "Order rejected", order });
-            }
+  // [PATCH] /api/waiter/orders/:id/serve
+  // Đánh dấu các items READY trong order đã được phục vụ (KHÔNG thông báo customer)
+  async markAsServed(req, res) {
+    try {
+      const { id } = req.params;
 
-        } catch (err) {
-            res.status(500).json({ error: err.message });
+      const order = await Order.findById(id).populate({
+        path: "sessionId",
+        populate: { path: "tableId", select: "name" },
+      });
+      if (!order) return res.status(404).json({ message: "Order not found" });
+
+      // Chỉ update items có status = 'ready' thành 'served'
+      // Giữ nguyên các items đang 'preparing' hoặc status khác
+      order.items.forEach((item) => {
+        if (item.status === "ready") {
+          item.status = "served";
         }
+      });
+
+      // KHÔNG update order.status thành 'served' ở đây
+      // Chỉ update khi waiter mark complete
+      await order.save();
+
+      // Emit socket CHỈ tới waiter và kitchen, KHÔNG emit tới customer
+      const io = req.app.get("socketio");
+      const restaurantId = order.restaurantId.toString();
+
+      io.to(`restaurant_${restaurantId}_waiter`).emit("order_served", order);
+      io.to(`restaurant_${restaurantId}_kitchen`).emit("order_served", order);
+      // REMOVED: io.to(`session_${sessionId}`).emit('order_update', order);
+
+      res.status(200).json({
+        message: "Items marked as served (customer not notified yet)",
+        order,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
+  }
 
-    // [PATCH] /api/waiter/orders/:id/serve
-    // Đánh dấu tất cả items trong order đã được phục vụ
-    async markAsServed(req, res) {
-        try {
-            const { id } = req.params;
+  // [PATCH] /api/waiter/orders/:id/complete
+  // Đánh dấu order hoàn thành (tất cả items đã served) → Notify customer với status 'ready'
+  async markOrderComplete(req, res) {
+    try {
+      const { id } = req.params;
 
-            const order = await Order.findById(id).populate('sessionId');
-            if (!order) return res.status(404).json({ message: "Order not found" });
+      const order = await Order.findById(id).populate({
+        path: "sessionId",
+        populate: { path: "tableId", select: "name" },
+      });
+      if (!order) return res.status(404).json({ message: "Order not found" });
 
-            // Update tất cả items thành served
-            order.items.forEach(item => {
-                item.status = 'served';
+      // Validate: Tất cả items phải served
+      const allServed = order.items.every((item) => item.status === "served");
+      if (!allServed) {
+        return res
+          .status(400)
+          .json({ message: "Not all items are served yet" });
+      }
+
+      // Update order status thành 'ready' (để customer biết order đã xong và sẵn sàng)
+      order.status = "ready";
+      await order.save();
+
+      // Emit socket tới waiter, kitchen VÀ customer (CHỈ KHI COMPLETE)
+      const io = req.app.get("socketio");
+      const restaurantId = order.restaurantId.toString();
+      const sessionId = order.sessionId._id.toString();
+
+      io.to(`restaurant_${restaurantId}_waiter`).emit("order_completed", order);
+      io.to(`restaurant_${restaurantId}_kitchen`).emit(
+        "order_completed",
+        order
+      );
+      io.to(`session_${sessionId}`).emit("order_update", order); // Customer nhận update ở đây
+
+      res
+        .status(200)
+        .json({ message: "Order completed and customer notified", order });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
+  // [GET] /api/waiter/tables
+  // Lấy danh sách bàn đang active hoặc chờ thanh toán với thông tin chi tiết orders
+  async getTableStatus(req, res) {
+    try {
+      const restaurantId = req.user.restaurantId;
+
+      // Nếu user không có restaurantId, lấy tất cả sessions
+      const query = { status: { $in: ["active", "payment_requested"] } };
+      if (restaurantId) {
+        query.restaurantId = restaurantId;
+      }
+
+      const sessions = await OrderSession.find(query)
+        .populate("tableId", "name")
+        .sort({ startTime: -1 });
+
+      // Lấy tất cả orders cho mỗi session và tính stats
+      const sessionsWithStats = await Promise.all(
+        sessions.map(async (session) => {
+          // Lấy tất cả orders của session này (chỉ lấy accepted, không lấy pending/rejected)
+          const orders = await Order.find({
+            sessionId: session._id,
+            status: { $in: ["accepted"] }, // Chỉ lấy orders đã được waiter accept
+          });
+
+          // Tính toán stats
+          let totalItems = 0;
+          let itemsPending = 0;
+          let itemsPreparing = 0;
+          let itemsReady = 0;
+          let itemsServed = 0;
+
+          orders.forEach((order) => {
+            order.items.forEach((item) => {
+              totalItems += item.quantity;
+
+              if (item.status === "pending" || item.status === "confirmed") {
+                itemsPending += item.quantity;
+              } else if (item.status === "preparing") {
+                itemsPreparing += item.quantity;
+              } else if (item.status === "ready") {
+                itemsReady += item.quantity;
+              } else if (item.status === "served") {
+                itemsServed += item.quantity;
+              }
             });
+          });
 
-            if (order.items.every(i => i.status === 'served')) {
-                order.status = 'served';
-            }
-            await order.save();
+          return {
+            ...session.toObject(),
+            orderStats: {
+              totalOrders: orders.length,
+              totalItems,
+              itemsPending,
+              itemsPreparing,
+              itemsReady,
+              itemsServed,
+            },
+          };
+        })
+      );
 
-            // Emit socket tới waiter, kitchen và customer
-            const io = req.app.get('socketio');
-            const restaurantId = order.restaurantId.toString(); // Convert ObjectId to string
-            const sessionId = order.sessionId._id.toString();
+      // Filter: Chỉ trả về sessions có ít nhất 1 order accepted hoặc đang payment_requested
+      const filteredSessions = sessionsWithStats.filter(
+        (session) =>
+          session.orderStats.totalOrders > 0 ||
+          session.status === "payment_requested"
+      );
 
-            io.to(`restaurant_${restaurantId}_waiter`).emit('order_served', order);
-            io.to(`restaurant_${restaurantId}_kitchen`).emit('order_served', order);
-            io.to(`session_${sessionId}`).emit('order_update', order);
-
-            res.status(200).json({ message: "Order marked as served", order });
-
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
+      res.status(200).json({ sessions: filteredSessions });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
+  }
 
-    // [GET] /api/waiter/tables
-    // Lấy danh sách bàn đang active hoặc chờ thanh toán với thông tin chi tiết orders
-    async getTableStatus(req, res) {
-        try {
-            const restaurantId = req.user.restaurantId;
+  // [POST] /api/waiter/checkout/:sessionId
+  // Xác nhận thanh toán và giải phóng bàn
+  async confirmPayment(req, res) {
+    try {
+      const { sessionId } = req.params;
 
-            // Nếu user không có restaurantId, lấy tất cả sessions
-            const query = { status: { $in: ['active', 'payment_requested'] } };
-            if (restaurantId) {
-                query.restaurantId = restaurantId;
-            }
+      const session = await OrderSession.findById(sessionId).populate(
+        "tableId"
+      );
+      if (!session)
+        return res.status(404).json({ message: "Session not found" });
 
-            const sessions = await OrderSession.find(query)
-                .populate('tableId', 'name')
-                .sort({ startTime: -1 });
+      // Validate: Chỉ confirm khi status = payment_requested
+      if (session.status !== "payment_requested") {
+        return res
+          .status(400)
+          .json({ message: "Session is not ready for payment" });
+      }
 
-            // Lấy tất cả orders cho mỗi session và tính stats
-            const sessionsWithStats = await Promise.all(sessions.map(async (session) => {
-                // Lấy tất cả orders của session này (chỉ lấy accepted, không lấy pending/rejected)
-                const orders = await Order.find({ 
-                    sessionId: session._id,
-                    status: { $in: ['accepted'] } // Chỉ lấy orders đã được waiter accept
-                });
+      // Update OrderSession
+      session.status = "completed";
+      session.paymentStatus = "paid";
+      session.endTime = Date.now();
+      await session.save();
 
-                // Tính toán stats
-                let totalItems = 0;
-                let itemsPending = 0;
-                let itemsPreparing = 0;
-                let itemsReady = 0;
-                let itemsServed = 0;
+      // Update Table: Giải phóng bàn
+      const table = await Table.findById(session.tableId._id);
+      if (table) {
+        table.status = "free";
+        table.currentSessionId = null;
+        await table.save();
+      }
 
-                orders.forEach(order => {
-                    order.items.forEach(item => {
-                        totalItems += item.quantity;
-                        
-                        if (item.status === 'pending' || item.status === 'confirmed') {
-                            itemsPending += item.quantity;
-                        } else if (item.status === 'preparing') {
-                            itemsPreparing += item.quantity;
-                        } else if (item.status === 'ready') {
-                            itemsReady += item.quantity;
-                        } else if (item.status === 'served') {
-                            itemsServed += item.quantity;
-                        }
-                    });
-                });
+      // Emit socket tới waiter
+      const io = req.app.get("socketio");
+      const restaurantId = session.restaurantId.toString(); // Convert ObjectId to string
+      io.to(`restaurant_${restaurantId}_waiter`).emit("payment_completed", {
+        sessionId: session._id,
+        tableId: session.tableId._id,
+      });
 
-                return {
-                    ...session.toObject(),
-                    orderStats: {
-                        totalOrders: orders.length,
-                        totalItems,
-                        itemsPending,
-                        itemsPreparing,
-                        itemsReady,
-                        itemsServed
-                    }
-                };
-            }));
-
-            // Filter: Chỉ trả về sessions có ít nhất 1 order accepted hoặc đang payment_requested
-            const filteredSessions = sessionsWithStats.filter(session => 
-                session.orderStats.totalOrders > 0 || session.status === 'payment_requested'
-            );
-
-            res.status(200).json({ sessions: filteredSessions });
-
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
+      res.status(200).json({ message: "Payment confirmed", session });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-
- 
-    // [POST] /api/waiter/checkout/:sessionId
-    // Xác nhận thanh toán và giải phóng bàn
-    async confirmPayment(req, res) {
-        try {
-            const { sessionId } = req.params;
-
-            const session = await OrderSession.findById(sessionId).populate('tableId');
-            if (!session) return res.status(404).json({ message: "Session not found" });
-
-            // Validate: Chỉ confirm khi status = payment_requested
-            if (session.status !== 'payment_requested') {
-                return res.status(400).json({ message: "Session is not ready for payment" });
-            }
-
-            // Update OrderSession
-            session.status = 'completed';
-            session.paymentStatus = 'paid';
-            session.endTime = Date.now();
-            await session.save();
-
-            // Update Table: Giải phóng bàn
-            const table = await Table.findById(session.tableId._id);
-            if (table) {
-                table.status = 'free';
-                table.currentSessionId = null;
-                await table.save();
-            }
-
-            // Emit socket tới waiter
-            const io = req.app.get('socketio');
-            const restaurantId = session.restaurantId.toString(); // Convert ObjectId to string
-            io.to(`restaurant_${restaurantId}_waiter`).emit('payment_completed', { 
-                sessionId: session._id,
-                tableId: session.tableId._id
-            });
-
-            res.status(200).json({ message: "Payment confirmed", session });
-
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
-    }
+  }
 }
 
 export default new WaiterController();
