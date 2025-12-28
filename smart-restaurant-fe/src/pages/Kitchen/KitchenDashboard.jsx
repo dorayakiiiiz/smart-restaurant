@@ -161,7 +161,7 @@ export default function KitchenDashboard() {
     // Stats
     const stats = {
         pending: orders.filter(o => o.status === 'accepted').length,
-        cooking: orders.filter(o => o.status === 'preparing').length,
+        preparing: orders.filter(o => o.status === 'preparing').length,
         ready: orders.filter(o => o.status === 'ready').length,
         overdue: orders.filter(o => {
             const elapsed = (new Date() - new Date(o.createdAt)) / 1000 / 60;
@@ -188,7 +188,7 @@ export default function KitchenDashboard() {
                 <div className="flex bg-[#111827] rounded-xl p-1.5 border border-gray-700 shadow-inner">
                     <StatItem label="PENDING" count={stats.pending} color="text-amber-500" />
                     <div className="w-px bg-gray-700 mx-2 h-8 self-center"></div>
-                    <StatItem label="COOKING" count={stats.cooking} color="text-blue-500" />
+                    <StatItem label="PREPARING" count={stats.preparing} color="text-blue-500" />
                     <div className="w-px bg-gray-700 mx-2 h-8 self-center"></div>
                     <StatItem label="READY" count={stats.ready} color="text-emerald-500" />
                     <div className="w-px bg-gray-700 mx-2 h-8 self-center"></div>
@@ -255,15 +255,15 @@ export default function KitchenDashboard() {
                 {/* COLUMN: PREPARING (Cooking Items) */}
                 <Column 
                     title="PREPARING" 
-                    count={stats.cooking} 
+                    count={stats.preparing} 
                     color="blue" 
                     icon={<FaFire />}
                 >
-                    {orders.filter(o => o.status === 'cooking').map(order => (
+                    {orders.filter(o => o.status === 'preparing').map(order => (
                         <OrderCard 
                             key={order.id} 
                             order={order} 
-                            type="cooking"
+                            type="preparing"
                             onItemAction={(itemId, status) => updateItemStatusMutation.mutate({ orderId: order.id, itemId, status })}
                         />
                     ))}
@@ -276,7 +276,7 @@ export default function KitchenDashboard() {
                     color="emerald" 
                     icon={<FaCheckCircle />}
                 >
-                    {orders.filter(o => o.status === 'ready').map(order => (
+                    {orders.filter(o => o.items.some(i => i.status === 'ready')).map(order => (
                         <OrderCard 
                             key={order.id} 
                             order={order} 

@@ -28,16 +28,23 @@ class KitchenController {
                 restaurantId,
                 status: { $in: ['accepted', 'preparing', 'ready'] } 
             })
-            .populate('sessionId', 'tableId')
+            // Deep populate: Order -> Session -> Table
+            .populate({
+                path: 'sessionId',
+                populate: {
+                    path: 'tableId',
+                    model: 'Table',
+                    select: 'name' // Chỉ lấy field name của bàn
+                }
+            })
             .sort({ createdAt: 1 });
 
-            console.log("Fetched incoming orders:", orders);
 
             const formattedOrders = orders.map(order => {             
                 return {
 
                     id: order._id,
-                    table: order.sessionId?.tableId ? `Table ${order.sessionId.tableId}` : 'Unknown Table', 
+                    table: order.sessionId?.tableId?.name || 'Unknown',
                     status: order.status,
                     createdAt: order.createdAt,
                     items: order.items.map(item => ({
@@ -92,18 +99,20 @@ class KitchenController {
                     
                     // Logic tự động cập nhật Order Status dựa trên Items (Optional)
                     // Ví dụ: Nếu tất cả items đều ready -> Order ready
-                    const allReady = order.items.every(i => i.status === 'ready' || i.status === 'served');
+                    const allReady = order.items.every(i => i.status === 'ready');
                     if (allReady && order.status !== 'served') {
                         order.status = 'ready';
                     }
                     
-                    // Nếu tất cả items đều served -> Order served
-                    const allServed = order.items.every(i => i.status === 'served');
-                    if (allServed) {
-                        order.status = 'served';
-                    }
+                    // // Nếu tất cả items đều served -> Order served
+                    // const allServed = order.items.every(i => i.status === 'served');
+                    // if (allServed) {
+                    //     order.status = 'served';
+                    // }
                 }
             }
+
+            console.log("Updating order:", order);
 
             await order.save();
 
@@ -165,13 +174,21 @@ class KitchenController {
                 updatedAt: { $gte: startOfDay, $lte: endOfDay },
                 status: 'served' // Lấy các order đã hoàn thành (served)
             })
-            .populate('sessionId', 'tableId')
+            //2 lớp
+            .populate({
+                path: 'sessionId',
+                populate: {
+                    path: 'tableId',
+                    model: 'Table',
+                    select: 'name' // Chỉ lấy field name của bàn
+                }
+            })
             .sort({ updatedAt: -1 })
             .limit(50);
 
             const formattedHistory = orders.map(order => ({
                 id: order._id,
-                table: order.sessionId?.tableId ? `Table ${order.sessionId.tableId}` : 'Unknown',
+                table: order.sessionId?.tableId?.name || 'Unknown',
                 updatedAt: order.updatedAt,
                 items: order.items.map(i => ({
                     name: i.name,

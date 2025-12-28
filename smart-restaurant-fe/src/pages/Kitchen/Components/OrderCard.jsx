@@ -1,25 +1,41 @@
 import { useEffect, useState } from "react";
+import { FaCheckCircle, FaCheckSquare, FaExclamationTriangle, FaSquare } from "react-icons/fa";
 
 export default function OrderCard({ order, type, onAction, onItemAction }) {
     const [elapsed, setElapsed] = useState("");
+    // console.log('Order', order);
 
+    //Effect to update elapsed time every second
     useEffect(() => {
         const interval = setInterval(() => {
             const start = new Date(order.createdAt);
-            const diff = Math.floor((new Date() - start) / 1000);
-            const mins = Math.floor(diff / 60);
-            const secs = diff % 60;
-            setElapsed(`${mins}:${secs < 10 ? '0' : ''}${secs}`);
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - start) / 1000);
+
+            // Tính toán Giờ, Phút, Giây
+            const hours = Math.floor(diffInSeconds / 3600);
+            const minutes = Math.floor((diffInSeconds % 3600) / 60);
+            const seconds = diffInSeconds % 60;
+
+            // Format chuỗi HH:mm:ss (đảm bảo luôn có 2 chữ số)
+            const formattedTime = [
+                hours.toString().padStart(2, '0'),
+                minutes.toString().padStart(2, '0'),
+                seconds.toString().padStart(2, '0')
+            ].join(':');
+
+            setElapsed(formattedTime);
         }, 1000);
+
         return () => clearInterval(interval);
-    }, [order]);
+    }, [order.createdAt]);
 
     const isOverdue = type !== 'ready' && (new Date() - new Date(order.createdAt)) > 1000 * 60 * 15;
 
     // Filter items based on column type
     const displayItems = order.items.filter(item => {
         if (type === 'accepted') return true; // Show all
-        if (type === 'preparing') return ['preparing', 'accepted', 'ready'].includes(item.status);
+        if (type === 'preparing') return ['preparing', 'accepted'].includes(item.status);
         if (type === 'ready') return item.status === 'ready';
         return true;
     });
@@ -108,7 +124,7 @@ export default function OrderCard({ order, type, onAction, onItemAction }) {
                         onClick={onAction}
                         className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-sm transition-colors flex items-center justify-center gap-2"
                     >
-                        {/* <FaCheckCircle /> Accept & Start */}
+                        <FaCheckCircle /> Accept & Start
                     </button>
                 )}
                 
