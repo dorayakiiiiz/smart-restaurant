@@ -5,11 +5,14 @@ const getIncomingOrders = async () => {
 };
 
 const updateOrderStatus = async (orderId, status) => {
+    // URL này sẽ match với /api/kitchen/orders/:orderId/status
     return api.patch(`/kitchen/orders/${orderId}/status`, { status });
 };
 
 // update status của từng Item trong Order
 const updateItemStatus = async (orderId, itemId, status) => {
+    // URL này sẽ match với /api/kitchen/orders/:orderId/status
+    // itemId được gửi trong body
     return api.patch(`/kitchen/orders/${orderId}/status`, { itemId, status });
 };
 
@@ -20,6 +23,6 @@ const getHistory = async () => {
 export const kitchenService = {
     getIncomingOrders,
     updateOrderStatus,
-    updateItemStatus, // Export it
+    updateItemStatus,
     getHistory
 };

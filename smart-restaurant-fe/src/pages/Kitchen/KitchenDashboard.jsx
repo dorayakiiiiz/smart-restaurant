@@ -25,7 +25,7 @@ import StatItem from "./Components/StatItem";
 import RecycleBinModal from "./Components/RecyckeBinModal";
 
 export default function KitchenDashboard() {
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     const queryClient = useQueryClient();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showHistory, setShowHistory] = useState(false);
@@ -39,7 +39,8 @@ export default function KitchenDashboard() {
             const res = await kitchenService.getIncomingOrders();
             return Array.isArray(res.data) ? res.data : [];
         },
-        refetchInterval: 30000, // Fallback polling every 30s
+        // tự động gọi lại API mỗi 5 giây để cập nhật đơn hàng mới
+        refetchInterval: 5000, // Fallback polling every 30s
     });
 
     //history orders
@@ -55,6 +56,7 @@ export default function KitchenDashboard() {
     // --- Mutations ---
 
     const acceptOrderMutation = useMutation({
+        //Chuyển sang preparing
         mutationFn: (orderId) => kitchenService.updateOrderStatus(orderId, 'preparing'),
         onSuccess: () => {
             queryClient.invalidateQueries(['kitchenOrders']);
@@ -72,6 +74,7 @@ export default function KitchenDashboard() {
     });
 
     //Xem lại logic recall
+    //To do
     const recallOrderMutation = useMutation({
         mutationFn: (orderId) => kitchenService.updateOrderStatus(orderId, 'preparing'),
         onSuccess: () => {
@@ -89,27 +92,58 @@ export default function KitchenDashboard() {
     }, []);
 
     
+    //kết nối socket khi component mount
     useEffect(() => {
-        socket.connect();
-        
-        const handleNewOrder = () => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    
+    //kết nối socket khi component mount
+    useEffect(() => {
+        if (!user?.restaurantId) {
+            console.warn("⚠️ KitchenDashboard: User missing restaurantId", user);
+            return;
+        }
+
+        console.log("🔌 KitchenDashboard: Initializing socket...");
+
+        if (!socket.connected) {
+            socket.connect();
+        }
+
+        // Hàm join room an toàn
+        const joinRoom = () => {
+            console.log(`🚀 Emitting join_kitchen for restaurant: ${user.restaurantId}`);
+            socket.emit('join_kitchen', user.restaurantId);
+        };
+
+        // Nếu đã connect rồi thì join luôn, chưa thì đợi event 'connect'
+        if (socket.connected) {
+            joinRoom();
+        } else {
+            socket.on('connect', joinRoom);
+        }
+
+        const handleRefetch = (data) => {
+            console.log('🔔 Socket event received:', data);
             queryClient.invalidateQueries(['kitchenOrders']);
             // playNotificationSound();
         };
 
-        const handleOrderUpdate = () => {
-            queryClient.invalidateQueries(['kitchenOrders']);
-        };
-
-        socket.on('kitchen:new_order', handleNewOrder);
-        socket.on('kitchen:order_update', handleOrderUpdate);
+        // Listen to events
+        socket.on('order_accepted', handleRefetch); // From Waiter
+        socket.on('kitchen:order_update', handleRefetch); // From Kitchen (sync)
+        socket.on('kitchen:new_order', handleRefetch); // Legacy/Backup
 
         return () => {
-            socket.off('kitchen:new_order', handleNewOrder);
-            socket.off('kitchen:order_update', handleOrderUpdate);
-            socket.disconnect();
+            socket.off('connect', joinRoom);
+            socket.off('order_accepted', handleRefetch);
+            socket.off('kitchen:order_update', handleRefetch);
+            socket.off('kitchen:new_order', handleRefetch);
+            // socket.disconnect(); // Tạm thời comment để tránh ngắt kết nối nếu component re-render nhanh
         };
-    }, [queryClient]);
+    }, [user?.restaurantId, queryClient]); // Chỉ chạy lại khi restaurantId thay đổi
 
     // --- Actions ---
 
@@ -126,8 +160,8 @@ export default function KitchenDashboard() {
 
     // Stats
     const stats = {
-        pending: orders.filter(o => o.status === 'pending').length,
-        cooking: orders.filter(o => o.status === 'cooking').length,
+        pending: orders.filter(o => o.status === 'accepted').length,
+        cooking: orders.filter(o => o.status === 'preparing').length,
         ready: orders.filter(o => o.status === 'ready').length,
         overdue: orders.filter(o => {
             const elapsed = (new Date() - new Date(o.createdAt)) / 1000 / 60;
@@ -168,6 +202,7 @@ export default function KitchenDashboard() {
                         </div>
                     </div>
                     
+                    {/* 3 ô setting ở trên */}
                     <div className="flex gap-3">
                         <button 
                             onClick={() => setShowHistory(true)}
@@ -207,11 +242,11 @@ export default function KitchenDashboard() {
                     color="amber" //Sửa màu ở đây
                     icon={<FaBell />}
                 >
-                    {orders.filter(o => o.status === 'pending').map(order => (
+                    {orders.filter(o => o.status === 'accepted').map(order => (
                         <OrderCard 
                             key={order.id} 
                             order={order} 
-                            type="pending"
+                            type="accepted"
                             onAction={() => acceptOrderMutation.mutate(order.id)}
                         />
                     ))}

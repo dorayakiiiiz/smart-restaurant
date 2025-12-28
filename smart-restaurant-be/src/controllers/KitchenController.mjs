@@ -6,23 +6,32 @@ class KitchenController {
     // [GET] /api/kitchen/orders
     async getIncomingOrders(req, res) {
         try {
-            // Find restaurant by adminId
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) {
-                return res.status(404).json({ message: "Restaurant not found" });
-            }
-            const restaurantId = restaurant._id;
 
-            // Lấy các order có status liên quan đến bếp
-            // accepted: Mới vào (Received)
-            // preparing: Đang nấu (Preparing)
-            // ready: Đã xong (Ready) - nếu muốn hiện cả cột Ready
+            let restaurantId;
+
+            // 1. Nếu user là nhân viên (có restaurantId trong profile)
+            if (req.user.restaurantId) {
+                restaurantId = req.user.restaurantId;
+            } 
+            // 2. Nếu user là Admin (chủ nhà hàng)
+            else {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (restaurant) {
+                    restaurantId = restaurant._id;
+                }
+            }
+
+            if (!restaurantId) {
+                return res.status(404).json({ message: "Restaurant not found for this user" });
+            }
             const orders = await Order.find({
                 restaurantId,
                 status: { $in: ['accepted', 'preparing', 'ready'] } 
             })
             .populate('sessionId', 'tableId')
             .sort({ createdAt: 1 });
+
+            console.log("Fetched incoming orders:", orders);
 
             const formattedOrders = orders.map(order => {             
                 return {
