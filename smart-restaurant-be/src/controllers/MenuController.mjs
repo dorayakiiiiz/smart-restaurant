@@ -3,6 +3,24 @@ import Restaurant from "../models/Restaurant.mjs";
 import Category from "../models/Category.mjs";
 
 class MenuController {
+    // [GET] /api/menu/public/:restaurantId
+    async getPublicMenu(req, res) {
+        try {
+            const { restaurantId } = req.params;
+            const items = await MenuItem.find({ 
+                restaurantId,
+                isDeleted: { $ne: true },
+                isAvailable: true 
+            })
+            .populate('categoryId', 'name isActive')
+            .sort({ createdAt: -1 });
+
+            res.status(200).json({ items });
+        } catch (err) {
+            res.status(500).json({ message: "Error fetching public menu", error: err.message });
+        }
+    }
+
     // [GET] /api/menu
     async getMenu(req, res) {
         try {
@@ -11,6 +29,8 @@ class MenuController {
             if (!restaurant) {
                 return res.status(404).json({ message: "Restaurant not found for this user" });
             }
+
+            console.log('123');
 
             // Lấy tất cả món ăn thuộc nhà hàng này, kèm thông tin category
             const items = await MenuItem.find({ 

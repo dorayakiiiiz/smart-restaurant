@@ -71,6 +71,23 @@ export const CartProvider = ({ children }) => {
 
     const clearCart = () => setCartItems([]);
 
+    const updateCartItem = (uniqueKey, { quantity, modifiers, note }) => {
+        setCartItems(prev =>
+            prev.map(item =>
+                item.uniqueKey === uniqueKey
+                    ? {
+                        ...item,
+                        quantity: quantity ?? item.quantity,
+                        modifiers: modifiers ?? item.modifiers,
+                        note: note ?? item.note,
+                        // Nếu modifiers đổi thì cần đổi uniqueKey để tránh trùng
+                        uniqueKey: `${item.menuItemId}-${JSON.stringify(modifiers ?? item.modifiers)}`
+                    }
+                    : item
+            )
+        );
+    };
+
     // Tính tổng tiền giỏ hàng
     const cartTotal = cartItems.reduce((total, item) => {
         const modifiersPrice = item.modifiers.reduce((acc, mod) => acc + mod.price, 0);
@@ -78,8 +95,9 @@ export const CartProvider = ({ children }) => {
     }, 0);
 
     return (
-        <CartContext.Provider value={{ 
+        <CartContext.Provider value={{
             cartItems, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal,
+            updateCartItem,
             sessionInfo, setSessionInfo
         }}>
             {children}

@@ -1,6 +1,7 @@
 import Category from "../models/Category.mjs";
 import Restaurant from "../models/Restaurant.mjs";
 import MenuItem from "../models/MenuItem.mjs";
+import mongoose from "mongoose"; // Cần import mongoose
 
 class CategoryController {
     // [GET] /api/categories
@@ -215,6 +216,29 @@ class CategoryController {
             res.status(200).json({ message: "Category restored", category });
         } catch (err) {
             console.error("Restore Category Error:", err);
+            res.status(500).json({ error: err.message });
+        }
+    }
+
+    // [GET] /api/categories/public/:restaurantId
+    async getPublicCategories(req, res) {
+        try {
+            const { restaurantId } = req.params;
+            
+            // Lấy category active của nhà hàng đó
+            const categories = await Category.aggregate([
+                { 
+                    $match: { 
+                        restaurantId: new mongoose.Types.ObjectId(restaurantId), 
+                        isDeleted: false,
+                        isActive: true 
+                    } 
+                },
+                { $sort: { order: 1, name: 1 } }
+            ]);
+            res.status(200).json({ categories });
+        } catch (err) {
+            console.error("Get Public Categories Error:", err);
             res.status(500).json({ error: err.message });
         }
     }

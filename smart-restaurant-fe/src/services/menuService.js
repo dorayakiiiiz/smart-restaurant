@@ -1,6 +1,12 @@
 import api from "./api";
 
-const getMenu = async () => {
+const getMenu = async (restaurantId = null) => {
+    if (restaurantId) {
+        // Gọi API Public dành cho khách
+        const response = await api.get(`/menu/public/${restaurantId}`);
+        return response.data;
+    }
+    // Gọi API Private dành cho Admin
     const response = await api.get('/menu');
     return response.data;
 };
