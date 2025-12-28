@@ -123,7 +123,7 @@ class OrderController {
             // 4. REAL-TIME SOCKET EMIT 
             const io = req.app.get('socketio');
             const restaurantId = session.restaurantId.toString();
-
+            
             // Gửi cho WAITER để duyệt
             io.to(`restaurant_${restaurantId}_waiter`).emit('new_order_alert', newOrder);
             

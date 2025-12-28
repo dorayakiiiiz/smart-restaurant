@@ -1,28 +1,207 @@
+import Order from "../models/Order.mjs";
+import Restaurant from "../models/Restaurant.mjs";
+
 class KitchenController {
 
     // [GET] /api/kitchen/orders
-    // Lấy danh sách món cần nấu (Status: Confirmed/Preparing)
     async getIncomingOrders(req, res) {
-        // TODO: Team Member B code ở đây
-        // 1. Query Order tìm các món status 'accepted' hoặc 'preparing'
-        // 2. Sort theo thời gian (cũ nhất lên đầu)
-        res.status(200).json({ message: "To be implemented" });
+        try {
+
+            let restaurantId;
+
+            // 1. Nếu user là nhân viên (có restaurantId trong profile)
+            if (req.user.restaurantId) {
+                restaurantId = req.user.restaurantId;
+            } 
+            // 2. Nếu user là Admin (chủ nhà hàng)
+            else {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (restaurant) {
+                    restaurantId = restaurant._id;
+                }
+            }
+
+            if (!restaurantId) {
+                return res.status(404).json({ message: "Restaurant not found for this user" });
+            }
+            const orders = await Order.find({
+                restaurantId,
+                status: { $in: ['accepted', 'preparing', 'ready'] } 
+            })
+            // Deep populate: Order -> Session -> Table
+            .populate({
+                path: 'sessionId',
+                populate: {
+                    path: 'tableId',
+                    model: 'Table',
+                    select: 'name' // Chỉ lấy field name của bàn
+                }
+            })
+            .sort({ createdAt: 1 });
+
+
+            const formattedOrders = orders.map(order => {             
+                return {
+
+                    id: order._id,
+                    table: order.sessionId?.tableId?.name || 'Unknown',
+                    status: order.status,
+                    createdAt: order.createdAt,
+                    items: order.items.map(item => ({
+                        
+                        itemId: item._id,
+                        name: item.name,
+                        qty: item.quantity,
+                        note: item.note,
+                        modifiers: item.modifiers,
+                        status: item.status 
+                    }))
+                };
+            });
+
+            res.status(200).json(formattedOrders);
+        } catch (error) {
+            console.error("Get incoming orders error:", error);
+            res.status(500).json({ message: "Internal Server Error" });
+        }
     }
 
-    // [PATCH] /api/kitchen/orders/:itemId/status
-    // Bếp cập nhật: Đang nấu -> Xong (Ready)
+    // [PATCH] /api/kitchen/orders/:orderId/status
     async updateItemStatus(req, res) {
-        // TODO: Team Member B code ở đây
-        // 1. Update status món ăn
-        // 2. Emit Socket 'order_update' (báo Waiter bưng, báo Khách vui)
-        res.status(200).json({ message: "To be implemented" });
+        try {
+            const { orderId } = req.params;
+            const { status, itemId } = req.body; 
+
+            const order = await Order.findById(orderId);
+            if (!order) {
+                return res.status(404).json({ message: "Order not found" });
+            }
+
+            // Case 1: Update status của cả Order (Accept & Start)
+            if (!itemId) {
+                // Chỉ update nếu status hợp lệ trong enum mới
+                if (['preparing', 'ready', 'served'].includes(status)) {
+                    order.status = status;
+                    
+                    // Đồng bộ status items nếu cần lúc chuyển từ rêceived -> preparing
+                    if (status === 'preparing') {
+                        order.items.forEach(item => {
+                            if (item.status === 'pending') item.status = 'preparing';
+                        });
+                    }
+                }
+            }
+            // Case 2: Update status của từng Item
+            else if (itemId) {
+                const item = order.items.id(itemId);
+                if (item) {
+                    item.status = status; 
+                    
+                    // Logic tự động cập nhật Order Status dựa trên Items (Optional)
+                    // Ví dụ: Nếu tất cả items đều ready -> Order ready
+                    const allReady = order.items.every(i => i.status === 'ready');
+                    if (allReady && order.status !== 'served') {
+                        order.status = 'ready';
+                    }
+                    
+                    // // Nếu tất cả items đều served -> Order served
+                    // const allServed = order.items.every(i => i.status === 'served');
+                    // if (allServed) {
+                    //     order.status = 'served';
+                    // }
+                }
+            }
+
+            console.log("Updating order:", order);
+
+            await order.save();
+
+            // Emit Socket
+            const io = req.app.get('socketio');
+            
+            // 1. Notify Customer (session room)
+            if (order.sessionId) {
+                io.to(`session_${order.sessionId}`).emit('kitchen:order_update', {
+                    id: order._id,
+                    status: order.status,
+                    itemId: itemId,
+                    itemStatus: status,
+                    updatedAt: new Date()
+                });
+            }
+
+            // 2. Notify Waiter (waiter room)
+            if (status === 'ready' || order.status === 'ready') {
+                io.to(`restaurant_${order.restaurantId}_waiter`).emit('waiter:order_ready', {
+                    orderId: order._id,
+                    table: order.sessionId
+                });
+            }
+
+            // 3. Notify Kitchen (kitchen room) - Sync across kitchen devices
+            io.to(`restaurant_${order.restaurantId}_kitchen`).emit('kitchen:order_update', {
+                id: order._id,
+                status: order.status,
+                itemId: itemId,
+                itemStatus: status,
+                updatedAt: new Date()
+            });
+
+            res.status(200).json({ message: "Status updated", order });
+        } catch (error) {
+            console.error("Update status error:", error);
+            res.status(500).json({ message: "Internal Server Error" });
+        }
     }
 
     // [GET] /api/kitchen/history
-    // Xem lịch sử các món đã nấu xong trong ngày
     async getHistory(req, res) {
-        // TODO: Team Member B code ở đây
-        res.status(200).json({ message: "To be implemented" });
+        try {
+            // Find restaurant by adminId
+            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+            if (!restaurant) {
+                return res.status(404).json({ message: "Restaurant not found" });
+            }
+            const restaurantId = restaurant._id;
+
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date();
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const orders = await Order.find({
+                restaurantId,
+                updatedAt: { $gte: startOfDay, $lte: endOfDay },
+                status: 'served' // Lấy các order đã hoàn thành (served)
+            })
+            //2 lớp
+            .populate({
+                path: 'sessionId',
+                populate: {
+                    path: 'tableId',
+                    model: 'Table',
+                    select: 'name' // Chỉ lấy field name của bàn
+                }
+            })
+            .sort({ updatedAt: -1 })
+            .limit(50);
+
+            const formattedHistory = orders.map(order => ({
+                id: order._id,
+                table: order.sessionId?.tableId?.name || 'Unknown',
+                updatedAt: order.updatedAt,
+                items: order.items.map(i => ({
+                    name: i.name,
+                    qty: i.quantity,
+                    status: i.status
+                }))
+            }));
+
+            res.status(200).json(formattedHistory);
+        } catch (error) {
+            console.error("Get history error:", error);
+            res.status(500).json({ message: "Internal Server Error" });
+        }
     }
 }
 

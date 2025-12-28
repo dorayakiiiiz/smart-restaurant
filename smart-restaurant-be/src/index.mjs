@@ -38,7 +38,7 @@ io.on("connection", (socket) => {
         console.log(`Socket ${socket.id} joined session_${sessionId}`);
     });
 
-    // Waiter/Kitchen join room theo Restaurant ID (để nhận order mới)
+    // Kitchen join room theo Restaurant ID (để nhận order mới)
     socket.on("join_kitchen", (restaurantId) => {
         const kitchenRoomName = `restaurant_${restaurantId}_kitchen`;
         socket.join(kitchenRoomName);

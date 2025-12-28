@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 const { Schema } = mongoose;
 
+//DB của 1 MÓN ĂN
 const OrderItemSchema = new Schema({
     menuItemId: { type: Schema.Types.ObjectId, ref: "MenuItem" },
     name: String, // Lưu cứng tên món tại thời điểm đặt (phòng khi đổi tên)
@@ -18,12 +19,13 @@ const OrderItemSchema = new Schema({
     //Status dành cho bếp
     status: {
         type: String,
-        enum: ['pending', 'confirmed', 'preparing', 'ready', 'served', 'cancelled'],
+        enum: ['pending', 'accepted', 'preparing', 'ready', 'served'],
         default: 'pending'
     },
     updatedAt: { type: Date, default: Date.now }
 });
 
+//DB của nguyên 1 order (gồm nhiều món ăn)
 const OrderSchema = new Schema({
     restaurantId: { type: Schema.Types.ObjectId, ref: "Restaurant" },
     
@@ -38,7 +40,8 @@ const OrderSchema = new Schema({
     // Trạng thái duyệt của Waiter cho cả lượt gọi này
     status: {
         type: String,
-        enum: ['pending', 'accepted', 'rejected'], // Waiter duyệt -> accepted -> hiện lên KDS
+        //Thêm để theo dõi toàn order, phải có thêm các trạng thái
+        enum: ['pending', 'accepted', 'rejected', 'preparing', 'ready', 'served'], 
         default: 'pending'
     },
     

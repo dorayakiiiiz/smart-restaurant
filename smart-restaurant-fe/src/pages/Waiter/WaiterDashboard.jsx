@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { socket } from "../../services/socket";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function WaiterDashboard() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [reloadTrigger, setReloadTrigger] = useState(0);
+    const queryClient = useQueryClient();
+    
 
     useEffect(() => {
         // Redirect to pending tab by default
@@ -51,8 +54,9 @@ export default function WaiterDashboard() {
 
         // Listen to events
         const handleReload = (eventName) => {
-            console.log(`${eventName} event received`);
+            console.log(`🔥 ${eventName} event received`);
             setReloadTrigger(prev => prev + 1);
+            queryClient.invalidateQueries();
         };
 
         socket.on('new_order_alert', () => handleReload('new_order_alert'));
@@ -63,6 +67,7 @@ export default function WaiterDashboard() {
         socket.on('item_status_updated', () => handleReload('item_status_updated'));
         socket.on('payment_request', () => handleReload('payment_request'));
         socket.on('payment_completed', () => handleReload('payment_completed'));
+        socket.on('waiter:order_ready', () => handleReload('waiter:order_ready'));
 
         // Cleanup
         return () => {

@@ -51,32 +51,33 @@ class WaiterController {
 
                 } else if (statusType === 'accepted') {
                     // Get accepted orders (in kitchen, not all items ready)
-                    const acceptedOrders = await Order.find({ ...query, status: 'accepted' })
+                    const acceptedOrders = await Order.find({ ...query, status: { $in: ['accepted', 'preparing'] } })
                         .populate({
                             path: 'sessionId',
                             populate: { path: 'tableId', select: 'name' }
                         })
                         .sort({ createdAt: -1 });
 
-                    // Filter: Loại bỏ orders có tất cả items đã ready
+                    // Filter: Loại bỏ orders có tất cả items đã ready hoặc served
                     const filteredAccepted = acceptedOrders.filter(order => 
-                        !order.items.every(item => item.status === 'ready')
+                        !order.items.every(item => ['ready', 'served'].includes(item.status))
                     );
                     orders.push(...filteredAccepted);
 
                 } else if (statusType === 'ready') {
-                    // Get ready orders (all items ready to serve)
-                    const acceptedOrders = await Order.find({ ...query, status: 'accepted' })
+                    // Get ready orders (items ready to serve)
+                    // Tìm cả accepted, preparing và ready vì order có thể chưa full ready nhưng có món ready
+                    const acceptedOrders = await Order.find({ ...query, status: { $in: ['accepted', 'preparing', 'ready'] } })
                         .populate({
                             path: 'sessionId',
                             populate: { path: 'tableId', select: 'name' }
                         })
                         .sort({ createdAt: -1 });
 
-                    // Filter: Chỉ lấy orders có tất cả items status = 'ready'
+                    // Filter: Lấy orders có ít nhất 1 item ready
                     const filteredReady = acceptedOrders.filter(order => 
                         order.items.length > 0 && 
-                        order.items.every(item => item.status === 'ready')
+                        order.items.some(item => item.status === 'ready')
                     );
                     orders.push(...filteredReady);
                 }
