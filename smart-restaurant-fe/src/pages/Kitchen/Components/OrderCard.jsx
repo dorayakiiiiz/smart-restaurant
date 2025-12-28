@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { FaCheckCircle, FaCheckSquare, FaExclamationTriangle, FaSquare } from "react-icons/fa";
+import { FaCheckCircle, FaCheckSquare, FaExclamationTriangle, FaSquare, FaClock } from "react-icons/fa";
 
 export default function OrderCard({ order, type, onAction, onItemAction }) {
     const [elapsed, setElapsed] = useState("");
     // console.log('Order', order);
 
     //Effect to update elapsed time every second
+    //Thời gian kể từ lúc order.createdAt đến hiện tại
     useEffect(() => {
         const interval = setInterval(() => {
             const start = new Date(order.createdAt);
@@ -30,12 +31,13 @@ export default function OrderCard({ order, type, onAction, onItemAction }) {
         return () => clearInterval(interval);
     }, [order.createdAt]);
 
+    //Logic overdue, quá 15 phút chưa xong
     const isOverdue = type !== 'ready' && (new Date() - new Date(order.createdAt)) > 1000 * 60 * 15;
 
     // Filter items based on column type
     const displayItems = order.items.filter(item => {
         if (type === 'accepted') return true; // Show all
-        if (type === 'preparing') return ['preparing', 'accepted'].includes(item.status);
+        if (type === 'preparing') return item.status === 'preparing';
         if (type === 'ready') return item.status === 'ready';
         return true;
     });
@@ -59,7 +61,7 @@ export default function OrderCard({ order, type, onAction, onItemAction }) {
                 <div>
                     <h3 className="text-lg font-bold text-gray-100">#{order.id.substring(0, 6)}</h3>
                     <div className={`flex items-center gap-2 text-sm font-mono mt-0.5 ${isOverdue ? 'text-rose-400 font-bold' : 'text-gray-400'}`}>
-                        {/* <FaClock className="text-xs" /> */}
+                        <FaClock className="text-xs" />
                         <span>{elapsed}</span>
                     </div>
                 </div>
@@ -76,6 +78,7 @@ export default function OrderCard({ order, type, onAction, onItemAction }) {
             {/* Items List */}
             <div className="px-3 py-2 space-y-2">
                 <div className="h-px bg-gray-700 w-full"></div>
+                {/* Duyệt các item của 1 order */}
                 {displayItems.map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3 group/item">
                         {/* Checkbox for preparing/Ready columns */}
@@ -83,9 +86,9 @@ export default function OrderCard({ order, type, onAction, onItemAction }) {
                             <button 
                                 onClick={() => {
                                     if (type === 'preparing' && item.status !== 'ready') {
-                                        onItemAction(item.itemId, 'ready');
+                                        onItemAction(item.itemId, 'ready'); //Chuyển trạng thái item sang ready
                                     } else if (type === 'ready') {
-                                        onItemAction(item.itemId, 'served');
+                                        onItemAction(item.itemId, 'served'); //Chuyển trạng thái item sang served
                                     }
                                 }}
                                 className={`mt-0.5 text-lg transition-colors ${
@@ -119,21 +122,24 @@ export default function OrderCard({ order, type, onAction, onItemAction }) {
 
             {/* Footer Actions */}
             <div className="p-2 mt-1 bg-[#111827]/30 border-t border-gray-700">
+                {/* CỘT RECEIVED  */}
                 {type === 'accepted' && (
                     <button 
                         onClick={onAction}
-                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-2 bg-[#dfa33b] hover:bg-[#e2aa48] text-white rounded font-bold text-sm transition-colors flex items-center justify-center gap-2"
                     >
                         <FaCheckCircle /> Accept & Start
                     </button>
                 )}
                 
+                {/* CỘT PREPARING */}
                 {type === 'preparing' && (
                     <div className="text-center text-xs text-gray-500 font-medium py-1">
                         Check items to mark ready
                     </div>
                 )}
 
+                {/* CỘT READY */}
                 {type === 'ready' && (
                     <div className="text-center text-xs text-gray-500 font-medium py-1">
                         Check items to mark served
