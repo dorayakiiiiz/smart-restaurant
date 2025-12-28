@@ -3,6 +3,10 @@ import categoryController from "../controllers/CategoryController.mjs";
 import authMiddleware from "../middleware/AuthMiddleware.mjs";
 
 const router = Router();
+
+// Route Public cho khách (KHÔNG check auth)
+router.get('/public/:restaurantId', categoryController.getPublicCategories);
+
 router.use(authMiddleware);
 
 router.get('/', categoryController.getCategories);
