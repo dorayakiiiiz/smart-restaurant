@@ -104,7 +104,68 @@ export default function ProductModal({ item, onClose, onAddToCart, initialQuanti
                     </button>
                 </div>
 
-                
+                {/* Content Scrollable */}
+                <div className="p-6 overflow-y-auto flex-1">
+                    <div className="flex justify-between items-start mb-2">
+                        <h2 className="text-2xl font-bold text-gray-900">{item.name}</h2>
+                        <span className="text-xl font-bold text-[#D4AF37]">${item.price}</span>
+                    </div>
+                    <p className="text-gray-500 text-sm">{item.description}</p>
+
+                    {/* Modifiers Section */}
+                    <div className="p-6 space-y-6 max-h-[400px] overflow-y-auto">
+                    
+                    {item.modifiers && item.modifiers.map((group, groupIndex) => (
+                        <div key={groupIndex}>
+                            <div className="flex justify-between mb-3">
+                                <h3 className="font-bold text-gray-800">
+                                    {group.name} 
+                                    {group.isRequired && <span className="text-red-500 text-xs ml-1">(Required)</span>}
+                                </h3>
+                                <span className="text-xs text-gray-400">
+                                    {group.selectionType === 'single' ? 'Select 1' : `Max ${group.maxSelections || 'unlimited'}`}
+                                </span>
+                            </div>
+                            <div className="space-y-2">
+                                {group.options.map(option => {
+                                    const isSelected = selections[group.name]?.some(o => o._id === option._id);
+                                    return (
+                                        <label key={option._id} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? 'border-[#D4AF37] bg-[#FFF8E1]' : 'border-gray-200 hover:border-gray-300'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'border-[#D4AF37]' : 'border-gray-300'}`}>
+                                                    {isSelected && <div className="w-2.5 h-2.5 bg-[#D4AF37] rounded-full"></div>}
+                                                </div>
+                                                <span className={`text-sm ${isSelected ? 'font-bold text-gray-900' : 'text-gray-600'}`}>{option.name}</span>
+                                            </div>
+                                            {option.priceAdjustment > 0 && (
+                                                <span className="text-sm font-medium text-gray-500">+${option.priceAdjustment}</span>
+                                            )}
+                                            <input 
+                                                type="checkbox" 
+                                                className="hidden" 
+                                                checked={!!isSelected}
+                                                onChange={() => handleOptionToggle(group, option)}
+                                            />
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                    </div>
+
+                    {/* Note */}
+                    <div className="">
+                        <h3 className="font-bold text-gray-800 mb-2">Special Instructions</h3>
+                        <textarea 
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-[#D4AF37]"
+                            rows="2"
+                            placeholder="E.g. No onions, extra spicy..."
+                            value={note}
+                            onChange={e => setNote(e.target.value)}
+                        ></textarea>
+                    </div>
+                </div>
 
                 {/* Footer Actions */}
                 <div className="p-4 border-t border-gray-100 bg-white shrink-0">

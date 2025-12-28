@@ -54,14 +54,19 @@ export default function MenuPage() {
         }
     }, [sessionInfo]);
 
-    // ... (Phần Fetch Data và Render giữ nguyên như cũ, không thay đổi)
-    const { data: menuData, isLoading } = useQuery({
-        queryKey: ['customer-menu'],
-        queryFn: menuService.getMenu
+    // Lấy ID nhà hàng từ sessionInfo
+    const restaurantId = sessionInfo?.restaurant?._id;
+
+    const { data: menuData, isLoading: menuLoading } = useQuery({
+        queryKey: ['customer-menu', restaurantId],
+        queryFn: () => menuService.getMenu(restaurantId),
+        enabled: !!restaurantId // Chỉ gọi khi đã có ID nhà hàng
     });
-    const { data: catData } = useQuery({
-        queryKey: ['customer-categories'],
-        queryFn: categoryService.getCategories
+
+    const { data: catData, isLoading: catLoading } = useQuery({
+        queryKey: ['customer-categories', restaurantId],
+        queryFn: () => categoryService.getCategories(restaurantId),
+        enabled: !!restaurantId // Chỉ gọi khi đã có ID nhà hàng
     });
 
     const items = menuData?.items || [];
@@ -73,7 +78,7 @@ export default function MenuPage() {
         return matchCat && matchSearch;
     });
 
-    if (isLoading) return <div className="p-10 text-center text-[#D4AF37] font-bold">Loading Menu...</div>;
+    if (menuLoading || catLoading) return <div className="p-10 text-center text-[#D4AF37] font-bold">Loading Menu...</div>;
 
     return (
         <div className="pb-24">

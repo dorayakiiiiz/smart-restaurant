@@ -12,10 +12,13 @@ export default function CartPage() {
     const [note, setNote] = useState("");
     const [editingItem, setEditingItem] = useState(null);
 
+    const navigate = useNavigate();
+
     // Fetch menu data (có thể dùng chung với MenuPage)
     const { data: menuData } = useQuery({
-        queryKey: ['customer-menu'],
-        queryFn: menuService.getMenu
+        queryKey: ['customer-menu', sessionInfo?.restaurant?._id],
+        queryFn: () => menuService.getMenu(sessionInfo?.restaurant?._id),
+        enabled: !!sessionInfo?.restaurant?._id // Chỉ fetch khi đã có thông tin nhà hàng
     });
     const menuItems = menuData?.items || [];
 
@@ -30,8 +33,7 @@ export default function CartPage() {
                 items: cartItems.map(item => ({
                     menuItemId: item.menuItemId,
                     quantity: item.quantity,
-                    // Modifiers phải là mảng object { name, option, price }
-                    // Giả sử item.modifiers hiện tại đang lưu đúng format này từ MenuModal
+                    // Modifiers là mảng object { name, option, price }
                     modifiers: item.modifiers || [], 
                     note: item.note || ""
                 })),
@@ -141,22 +143,23 @@ export default function CartPage() {
                 </button>
             </div>
 
-            {/* ProductModal để edit */}
+            {/* ProductModal */}
             {editingItem && (
                 <ProductModal
-                    item={{
-                        // Lấy object gốc từ menu (để có đủ modifiers)
-                        ...(menuItems.find(m => m._id === editingItem.menuItemId) || {}),
-                        // Gộp thêm các trường đã chọn
-                        ...editingItem
-                    }}
+                    // Chỉ truyền item gốc (chứa định nghĩa modifiers). 
+                    // Do menu chứa full thông tin còn cart item chỉ chứa id, quantity và modifier đã chọn chứ ko chứa full
+                    // mà trong product modal cần full lại để edit nên cần lọc lại menu item từ id đó
+                    // Nếu không tìm thấy item gốc (do menu chưa load), truyền object tạm để không crash.
+                    item={editingItem ? menuItems.find(m => m._id === editingItem.menuItemId) : null}
+                    
                     onClose={() => setEditingItem(null)}
                     onAddToCart={(product, quantity, modifiers, note) => {
                         updateCartItem(editingItem.uniqueKey, { quantity, modifiers, note });
                         setEditingItem(null);
                     }}
-                    initialQuantity={editingItem.quantity}
-                    initialModifiers={editingItem.modifiers}
+                    // Truyền các giá trị hiện tại trong giỏ hàng vào đây
+                    initialQuantity={editingItem.quantity} // quantity đang chọn
+                    initialModifiers={editingItem.modifiers} // modifier đang chọn
                     initialNote={editingItem.note}
                     isEdit
                 />
