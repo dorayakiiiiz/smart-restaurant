@@ -11,6 +11,10 @@ class OrderController {
     async startSession(req, res) {
         try {
             const { tableToken } = req.body;
+
+            // khi quét lần đầu -> gửi lên table token -> tạo session lưu vào db -> cập nhật
+            // currentsessionid của table và gửi session về fe
+            // -> lưu vào local -> mỗi req sau gửi kèm session lên để check từ local
             
             // 1. Tìm bàn từ Token
             const table = await Table.findOne({ token: tableToken }).populate('restaurantId');
@@ -40,7 +44,7 @@ class OrderController {
                 table.currentSessionId = session._id;
                 await table.save();
 
-                // QUAN TRỌNG: Populate lại để Frontend có tên bàn hiển thị
+                // Populate lại để Frontend có tên bàn hiển thị
                 session = await session.populate('tableId');
                 session = await session.populate('restaurantId');
             }

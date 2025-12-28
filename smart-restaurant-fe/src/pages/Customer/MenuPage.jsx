@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { menuService } from "../../services/menuService";
@@ -6,6 +6,7 @@ import { orderService } from "../../services/orderService";
 import { categoryService } from "../../services/categoryService";
 import { useCart } from "../../context/CartContext";
 import { socket } from "../../services/socket";
+import ProductModal from "../../components/Modal/ProductModal"; // Import Modal mới
 
 export default function MenuPage() {
     const [searchParams] = useSearchParams();
@@ -13,11 +14,17 @@ export default function MenuPage() {
     const { setSessionInfo, addToCart, sessionInfo } = useCart();
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
+    
+    // State để quản lý món đang xem
+    const [selectedItem, setSelectedItem] = useState(null);
+
+    const calledRef = useRef(false);
 
     // 1. Init Session (Chạy 1 lần khi quét QR)
     useEffect(() => {
         const initSession = async () => {
-            if (tableToken) {
+            if (tableToken && !calledRef.current) {
+                calledRef.current = true;
                 try {
                     // Gọi API startSession để lấy thông tin bàn và session ID
                     const data = await orderService.startSession(tableToken);
@@ -47,14 +54,19 @@ export default function MenuPage() {
         }
     }, [sessionInfo]);
 
-    // ... (Phần Fetch Data và Render giữ nguyên như cũ, không thay đổi)
-    const { data: menuData, isLoading } = useQuery({
-        queryKey: ['customer-menu'],
-        queryFn: menuService.getMenu
+    // Lấy ID nhà hàng từ sessionInfo
+    const restaurantId = sessionInfo?.restaurant?._id;
+
+    const { data: menuData, isLoading: menuLoading } = useQuery({
+        queryKey: ['customer-menu', restaurantId],
+        queryFn: () => menuService.getMenu(restaurantId),
+        enabled: !!restaurantId // Chỉ gọi khi đã có ID nhà hàng
     });
-    const { data: catData } = useQuery({
-        queryKey: ['customer-categories'],
-        queryFn: categoryService.getCategories
+
+    const { data: catData, isLoading: catLoading } = useQuery({
+        queryKey: ['customer-categories', restaurantId],
+        queryFn: () => categoryService.getCategories(restaurantId),
+        enabled: !!restaurantId // Chỉ gọi khi đã có ID nhà hàng
     });
 
     const items = menuData?.items || [];
@@ -66,7 +78,7 @@ export default function MenuPage() {
         return matchCat && matchSearch;
     });
 
-    if (isLoading) return <div className="p-10 text-center text-[#D4AF37] font-bold">Loading Menu...</div>;
+    if (menuLoading || catLoading) return <div className="p-10 text-center text-[#D4AF37] font-bold">Loading Menu...</div>;
 
     return (
         <div className="pb-24">
@@ -112,7 +124,10 @@ export default function MenuPage() {
             {/* Menu Grid */}
             <div className="p-6 grid grid-cols-1 gap-6">
                 {filteredItems.map(item => (
-                    <div key={item._id} className="bg-white p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 flex gap-4 relative overflow-hidden group">
+                    <div 
+                        key={item._id} 
+                        className={`bg-white p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 flex gap-4 relative overflow-hidden group transition active:scale-[0.98] ${!item.isAvailable ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
+                    >
                         {/* Image */}
                         <div className="w-28 h-28 bg-gray-100 rounded-xl shrink-0 overflow-hidden relative">
                             {item.images?.[0] ? (
@@ -138,9 +153,8 @@ export default function MenuPage() {
                             <div className="flex justify-between items-end mt-3">
                                 <span className="font-momo font-bold text-xl text-[#1a1a1a]">${item.price}</span>
                                 <button 
-                                    onClick={() => item.isAvailable && addToCart(item, 1)}
-                                    disabled={!item.isAvailable}
-                                    className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition active:scale-90 ${item.isAvailable ? 'bg-[#D4AF37] text-white hover:bg-[#b5952f]' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                    onClick={() => item.isAvailable && setSelectedItem(item)}
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition ${item.isAvailable ? 'bg-[#D4AF37] text-white' : 'bg-gray-200 text-gray-400'}`}
                                 >
                                     <i className="fa-solid fa-plus"></i>
                                 </button>
@@ -149,6 +163,15 @@ export default function MenuPage() {
                     </div>
                 ))}
             </div>
+
+            {/* Product Modal */}
+            {selectedItem && (
+                <ProductModal 
+                    item={selectedItem} 
+                    onClose={() => setSelectedItem(null)} 
+                    onAddToCart={addToCart} 
+                />
+            )}
         </div>
     );
 }

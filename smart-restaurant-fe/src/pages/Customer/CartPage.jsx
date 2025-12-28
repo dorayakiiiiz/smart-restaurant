@@ -1,13 +1,26 @@
+import ProductModal from "../../components/Modal/ProductModal"; // import modal
 import { useCart } from "../../context/CartContext";
 import { orderService } from "../../services/orderService";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { menuService } from "../../services/menuService";
 
 export default function CartPage() {
-    const { cartItems, updateQuantity, removeFromCart, cartTotal, sessionInfo, clearCart } = useCart();
+    const { cartItems, updateQuantity, removeFromCart, cartTotal, sessionInfo, clearCart, updateCartItem } = useCart();
     const [loading, setLoading] = useState(false);
     const [note, setNote] = useState("");
+    const [editingItem, setEditingItem] = useState(null);
+
     const navigate = useNavigate();
+
+    // Fetch menu data (có thể dùng chung với MenuPage)
+    const { data: menuData } = useQuery({
+        queryKey: ['customer-menu', sessionInfo?.restaurant?._id],
+        queryFn: () => menuService.getMenu(sessionInfo?.restaurant?._id),
+        enabled: !!sessionInfo?.restaurant?._id // Chỉ fetch khi đã có thông tin nhà hàng
+    });
+    const menuItems = menuData?.items || [];
 
     const handlePlaceOrder = async () => {
         if (!sessionInfo?.session?._id) return alert("Session expired. Please rescan QR.");
@@ -20,8 +33,7 @@ export default function CartPage() {
                 items: cartItems.map(item => ({
                     menuItemId: item.menuItemId,
                     quantity: item.quantity,
-                    // Modifiers phải là mảng object { name, option, price }
-                    // Giả sử item.modifiers hiện tại đang lưu đúng format này từ MenuModal
+                    // Modifiers là mảng object { name, option, price }
                     modifiers: item.modifiers || [], 
                     note: item.note || ""
                 })),
@@ -65,21 +77,33 @@ export default function CartPage() {
                         <button onClick={() => removeFromCart(item.uniqueKey)} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition">
                             <i className="fa-solid fa-trash-can"></i>
                         </button>
-
+                        <button
+                            onClick={() => setEditingItem(item)}
+                            className="absolute top-4 right-12 text-gray-400 hover:text-blue-500 transition"
+                            title="Edit"
+                        >
+                            <i className="fa-solid fa-pen-to-square"></i>
+                        </button>
                         <div className="flex gap-4">
                             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden shrink-0">
                                 <img src={item.image || "https://via.placeholder.com/100"} className="w-full h-full object-cover" alt={item.name} />
                             </div>
                             <div className="flex-1 pr-6">
                                 <h3 className="font-bold text-gray-800">{item.name}</h3>
-                                <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                                    {item.modifiers && item.modifiers.map((m, idx) => (
-                                        <div key={idx}>+ {m.name}</div>
-                                    ))}
-                                </div>
+                                {/* Hiển thị modifiers */}
+                                {item.modifiers && item.modifiers.length > 0 && (
+                                    <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                                        {item.modifiers.map((m, idx) => (
+                                            <div key={idx}>+ {m.name}{m.option ? `: ${m.option}` : ""}{m.price ? ` (+$${m.price})` : ""}</div>
+                                        ))}
+                                    </div>
+                                )}
+                                {/* Hiển thị note */}
+                                {item.note && (
+                                    <div className="text-xs text-gray-400 italic mt-1">Note: {item.note}</div>
+                                )}
                                 <div className="flex justify-between items-center mt-3">
                                     <span className="font-bold text-[#1a1a1a]">${(item.price * item.quantity).toFixed(2)}</span>
-                                    
                                     <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border border-gray-200">
                                         <button onClick={() => updateQuantity(item.uniqueKey, -1)} className="w-7 h-7 flex items-center justify-center font-bold text-gray-600 hover:bg-white rounded-md transition">-</button>
                                         <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
@@ -105,7 +129,7 @@ export default function CartPage() {
             </div>
 
             {/* Total & Checkout */}
-            <div className="fixed bottom-[90px] left-6 right-6 bg-[#1a1a1a] p-5 rounded-2xl shadow-2xl text-white z-30">
+            <div className="fixed bottom-[100px] left-6 right-6 bg-[#1a1a1a] p-5 rounded-2xl shadow-2xl text-white z-30">
                 <div className="flex justify-between mb-4 items-center">
                     <span className="text-gray-400 text-sm">Total Amount</span>
                     <span className="font-momo font-bold text-2xl text-[#D4AF37]">${cartTotal.toFixed(2)}</span>
@@ -118,6 +142,28 @@ export default function CartPage() {
                     {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : "Place Order"}
                 </button>
             </div>
+
+            {/* ProductModal */}
+            {editingItem && (
+                <ProductModal
+                    // Chỉ truyền item gốc (chứa định nghĩa modifiers). 
+                    // Do menu chứa full thông tin còn cart item chỉ chứa id, quantity và modifier đã chọn chứ ko chứa full
+                    // mà trong product modal cần full lại để edit nên cần lọc lại menu item từ id đó
+                    // Nếu không tìm thấy item gốc (do menu chưa load), truyền object tạm để không crash.
+                    item={editingItem ? menuItems.find(m => m._id === editingItem.menuItemId) : null}
+                    
+                    onClose={() => setEditingItem(null)}
+                    onAddToCart={(product, quantity, modifiers, note) => {
+                        updateCartItem(editingItem.uniqueKey, { quantity, modifiers, note });
+                        setEditingItem(null);
+                    }}
+                    // Truyền các giá trị hiện tại trong giỏ hàng vào đây
+                    initialQuantity={editingItem.quantity} // quantity đang chọn
+                    initialModifiers={editingItem.modifiers} // modifier đang chọn
+                    initialNote={editingItem.note}
+                    isEdit
+                />
+            )}
         </div>
     );
 }

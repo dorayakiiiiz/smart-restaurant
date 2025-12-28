@@ -9,6 +9,7 @@ export default function AdminDashboardLayout() {
     const getTitle = () => {
         const path = location.pathname;
         if (path.includes('/menu')) return 'Menu Management';
+        if (path.includes('/categories')) return 'Category Management';
         if (path.includes('/tables')) return 'Table Management';
         if (path.includes('/orders')) return 'Live Orders';
         if (path.includes('/kds')) return 'Kitchen Display System';

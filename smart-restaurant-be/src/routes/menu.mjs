@@ -4,9 +4,13 @@ import menuController from "../controllers/MenuController.mjs";
 import authMiddleware from "../middleware/AuthMiddleware.mjs";
 
 const router = Router();
+
+// Route Public cho khách (KHÔNG check auth)
+router.get('/public/:restaurantId', menuController.getPublicMenu);
+
 router.use(authMiddleware);
 
-// Lấy danh sách menu
+// Lấy danh sách menu (Của Admin)
 router.get('/', menuController.getMenu);
 
 // Lấy danh sách thùng rác

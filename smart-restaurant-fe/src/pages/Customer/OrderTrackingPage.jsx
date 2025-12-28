@@ -24,6 +24,11 @@ export default function OrderTrackingPage() {
     useEffect(() => {
         fetchOrders();
 
+
+        // khi customer quét -> đặt 1 order -> gọi place order trên controller
+        // -> controller .to(sessionid).emit(order_update) và .to(waiter).emit(new_order_alert)
+        // -> orrder_update ở đây nhận dc và thêm order mới vào order page
+
         // 2. Listen Socket Events (Realtime Update)
         // Khi bếp đổi trạng thái -> Server bắn 'order_update' -> Client nhận và cập nhật state
         socket.on("order_update", (updatedOrder) => {

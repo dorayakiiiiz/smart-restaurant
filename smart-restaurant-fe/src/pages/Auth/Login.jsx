@@ -132,7 +132,7 @@ export default function Login() {
 
                     <div className="mb-6">
                         <h2 className="text-2xl md:text-3xl font-momo text-gray-900 mb-2">Welcome back</h2>
-                        <p className="font-quicksand font-semibold text-gray-500">Login to system management portal.</p>
+                        <p className="font-quicksand font-semibold text-gray-500">Login to your restaurant portal.</p>
                     </div>
 
                     <form className="font-quicksand flex flex-col md:gap-3" onSubmit={handleSubmit}>
