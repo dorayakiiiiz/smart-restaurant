@@ -165,6 +165,7 @@ export default function KitchenDashboard() {
         ready: orders.filter(o => o.status === 'ready').length,
         overdue: orders.filter(o => {
             const elapsed = (new Date() - new Date(o.createdAt)) / 1000 / 60;
+            // Quá 15 phút và chưa sẵn sàng 
             return elapsed > 15 && o.status !== 'ready';
         }).length,
     };

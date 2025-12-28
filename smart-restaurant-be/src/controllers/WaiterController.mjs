@@ -169,6 +169,10 @@ class WaiterController {
             order.items.forEach(item => {
                 item.status = 'served';
             });
+
+            if (order.items.every(i => i.status === 'served')) {
+                order.status = 'served';
+            }
             await order.save();
 
             // Emit socket tới waiter, kitchen và customer

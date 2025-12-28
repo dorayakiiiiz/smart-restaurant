@@ -103,17 +103,8 @@ class KitchenController {
                     if (allReady && order.status !== 'served') {
                         order.status = 'ready';
                     }
-                    
-                    // // Nếu tất cả items đều served -> Order served
-                    // const allServed = order.items.every(i => i.status === 'served');
-                    // if (allServed) {
-                    //     order.status = 'served';
-                    // }
                 }
             }
-
-            console.log("Updating order:", order);
-
             await order.save();
 
             // Emit Socket
@@ -157,12 +148,19 @@ class KitchenController {
     // [GET] /api/kitchen/history
     async getHistory(req, res) {
         try {
-            // Find restaurant by adminId
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) {
-                return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId;
+
+            // 1. Nếu user là nhân viên (có restaurantId trong profile)
+            if (req.user.restaurantId) {
+                restaurantId = req.user.restaurantId;
+            } 
+            // 2. Nếu user là Admin (chủ nhà hàng)
+            else {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (restaurant) {
+                    restaurantId = restaurant._id;
+                }
             }
-            const restaurantId = restaurant._id;
 
             const startOfDay = new Date();
             startOfDay.setHours(0, 0, 0, 0);
@@ -171,7 +169,7 @@ class KitchenController {
 
             const orders = await Order.find({
                 restaurantId,
-                updatedAt: { $gte: startOfDay, $lte: endOfDay },
+                // updatedAt: { $gte: startOfDay, $lte: endOfDay },
                 status: 'served' // Lấy các order đã hoàn thành (served)
             })
             //2 lớp
