@@ -111,25 +111,30 @@ class OrderController {
             const newOrder = await Order.create({
                 restaurantId: session.restaurantId,
                 sessionId: session._id,
-                orderedBy: req.user ? req.user.id : null, // Nếu guest thì null
+                orderedBy: req.user ? req.user.id : null,
                 items: orderItems,
                 status: 'pending',
                 note: customerNote
             });
 
+            // Populate đầy đủ để emit cho waiter
+            const populatedOrder = await Order.findById(newOrder._id).populate({
+                path: 'sessionId',
+                populate: { path: 'tableId', select: 'name' }
+            });
+
             // 3. KHÔNG cộng tiền ngay, chỉ cộng khi waiter accept
-            // session.totalAmount sẽ được cập nhật trong WaiterController.updateOrderStatus
 
             // 4. REAL-TIME SOCKET EMIT 
             const io = req.app.get('socketio');
             const restaurantId = session.restaurantId.toString();
             // Gửi cho WAITER để duyệt
-            io.to(`restaurant_${restaurantId}_waiter`).emit('new_order_alert', newOrder);
+            io.to(`restaurant_${restaurantId}_waiter`).emit('new_order_alert', populatedOrder);
             
             // Báo cho Customer cùng bàn (Room: session_ID)
-            io.to(`session_${sessionId}`).emit('order_update', newOrder);
+            io.to(`session_${sessionId}`).emit('order_update', populatedOrder);
 
-            res.status(201).json({ message: "Order placed successfully", order: newOrder });
+            res.status(201).json({ message: "Order placed successfully", order: populatedOrder });
 
         } catch (err) {
             res.status(500).json({ error: err.message });
