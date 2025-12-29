@@ -1,60 +1,81 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { waiterService } from "../../services/waiterService";
 
 export default function MyTables() {
-    const { reloadTrigger, setCounts } = useOutletContext();
-    const [sessions, setSessions] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { setCounts } = useOutletContext();
+    const queryClient = useQueryClient();
+    
     const [expandedSession, setExpandedSession] = useState(null);
     const [sessionOrders, setSessionOrders] = useState({});
+
+    // Fetch tables using React Query
+    const { data: sessions = [], isLoading: loading } = useQuery({
+        queryKey: ['waiter-tables'],
+        queryFn: async () => {
+            const res = await waiterService.getTables();
+            return res.data.sessions || [];
+        }
+    });
+
+    // Helper functions (Đã bổ sung để fix lỗi ReferenceError)
+    const getDuration = (startTime) => {
+        if (!startTime) return '0m';
+        const start = new Date(startTime);
+        const now = new Date();
+        const diff = Math.floor((now - start) / 60000); // minutes
+        if (diff < 60) return `${diff}m`;
+        const h = Math.floor(diff / 60);
+        const m = diff % 60;
+        return `${h}h ${m}m`;
+    };
+
+    const getItemsStatusText = (session) => {
+        if (!session.orderStats) return "No orders";
+        const { pending, accepted, ready, served } = session.orderStats;
+        if (ready > 0) return `${ready} ready to serve`;
+        if (accepted > 0) return `${accepted} cooking`;
+        if (pending > 0) return `${pending} pending`;
+        return `${served} served`;
+    };
+
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'active': return <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">Active</span>;
+            case 'payment_requested': return <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold animate-pulse">Payment</span>;
+            default: return <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold">{status}</span>;
+        }
+    };
 
     // Format date and time
     const formatDateTime = (dateString) => {
         const date = new Date(dateString);
-        const options = { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        };
-        return date.toLocaleString('en-US', options).replace(',', ' •');
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     };
 
-    useEffect(() => {
-        loadTables();
-    }, [reloadTrigger]);
+    // Mutation for payment
+    const paymentMutation = useMutation({
+        mutationFn: (sessionId) => waiterService.confirmPayment(sessionId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['waiter-tables'] });
+        }
+    });
 
-    const loadTables = async () => {
-        try {
-            setLoading(true);
-            const response = await waiterService.getTables();
-            const sessionsList = response.data.sessions || [];
-            setSessions(sessionsList);
-            // Update count in parent
-            if (setCounts) {
-                setCounts(prev => ({ ...prev, tables: sessionsList.length }));
-            }
-        } catch (error) {
-            // Error loading tables
-        } finally {
-            setLoading(false);
+    const handleConfirmPayment = (sessionId) => {
+        if (window.confirm("Confirm payment received and clear table?")) {
+            paymentMutation.mutate(sessionId);
         }
     };
 
+    // Load session orders
     const loadSessionOrders = async (sessionId) => {
-        if (sessionOrders[sessionId]) return; // Already loaded
-        
+        if (sessionOrders[sessionId]) return;
         try {
-            const response = await waiterService.getSessionOrders(sessionId);
-            setSessionOrders(prev => ({
-                ...prev,
-                [sessionId]: response.data.orders || []
-            }));
+            const res = await waiterService.getSessionOrders(sessionId);
+            setSessionOrders(prev => ({ ...prev, [sessionId]: res.data.orders }));
         } catch (error) {
-            // Error loading session orders
+            console.error("Error loading session orders:", error);
         }
     };
 
@@ -67,55 +88,6 @@ export default function MyTables() {
         }
     };
 
-    const handleConfirmPayment = async (sessionId) => {
-        if (!confirm('Confirm payment for this table?')) return;
-        
-        try {
-            await waiterService.confirmPayment(sessionId);
-            loadTables();
-        } catch (error) {
-            alert(error.response?.data?.message || 'Failed to confirm payment');
-        }
-    };
-
-    const getDuration = (startTime) => {
-        const start = new Date(startTime);
-        const now = new Date();
-        const diff = Math.floor((now - start) / 1000 / 60);
-        const hours = Math.floor(diff / 60);
-        const minutes = diff % 60;
-        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-    };
-
-    const getItemsStatusText = (stats) => {
-        if (!stats) return 'No orders';
-        
-        const parts = [];
-        if (stats.itemsServed > 0) parts.push(`${stats.itemsServed} served`);
-        if (stats.itemsReady > 0) parts.push(`${stats.itemsReady} ready`);
-        if (stats.itemsPreparing > 0) parts.push(`${stats.itemsPreparing} in kitchen`);
-        if (stats.itemsPending > 0) parts.push(`${stats.itemsPending} pending`);
-        
-        return parts.length > 0 ? parts.join(', ') : 'No items';
-    };
-
-    const getStatusBadge = (status) => {
-        const badges = {
-            'pending': { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Pending', icon: 'fa-clock' },
-            'accepted': { bg: 'bg-blue-100', text: 'text-blue-700', label: 'In Kitchen', icon: 'fa-fire' },
-            'ready': { bg: 'bg-green-100', text: 'text-green-700', label: 'Ready', icon: 'fa-check' },
-            'served': { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Served', icon: 'fa-check-double' },
-            'rejected': { bg: 'bg-red-100', text: 'text-red-700', label: 'Rejected', icon: 'fa-xmark' }
-        };
-        const badge = badges[status] || badges['pending'];
-        return (
-            <span className={`px-2 py-1 rounded-full text-xs font-bold ${badge.bg} ${badge.text}`}>
-                <i className={`fa-solid ${badge.icon} mr-1`}></i>
-                {badge.label}
-            </span>
-        );
-    };
-
     // Calculate summary stats
     const calculateSummaryStats = () => {
         let totalTables = sessions.length;
@@ -124,15 +96,17 @@ export default function MyTables() {
 
         sessions.forEach(session => {
             totalAmount += session.totalAmount || 0;
-            if (session.status === 'payment_requested') {
-                paymentRequested++;
-            }
+            if (session.status === 'payment_requested') paymentRequested++;
         });
 
         return { totalTables, totalAmount, paymentRequested };
     };
 
     const summaryStats = calculateSummaryStats();
+
+    useEffect(() => {
+        setCounts(prev => ({ ...prev, tables: sessions.length }));
+    }, [sessions.length, setCounts]);
 
     if (loading) {
         return (
@@ -147,17 +121,16 @@ export default function MyTables() {
 
     if (sessions.length === 0) {
         return (
-            <div className="text-center py-20">
-                <div className="text-6xl mb-4 animate-bounce">🪑</div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">No active tables</h3>
-                <p className="text-gray-500">All tables are free</p>
+            <div className="flex flex-col items-center justify-center h-[60vh] text-gray-400">
+                <i className="fa-solid fa-chair text-6xl mb-4"></i>
+                <p className="text-lg font-medium">No active tables</p>
             </div>
         );
     }
 
     return (
         <>
-            {/* Summary Card with Tailwind animations */}
+            {/* Summary Card */}
             <div className="bg-white rounded-xl p-4 mb-4 shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300">
                 <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center group">
@@ -202,167 +175,92 @@ export default function MyTables() {
                 const isPaymentRequested = session.status === 'payment_requested';
                 const isExpanded = expandedSession === session._id;
                 const orders = sessionOrders[session._id] || [];
-                
+
                 return (
                     <div 
                         key={session._id} 
-                        className={`bg-white rounded-xl mb-4 overflow-hidden shadow-sm border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-                            isPaymentRequested 
-                                ? 'border-red-300 animate-pulse' 
-                                : 'border-gray-200'
+                        className={`bg-white rounded-xl mb-4 shadow-sm border transition-all duration-300 overflow-hidden ${
+                            isPaymentRequested ? 'border-orange-300 ring-2 ring-orange-100' : 'border-gray-200'
                         }`}
                     >
-                        {/* Header */}
-                        <div className={`p-4 flex justify-between items-center border-b ${
-                            isPaymentRequested 
-                                ? 'bg-red-50 border-red-100' 
-                                : 'bg-gray-50 border-gray-100'
-                        }`}>
-                            <div className="flex items-center gap-3">
-                                <div className={`px-4 py-2 rounded-lg font-bold text-white group-hover:scale-105 transition-transform duration-300 shadow-md ${
-                                    isPaymentRequested 
-                                        ? 'bg-red-600' 
-                                        : 'bg-[#1a1a1a]'
-                                }`}>
-                                    {session.tableId?.name || 'N/A'}
-                                </div>
-                                <div>
-                                    <div className="font-bold text-sm text-gray-800 flex items-center gap-2">
-                                        {isPaymentRequested ? (
-                                            <span className="flex items-center gap-1">
-                                                <i className="fa-solid fa-credit-card text-red-600 animate-pulse"></i>
-                                                Payment Requested
-                                            </span>
-                                        ) : (
-                                            'Active Session'
-                                        )}
+                        <div 
+                            className="p-4 cursor-pointer hover:bg-gray-50 transition"
+                            onClick={() => toggleExpand(session._id)}
+                        >
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold ${
+                                        isPaymentRequested ? 'bg-orange-100 text-orange-600' : 'bg-gray-800 text-[#D4AF37]'
+                                    }`}>
+                                        {session.tableId?.name?.replace('Table ', '') || '?'}
                                     </div>
-                                    <div className="text-xs text-gray-500 flex items-center gap-1">
-                                        <i className="fa-solid fa-clock"></i>
-                                        {getDuration(session.startTime)}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${
-                                    isPaymentRequested
-                                        ? 'bg-red-100 text-red-700 animate-pulse'
-                                        : 'bg-gray-100 text-gray-700'
-                                }`}>
-                                    {isPaymentRequested ? (
-                                        <><i className="fa-solid fa-bell"></i>PAYMENT</>
-                                    ) : (
-                                        <><span className="inline-flex h-1.5 w-1.5 rounded-full bg-gray-500 animate-pulse"></span>ACTIVE</>
-                                    )}
-                                </span>
-                                <div className="text-[10px] text-gray-500 mt-1.5 font-medium">
-                                    {formatDateTime(session.startTime)}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Order Stats */}
-                        {hasActivity && (
-                            <div className="p-4 bg-white border-b border-gray-100">
-                                <div className="flex justify-between items-center mb-2">
-                                    <div className="text-sm font-semibold text-gray-700">
-                                        <i className="fa-solid fa-receipt mr-2 text-gray-600"></i>
-                                        Total Orders: <span className="text-[#D4AF37]">{stats.totalOrders}</span>
-                                    </div>
-                                    <div className="text-sm font-semibold text-gray-700">
-                                        <i className="fa-solid fa-utensils mr-2 text-gray-600"></i>
-                                        Items: <span className="text-[#D4AF37]">{stats.totalItems}</span>
-                                    </div>
-                                </div>
-                                <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg mb-2">
-                                    {getItemsStatusText(stats)}
-                                </div>
-                                
-                                {/* Toggle Orders Button */}
-                                <button
-                                    onClick={() => toggleExpand(session._id)}
-                                    className="w-full py-2 text-xs font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 active:scale-95"
-                                >
-                                    <i className={`fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} transition-transform duration-300`}></i>
-                                    {isExpanded ? 'Hide' : 'View'} Order Details
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Orders List (Expandable) */}
-                        {isExpanded && orders.length > 0 && (
-                            <div className="p-4 bg-gray-50 border-b border-gray-100">
-                                <div className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wide">
-                                    <i className="fa-solid fa-list mr-2"></i>
-                                    Order History ({orders.length})
-                                </div>
-                                <div className="space-y-3">
-                                    {orders.map((order, idx) => (
-                                        <div key={order._id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <div className="font-bold text-xs text-gray-800">
-                                                        Order #{idx + 1} • #{order._id.slice(-6)}
-                                                    </div>
-                                                    <div className="text-[10px] text-gray-500 mt-0.5">
-                                                        {formatDateTime(order.createdAt)}
-                                                    </div>
-                                                </div>
-                                                {getStatusBadge(order.status)}
-                                            </div>
-                                            <div className="text-xs text-gray-600">
-                                                <i className="fa-solid fa-utensils mr-1 text-gray-400"></i>
-                                                {order.items?.length || 0} items
-                                            </div>
+                                    <div>
+                                        <div className="font-bold text-gray-800 flex items-center gap-2">
+                                            {session.tableId?.name}
+                                            {getStatusBadge(session.status)}
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Payment Info */}
-                        <div className="p-4 bg-white">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <div className="text-xs text-gray-500 mb-1">Total Amount</div>
-                                    <div className="text-3xl font-bold text-gray-800">
-                                        ${session.totalAmount?.toFixed(2) || '0.00'}
+                                        <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                                            <i className="fa-regular fa-clock"></i> {getDuration(session.startTime)}
+                                            <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                                            <span className={hasActivity ? "text-blue-600 font-semibold" : ""}>
+                                                {getItemsStatusText(session)}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-xs text-gray-500 mb-1">Payment Status</div>
-                                    <div className={`px-3 py-1.5 rounded-lg font-bold text-sm ${
-                                        session.paymentStatus === 'paid' 
-                                            ? 'bg-green-100 text-green-700' 
-                                            : 'bg-orange-100 text-orange-700'
-                                    }`}>
-                                        {session.paymentStatus === 'paid' ? (
-                                            <><i className="fa-solid fa-check-circle mr-1"></i>Paid</>
-                                        ) : (
-                                            <><i className="fa-solid fa-clock mr-1"></i>Unpaid</>
-                                        )}
-                                    </div>
+                                    <div className="font-bold text-lg text-gray-800">${session.totalAmount?.toLocaleString()}</div>
+                                    <div className="text-xs text-gray-400">Total</div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Action */}
-                        <div className="p-4 bg-gray-50">
-                            {isPaymentRequested ? (
-                                <button
-                                    onClick={() => handleConfirmPayment(session._id)}
-                                    className="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all duration-300 active:scale-95 hover:shadow-xl"
-                                >
-                                    <i className="fa-solid fa-check-double mr-2"></i>
-                                    Confirm Payment Received
-                                </button>
-                            ) : (
-                                <div className="text-center py-3 text-sm text-gray-500 font-medium flex items-center justify-center gap-2">
-                                    <i className="fa-solid fa-hourglass-half animate-pulse"></i>
-                                    Waiting for customer...
-                                </div>
-                            )}
-                        </div>
+                        {/* Expanded Details */}
+                        {isExpanded && (
+                            <div className="border-t border-gray-100 bg-gray-50 p-4 animate-fade-in">
+                                <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Order History</h4>
+                                {orders.length === 0 ? (
+                                    <div className="text-center py-4 text-gray-400 text-sm">No orders yet</div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {orders.map(order => (
+                                            <div key={order._id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
+                                                    <span className="text-xs font-bold text-gray-500">#{order._id.slice(-4)}</span>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                                                        order.status === 'served' ? 'bg-green-100 text-green-700' :
+                                                        order.status === 'ready' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-gray-100 text-gray-600'
+                                                    }`}>{order.status}</span>
+                                                </div>
+                                                {order.items.map((item, idx) => (
+                                                    <div key={idx} className="flex justify-between text-sm py-0.5">
+                                                        <span className="text-gray-700">
+                                                            <span className="font-bold text-gray-900">{item.quantity}x</span> {item.name}
+                                                        </span>
+                                                        <span className="text-gray-500">${(item.price * item.quantity).toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {isPaymentRequested && (
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleConfirmPayment(session._id);
+                                        }}
+                                        disabled={paymentMutation.isPending}
+                                        className="w-full mt-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200 flex items-center justify-center gap-2"
+                                    >
+                                        <i className="fa-solid fa-cash-register"></i>
+                                        {paymentMutation.isPending ? 'Processing...' : 'Confirm Payment & Clear Table'}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 );
             })}

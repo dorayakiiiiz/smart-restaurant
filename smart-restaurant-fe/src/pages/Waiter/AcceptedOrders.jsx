@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useOutletContext } from "react-router-dom";
 import { waiterService } from "../../services/waiterService";
 
 export default function AcceptedOrders() {
-    const { reloadTrigger, setCounts } = useOutletContext();
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { setCounts } = useOutletContext();
+
+    const { data: orders = [], isLoading: loading } = useQuery({
+        queryKey: ['waiter-orders', 'accepted'],
+        queryFn: async () => {
+            const res = await waiterService.getAcceptedOrders();
+            return res.data.orders || [];
+        }
+    });
 
     // Format date and time
     const formatDateTime = (dateString) => {
@@ -19,27 +26,6 @@ export default function AcceptedOrders() {
             hour12: true
         };
         return date.toLocaleString('en-US', options).replace(',', ' •');
-    };
-
-    useEffect(() => {
-        loadOrders();
-    }, [reloadTrigger]);
-
-    const loadOrders = async () => {
-        try {
-            setLoading(true);
-            const response = await waiterService.getAcceptedOrders();
-            const ordersList = response.data.orders || [];
-            setOrders(ordersList);
-            // Update count in parent
-            if (setCounts) {
-                setCounts(prev => ({ ...prev, accepted: ordersList.length }));
-            }
-        } catch (error) {
-            // Error loading accepted orders
-        } finally {
-            setLoading(false);
-        }
     };
 
     // Calculate summary stats
@@ -67,6 +53,10 @@ export default function AcceptedOrders() {
     };
 
     const stats = calculateStats();
+
+    useEffect(() => {
+        setCounts(prev => ({ ...prev, accepted: orders.length }));
+    }, [orders.length, setCounts]);
 
     if (loading) {
         return (

@@ -57,7 +57,6 @@ export default function KitchenDashboard() {
             const res = await kitchenService.getIncomingOrders();
             return Array.isArray(res.data) ? res.data : [];
         },
-        // tự động gọi lại API mỗi 5 giây để cập nhật đơn hàng mới
     });
 
     //history orders

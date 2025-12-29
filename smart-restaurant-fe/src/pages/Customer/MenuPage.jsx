@@ -45,13 +45,19 @@ export default function MenuPage() {
     // 2. Socket Connection (Chạy khi đã có Session)
     useEffect(() => {
         if (sessionInfo?.session?._id) {
+            // Connect socket nếu chưa connect
             if (!socket.connected) {
                 socket.connect();
             }
-            // Join room của session này để nhận update đơn hàng
+            
+            // Join session room
             socket.emit("join_session", sessionInfo.session._id);
-            console.log("Socket joined session:", sessionInfo.session._id);
         }
+
+        // Cleanup
+        return () => {
+            // Không disconnect ở đây để giữ kết nối cho trang Tracking
+        };
     }, [sessionInfo]);
 
     // Lấy ID nhà hàng từ sessionInfo

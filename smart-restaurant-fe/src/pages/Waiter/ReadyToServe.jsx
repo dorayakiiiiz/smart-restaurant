@@ -1,11 +1,20 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { waiterService } from "../../services/waiterService";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function ReadyToServe() {
-    const { reloadTrigger, setCounts } = useOutletContext();
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { setCounts } = useOutletContext();
+    const queryClient = useQueryClient();
+
+     // Thay thế useEffect/loadOrders bằng useQuery
+    const { data: orders = [], isLoading: loading } = useQuery({
+        queryKey: ['waiter-orders', 'ready'],
+        queryFn: async () => {
+            const res = await waiterService.getReadyOrders();
+            return res.data.orders || [];
+        }
+    });
 
     // Format date and time
     const formatDateTime = (dateString) => {
@@ -21,80 +30,30 @@ export default function ReadyToServe() {
         return date.toLocaleString('en-US', options).replace(',', ' •');
     };
 
-    useEffect(() => {
-        loadOrders();
-    }, [reloadTrigger]);
-
-    const loadOrders = async () => {
-        try {
-            setLoading(true);
-            const response = await waiterService.getReadyOrders();
-            const ordersList = response.data.orders || [];
-            
-            // Hiển thị tất cả orders đã accepted (có items preparing, ready, hoặc served)
-            const ordersToDisplay = ordersList.filter(order => {
-                // Loại bỏ orders đã hoàn thành (tất cả served VÀ order.status = 'served')
-                const allServed = order.items?.every(item => item.status === 'served');
-                if (allServed && order.status === 'served') return false;
-                
-                // Hiển thị orders có items đang preparing, ready, hoặc served
-                return order.items?.some(item => ['preparing', 'ready', 'served'].includes(item.status));
-            });
-            
-            setOrders(ordersToDisplay);
-            
-            // Đếm tổng số items ready (chưa served)
-            const totalReadyItems = ordersToDisplay.reduce((sum, order) => {
-                const readyCount = order.items?.filter(item => item.status === 'ready').length || 0;
-                return sum + readyCount;
-            }, 0);
-            
-            // Update count in parent
-            if (setCounts) {
-                setCounts(prev => ({ ...prev, ready: totalReadyItems }));
-            }
-        } catch (error) {
-            // Error loading orders
-        } finally {
-            setLoading(false);
+    // Mutations
+    const serveMutation = useMutation({
+        mutationFn: (orderId) => waiterService.markAsServed(orderId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['waiter-orders'] });
         }
+    });
+
+    const completeMutation = useMutation({
+        mutationFn: (orderId) => waiterService.markOrderComplete(orderId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['waiter-orders'] });
+        }
+    });
+
+    const handleMarkServed = (orderId) => {
+        serveMutation.mutate(orderId);
     };
 
-    const handleMarkServed = async (orderId, readyItemsCount) => {
-        try {
-            await waiterService.markAsServed(orderId);
-            
-            const message = `Served ${readyItemsCount} item${readyItemsCount > 1 ? 's' : ''} successfully!`;
-            
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2000);
-            
-            loadOrders();
-        } catch (error) {
-            alert('Failed to mark as served. Please try again.');
-        }
+    const handleMarkComplete = (orderId) => {
+        completeMutation.mutate(orderId);
     };
 
-    const handleMarkComplete = async (orderId) => {
-        try {
-            await waiterService.markOrderComplete(orderId);
-            
-            const message = 'Order completed! Customer notified.';
-            
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2000);
-            
-            loadOrders();
-        } catch (error) {
-            alert('Failed to mark as complete. Please try again.');
-        }
-    };
+    
 
     // Calculate summary stats - đếm items theo status
     const calculateStats = () => {
@@ -122,6 +81,10 @@ export default function ReadyToServe() {
     };
 
     const stats = calculateStats();
+
+    useEffect(() => {
+        setCounts(prev => ({ ...prev, ready: orders.length }));
+    }, [orders.length, setCounts]);
 
     if (loading) {
         return (

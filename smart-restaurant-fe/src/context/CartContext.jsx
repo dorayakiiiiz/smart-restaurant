@@ -12,7 +12,8 @@ export const CartProvider = ({ children }) => {
     });
 
     // Session Info (Lưu thông tin bàn sau khi quét QR)
-    const [sessionInfo, setSessionInfo] = useState(() => {
+    // Đổi tên state gốc thành _sessionInfo để bọc logic vào hàm setSessionInfo bên dưới
+    const [sessionInfo, _setSessionInfo] = useState(() => {
         const saved = localStorage.getItem("session_info");
         return saved ? JSON.parse(saved) : null;
     });
@@ -24,8 +25,27 @@ export const CartProvider = ({ children }) => {
     useEffect(() => {
         if (sessionInfo) {
             localStorage.setItem("session_info", JSON.stringify(sessionInfo));
+        } else {
+            localStorage.removeItem("session_info");
         }
     }, [sessionInfo]);
+
+    // Wrapper để xử lý logic khi session thay đổi (VD: quét QR bàn khác)
+    const setSessionInfo = (newSessionData) => {
+        const oldSessionId = sessionInfo?.session?._id;
+        const newSessionId = newSessionData?.session?._id;
+
+        // Nếu có session mới được set
+        if (newSessionId) {
+            // Nếu ID session mới KHÁC ID session cũ (hoặc chưa có session cũ)
+            // Nghĩa là người dùng vừa quét QR bàn khác -> Xóa giỏ hàng cũ
+            if (oldSessionId !== newSessionId) {
+                setCartItems([]); 
+            }
+        }
+        
+        _setSessionInfo(newSessionData);
+    };
 
     const addToCart = (product, quantity, modifiers = [], note = "") => {
         setCartItems(prev => {

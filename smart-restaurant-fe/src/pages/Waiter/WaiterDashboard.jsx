@@ -8,7 +8,6 @@ export default function WaiterDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [reloadTrigger, setReloadTrigger] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [counts, setCounts] = useState({
     pending: 0,
@@ -27,10 +26,6 @@ export default function WaiterDashboard() {
 
   // Socket setup
   useEffect(() => {
-    if (!user) {
-      return;
-    }
-
     if (!user.restaurantId) {
       return;
     }
@@ -41,55 +36,31 @@ export default function WaiterDashboard() {
     }
 
     // Join waiter room sau khi connected
-    const joinWaiterRoom = () => {
-      socket.emit("join_waiter", user.restaurantId);
+    socket.emit("join_waiter", user.restaurantId);
+
+    const handleInvalidate = () => {
+      // Invalidate tất cả các query liên quan đến waiter
+      queryClient.invalidateQueries({ queryKey: ['waiter-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['waiter-tables'] });
+      
+      // Play sound logic (giữ nguyên logic cũ của bạn nếu có)
+      const audio = new Audio('/sounds/notification.mp3');
+      audio.play().catch(e => console.log('Audio play failed', e));
     };
 
-    // Nếu đã connected thì join ngay, chưa thì đợi event connect
-    if (socket.connected) {
-      joinWaiterRoom();
-    } else {
-      socket.once("connect", () => {
-        joinWaiterRoom();
-      });
-    }
+    // Listen events
+    socket.on("new_order_alert", handleInvalidate);
+    socket.on("kitchen:order_update", handleInvalidate);
+    socket.on("order_served", handleInvalidate);
+    socket.on("payment_requested", handleInvalidate);
+    socket.on("session_update", handleInvalidate); // Thêm nếu có event này
 
-    // Listen to events
-    const handleReload = (eventName) => {
-      setReloadTrigger((prev) => prev + 1);
-      queryClient.invalidateQueries();
-    };
-
-    socket.on("new_order_alert", (data) => {
-      handleReload("new_order_alert");
-    });
-    socket.on("order_accepted", () => handleReload("order_accepted"));
-    socket.on("order_rejected", () => handleReload("order_rejected"));
-    socket.on("order_served", () => handleReload("order_served"));
-    socket.on("order_completed", () => handleReload("order_completed"));
-    socket.on("order_update", () => handleReload("order_update"));
-    socket.on("item_status_updated", () => handleReload("item_status_updated"));
-    socket.on("payment_request", () => handleReload("payment_request"));
-    socket.on("payment_completed", () => handleReload("payment_completed"));
-    socket.on("waiter:order_ready", () => handleReload("waiter:order_ready"));
-    socket.on("kitchen:order_update", () =>
-      handleReload("kitchen:order_update")
-    );
-
-    // Cleanup
     return () => {
-      socket.off("connect", joinWaiterRoom);
-      socket.off("new_order_alert");
-      socket.off("order_accepted");
-      socket.off("order_rejected");
-      socket.off("order_served");
-      socket.off("order_completed");
-      socket.off("order_update");
-      socket.off("item_status_updated");
-      socket.off("payment_request");
-      socket.off("payment_completed");
-      socket.off("waiter:order_ready");
-      socket.off("kitchen:order_update");
+      socket.off("new_order_alert", handleInvalidate);
+      socket.off("kitchen:order_update", handleInvalidate);
+      socket.off("order_served", handleInvalidate);
+      socket.off("payment_requested", handleInvalidate);
+      socket.off("session_update", handleInvalidate);
     };
   }, [user?.restaurantId, queryClient]);
 
@@ -218,7 +189,7 @@ export default function WaiterDashboard() {
 
         {/* Content - Responsive padding */}
         <div className="p-3 sm:p-4 md:p-5 bg-gradient-to-b from-gray-50 to-white min-h-screen">
-          <Outlet context={{ reloadTrigger, setCounts }} />
+          <Outlet context={{ setCounts }} />
         </div>
       </div>
     </div>
