@@ -72,7 +72,10 @@ class KitchenController {
             const { orderId } = req.params;
             const { status, itemId } = req.body; 
 
-            const order = await Order.findById(orderId);
+            const order = await Order.findById(orderId).populate({
+                path: 'sessionId',
+                populate: { path: 'tableId', select: 'name' }
+            });
             if (!order) {
                 return res.status(404).json({ message: "Order not found" });
             }
@@ -110,15 +113,10 @@ class KitchenController {
             // Emit Socket
             const io = req.app.get('socketio');
             
-            // 1. Notify Customer (session room)
-            if (order.sessionId) {
-                io.to(`session_${order.sessionId}`).emit('kitchen:order_update', {
-                    id: order._id,
-                    status: order.status,
-                    itemId: itemId,
-                    itemStatus: status,
-                    updatedAt: new Date()
-                });
+            // 1. Notify Customer (session room) - CHỈ KHI STATUS = 'ready'
+            if (order.sessionId && status === 'ready') {
+                const sessionId = order.sessionId._id.toString();
+                io.to(`session_${sessionId}`).emit('order_update', order);
             }
 
             // 2. Notify Waiter (waiter room) - Emit cho mọi update
