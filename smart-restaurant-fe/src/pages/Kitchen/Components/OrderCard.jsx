@@ -87,8 +87,6 @@ export default function OrderCard({ order, type, onAction, onItemAction }) {
                                 onClick={() => {
                                     if (type === 'preparing' && item.status !== 'ready') {
                                         onItemAction(item.itemId, 'ready'); //Chuyển trạng thái item sang ready
-                                    } else if (type === 'ready') {
-                                        onItemAction(item.itemId, 'served'); //Chuyển trạng thái item sang served
                                     }
                                 }}
                                 className={`mt-0.5 text-lg transition-colors ${
@@ -109,6 +107,12 @@ export default function OrderCard({ order, type, onAction, onItemAction }) {
                         <div className="flex-1">
                             <p className={`text-sm font-medium ${item.status === 'ready' && type === 'preparing' ? 'text-emerald-400' : 'text-gray-200'}`}>
                                 {item.name}
+                            </p>
+                            <p className={`text-sm font-medium ${item.status === 'ready' && type === 'preparing' ? 'text-emerald-400' : 'text-gray-200'}`}>
+                                {item.prepTime} mins prep
+                            </p>
+                            <p className={`text-sm font-medium ${item.status === 'ready' && type === 'preparing' ? 'text-emerald-400' : 'text-gray-200'}`}>
+                                {item.modifiers.map(mod => `${mod.name}: ${mod.option}`).join(', ')}
                             </p>
                             {item.note && (
                                 <p className="text-xs text-indigo-400 italic mt-0.5">
