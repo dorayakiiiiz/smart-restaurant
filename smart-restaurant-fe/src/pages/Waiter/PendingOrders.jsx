@@ -1,14 +1,23 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { waiterService } from "../../services/waiterService";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function PendingOrders() {
-    const { reloadTrigger, setCounts } = useOutletContext();
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { setCounts } = useOutletContext();
+    const queryClient = useQueryClient();
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [rejectionReason, setRejectionReason] = useState("");
+
+    // Thay thế useEffect/loadOrders bằng useQuery
+    const { data: orders = [], isLoading: loading } = useQuery({
+        queryKey: ['waiter-orders', 'pending'],
+        queryFn: async () => {
+            const res = await waiterService.getPendingOrders();
+            return res.data.orders || [];
+        }
+    });
 
     // Format date and time
     const formatDateTime = (dateString) => {
@@ -24,33 +33,26 @@ export default function PendingOrders() {
         return date.toLocaleString('en-US', options).replace(',', ' •');
     };
 
-    useEffect(() => {
-        loadOrders();
-    }, [reloadTrigger]);
-
-    const loadOrders = async () => {
-        try {
-            setLoading(true);
-            const response = await waiterService.getPendingOrders();
-            const ordersList = response.data.orders || [];
-            setOrders(ordersList);
-            if (setCounts) {
-                setCounts(prev => ({ ...prev, pending: ordersList.length }));
-            }
-        } catch (error) {
-            // Error loading pending orders
-        } finally {
-            setLoading(false);
+// Mutations
+    const acceptMutation = useMutation({
+        mutationFn: (orderId) => waiterService.acceptOrder(orderId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['waiter-orders'] });
         }
-    };
+    });
 
-    const handleAccept = async (orderId) => {
-        try {
-            await waiterService.acceptOrder(orderId);
-            loadOrders();
-        } catch (error) {
-            alert('Failed to accept order');
+    const rejectMutation = useMutation({
+        mutationFn: ({ orderId, reason }) => waiterService.rejectOrder(orderId, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['waiter-orders'] });
+            setShowRejectModal(false);
+            setRejectionReason("");
+            setSelectedOrder(null);
         }
+    });
+
+    const handleAccept = (orderId) => {
+        acceptMutation.mutate(orderId);
     };
 
     const handleRejectClick = (order) => {
@@ -58,21 +60,12 @@ export default function PendingOrders() {
         setShowRejectModal(true);
     };
 
-    const handleRejectConfirm = async () => {
-        if (!rejectionReason.trim()) {
-            alert('Please provide a reason for rejection');
-            return;
-        }
-        try {
-            await waiterService.rejectOrder(selectedOrder._id, rejectionReason);
-            setShowRejectModal(false);
-            setRejectionReason("");
-            setSelectedOrder(null);
-            loadOrders();
-        } catch (error) {
-            alert('Failed to reject order');
-        }
+    const handleRejectConfirm = () => {
+        if (!selectedOrder) return;
+        rejectMutation.mutate({ orderId: selectedOrder._id, reason: rejectionReason });
     };
+
+    
 
     // Calculate summary stats
     const calculateStats = () => {
@@ -96,8 +89,13 @@ export default function PendingOrders() {
 
         return { totalItems, oldestMinutes };
     };
-
+    
     const stats = calculateStats();
+    
+    useEffect(() => {
+        setCounts(prev => ({ ...prev, pending: orders.length }));
+    }, [orders.length, setCounts]);
+
 
     if (loading) {
         return (

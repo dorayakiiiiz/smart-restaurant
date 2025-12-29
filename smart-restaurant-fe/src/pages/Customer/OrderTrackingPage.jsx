@@ -1,28 +1,35 @@
 import { useEffect, useState } from "react";
 import { useCart } from "../../context/CartContext";
 import { orderService } from "../../services/orderService";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { socket } from "../../services/socket";
 
 export default function OrderTrackingPage() {
     const { sessionInfo } = useCart();
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
 
-    // 1. Fetch Orders ban đầu
-    const fetchOrders = async () => {
-        if (!sessionInfo?.session?._id) return;
-        try {
-            const data = await orderService.getSessionDetails(sessionInfo.session._id);
-            setOrders(data.orders || []);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+   // Thay thế useState/useEffect bằng useQuery
+    const { data: orders = [], isLoading: loading } = useQuery({
+        queryKey: ['customer-orders', sessionInfo?.session?._id],
+        queryFn: async () => {
+            if (!sessionInfo?.session?._id) return [];
+            const res = await orderService.getSessionDetails(sessionInfo.session._id);
+            return res.orders || [];
+        },
+        enabled: !!sessionInfo?.session?._id
+    });
+
 
     useEffect(() => {
-        fetchOrders();
+        if (!sessionInfo?.session?._id) return;
+
+        // Connect socket
+        if (!socket.connected) {
+            socket.connect();
+        }
+        
+        // Join session room
+        socket.emit("join_session", sessionInfo.session._id);
 
 
         // khi customer quét -> đặt 1 order -> gọi place order trên controller
@@ -31,34 +38,34 @@ export default function OrderTrackingPage() {
         // lưu ý order chứa status, khi socket update thì nó in lại order nma
         // ở status mới -> tự cập nhật
 
-        // 2. Listen Socket Events (Realtime Update)
-        // Khi bếp đổi trạng thái -> Server bắn 'order_update' -> Client nhận và cập nhật state
-        socket.on("order_update", (updatedOrder) => {
-            setOrders(prevOrders => {
-                // Kiểm tra xem order này đã có trong list chưa
-                const exists = prevOrders.find(o => o._id === updatedOrder._id);
-                if (exists) {
-                    // Nếu có rồi -> Update đè lên
-                    return prevOrders.map(o => o._id === updatedOrder._id ? updatedOrder : o);
-                }
-                // Nếu chưa (ví dụ người khác cùng bàn đặt) -> Thêm vào đầu list
-                return [updatedOrder, ...prevOrders];
-            });
-        });
-
-        return () => {
-            socket.off("order_update");
+        const handleInvalidate = () => {
+            // Invalidate query để fetch lại data mới nhất
+            queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
         };
-    }, [sessionInfo]);
+
+        // Listen events
+        socket.on("order_update", handleInvalidate);
+        socket.on("order_served", handleInvalidate);
+        socket.on("payment_requested", handleInvalidate);
+        
+        return () => {
+            socket.off("order_update", handleInvalidate);
+            socket.off("order_served", handleInvalidate);
+            socket.off("payment_requested", handleInvalidate);
+        };
+
+    }, [sessionInfo?.session?._id, queryClient]);
 
     const handleRequestBill = async () => {
-        if(confirm("Request bill for this table?")) {
-            try {
-                await orderService.requestCheckout(sessionInfo.session._id, 'cash');
-                alert("Bill requested! Waiter is coming.");
-            } catch(err) {
-                alert("Error requesting bill.");
-            }
+        if (!sessionInfo?.session?._id) return;
+        try {
+            await orderService.requestCheckout(sessionInfo.session._id, 'cash');
+            // Invalidate ngay lập tức để cập nhật UI nếu cần
+            queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
+            alert("Bill requested! Waiter will come shortly.");
+        } catch (error) {
+            console.error("Request bill failed", error);
+            alert("Failed to request bill");
         }
     };
 
