@@ -175,25 +175,23 @@ class OrderController {
       const { paymentMethod } = req.body;
 
       const session = await OrderSession.findById(sessionId);
-      if (!session)
+      if (!session) {
         return res.status(404).json({ message: "Session not found" });
+      }
 
       session.status = "payment_requested";
       session.paymentMethod = paymentMethod;
       await session.save();
 
-      // Socket báo Waiter
+      // --- THÊM ĐOẠN NÀY ĐỂ BÁO CHO WAITER ---
       const io = req.app.get("socketio");
-      io.to(`restaurant_${session.restaurantId}_waiter`).emit(
-        "payment_request",
-        {
-          sessionId: session._id,
-          tableId: session.tableId,
-          method: paymentMethod,
-        }
-      );
+      const restaurantId = session.restaurantId.toString();
 
-      res.status(200).json({ message: "Bill requested", session });
+      // Emit sự kiện 'payment_requested' vào room của waiter
+      io.to(`restaurant_${restaurantId}_waiter`).emit("payment_requested", session);
+      // ----------------------------------------
+
+      res.status(200).json({ message: "Bill requested successfully", session });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

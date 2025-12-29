@@ -121,9 +121,12 @@ export default function MyTables() {
 
     if (sessions.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-gray-400">
-                <i className="fa-solid fa-chair text-6xl mb-4"></i>
-                <p className="text-lg font-medium">No active tables</p>
+            <div className="flex flex-col items-center justify-center h-[60vh] text-gray-400 animate-fade-in">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-chair text-4xl text-gray-300"></i>
+                </div>
+                <h3 className="text-xl font-bold text-gray-600">No active tables</h3>
+                <p className="text-sm">You are all caught up!</p>
             </div>
         );
     }

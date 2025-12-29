@@ -1,7 +1,7 @@
 import api from "./api";
 
 const getMenu = async (restaurantId = null) => {
-    if (restaurantId) {
+    if (restaurantId && typeof restaurantId === 'string') {
         // Gọi API Public dành cho khách
         const response = await api.get(`/menu/public/${restaurantId}`);
         return response.data;
