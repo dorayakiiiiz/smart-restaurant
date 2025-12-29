@@ -31,7 +31,7 @@ export default function OrderTrackingPage() {
 
         // 2. Listen Socket Events (Realtime Update)
         // Khi bếp đổi trạng thái -> Server bắn 'order_update' -> Client nhận và cập nhật state
-        socket.on("order_update", (updatedOrder) => {
+        socket.on("kitchen:orderItem_ready", (updatedOrder) => {
             setOrders(prevOrders => {
                 // Kiểm tra xem order này đã có trong list chưa
                 const exists = prevOrders.find(o => o._id === updatedOrder._id);
@@ -90,7 +90,7 @@ export default function OrderTrackingPage() {
                     <div key={order._id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                         <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
                             <span className="text-xs font-bold text-gray-400">#{order._id.slice(-4)} • {new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                            <StatusBadge status={order.status} />
+                            <StatusBadge status={order.status} items={order.items} />
                         </div>
 
                         {/* Timeline Visualizer */}
@@ -98,11 +98,15 @@ export default function OrderTrackingPage() {
                             {/* Line */}
                             <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-gray-100 -z-10"></div>
                             <div className={`absolute left-0 top-1/2 h-0.5 bg-green-500 -z-10 transition-all duration-500`} 
-                                style={{ width: getProgressWidth(order.status) }}></div>
+                                style={{ width: getProgressWidth(order.status, order.items) }}></div>
 
                             <Step icon="fa-clipboard-check" label="Sent" active={true} />
                             <Step icon="fa-fire-burner" label="Cooking" active={['accepted', 'preparing', 'ready', 'served'].includes(order.status)} />
-                            <Step icon="fa-bell-concierge" label="Ready" active={['ready', 'served'].includes(order.status)} />
+                            <Step 
+                                icon="fa-bell-concierge" 
+                                label={order.status === 'served' ? 'Served' : 'Ready'} 
+                                active={order.items?.every(item => ['ready', 'served'].includes(item.status)) || order.status === 'served'} 
+                            />
                         </div>
 
                         <div className="space-y-3">
@@ -119,8 +123,9 @@ export default function OrderTrackingPage() {
                                             )}
                                         </div>
                                     </div>
-                                    {/* Item Status (nếu KDS update từng món) */}
+                                    {/* Item Status badges */}
                                     {item.status === 'ready' && <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">Ready</span>}
+                                    {item.status === 'served' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Served</span>}
                                 </div>
                             ))}
                         </div>
@@ -141,28 +146,43 @@ const Step = ({ icon, label, active }) => (
     </div>
 );
 
-const StatusBadge = ({ status }) => {
+const StatusBadge = ({ status, items }) => {
+    // Kiểm tra nếu tất cả items đều ready hoặc served
+    const allReadyOrServed = items?.every(item => ['ready', 'served'].includes(item.status));
+    
+    // Nếu tất cả món ready/served nhưng order.status chưa phải 'served' → hiển thị READY
+    let displayStatus = status;
+    if (allReadyOrServed && status !== 'served') {
+        displayStatus = 'ready';
+    }
+    
     const styles = {
         pending: "bg-yellow-100 text-yellow-700",
         accepted: "bg-blue-100 text-blue-700",
         preparing: "bg-orange-100 text-orange-700",
         ready: "bg-green-100 text-green-700",
-        served: "bg-gray-100 text-gray-600 line-through",
+        served: "bg-gray-100 text-gray-600",
         rejected: "bg-red-100 text-red-700"
     };
     return (
-        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${styles[status] || styles.pending}`}>
-            {status}
+        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${styles[displayStatus] || styles.pending}`}>
+            {displayStatus}
         </span>
     );
 };
 
-const getProgressWidth = (status) => {
+const getProgressWidth = (status, items) => {
+    // Kiểm tra xem có món nào đã served chưa
+    const hasServedItems = items?.some(item => item.status === 'served');
+    const allServed = items?.every(item => item.status === 'served');
+    
     switch(status) {
         case 'pending': return '0%';
         case 'accepted': return '33%';
         case 'preparing': return '66%';
         case 'ready': 
+            // Nếu có món served hoặc tất cả ready → 100%
+            return (hasServedItems || allServed) ? '100%' : '100%';
         case 'served': return '100%';
         default: return '0%';
     }

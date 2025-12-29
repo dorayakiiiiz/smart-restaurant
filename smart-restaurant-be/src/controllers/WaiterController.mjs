@@ -88,22 +88,18 @@ class WaiterController {
             })
             .sort({ createdAt: -1 });
 
-          // Filter: Lấy orders có ít nhất 1 item ready HOẶC tất cả items served (chưa complete)
+          // Filter: Lấy TẤT CẢ orders đã accepted (cooking, ready, hoặc served chưa complete)
           const filteredReady = acceptedOrders.filter((order) => {
             if (order.items.length === 0) return false;
 
-            const hasReadyItems = order.items.some(
-              (item) => item.status === "ready"
-            );
+            // Loại bỏ orders đã hoàn thành (tất cả served VÀ order.status = 'served')
             const allServed = order.items.every(
               (item) => item.status === "served"
             );
-            const hasPreparingItems = order.items.some(
-              (item) => item.status === "preparing"
-            );
+            if (allServed && order.status === 'served') return false;
 
-            // Hiển thị nếu: có ready items HOẶC (tất cả served VÀ không còn preparing)
-            return hasReadyItems || (allServed && !hasPreparingItems);
+            // Hiển thị tất cả orders còn lại (có món preparing, ready, hoặc served chưa complete)
+            return true;
           });
           orders.push(...filteredReady);
         }
@@ -192,7 +188,7 @@ class WaiterController {
   }
 
   // [PATCH] /api/waiter/orders/:id/serve
-  // Đánh dấu các items READY trong order đã được phục vụ (KHÔNG thông báo customer)
+  // Đánh dấu các items READY trong order đã được phục vụ VÀ thông báo customer
   async markAsServed(req, res) {
     try {
       const { id } = req.params;
@@ -204,31 +200,25 @@ class WaiterController {
       if (!order) return res.status(404).json({ message: "Order not found" });
 
       // Chỉ update items có status = 'ready' thành 'served'
-      // Giữ nguyên các items đang 'preparing' hoặc status khác
       order.items.forEach((item) => {
         if (item.status === "ready") {
           item.status = "served";
         }
       });
 
-      if (order.items.every((item) => item.status === "served")) {
-        order.status = "served";
-      }
-
-      // KHÔNG update order.status thành 'served' ở đây
-      // Chỉ update khi waiter mark complete
       await order.save();
 
-      // Emit socket CHỈ tới waiter và kitchen, KHÔNG emit tới customer
+      // Emit socket tới waiter, kitchen VÀ customer
       const io = req.app.get("socketio");
       const restaurantId = order.restaurantId.toString();
+      const sessionId = order.sessionId._id.toString();
 
       io.to(`restaurant_${restaurantId}_waiter`).emit("order_served", order);
       io.to(`restaurant_${restaurantId}_kitchen`).emit("order_served", order);
-      // REMOVED: io.to(`session_${sessionId}`).emit('order_update', order);
+      io.to(`session_${sessionId}`).emit("order_update", order); // Emit tới customer
 
       res.status(200).json({
-        message: "Items marked as served (customer not notified yet)",
+        message: "Items marked as served and customer notified",
         order,
       });
     } catch (err) {
@@ -237,7 +227,7 @@ class WaiterController {
   }
 
   // [PATCH] /api/waiter/orders/:id/complete
-  // Đánh dấu order hoàn thành (tất cả items đã served) → Notify customer với status 'ready'
+  // Đánh dấu order hoàn thành (tất cả items đã served) → Update order status 'served'
   async markOrderComplete(req, res) {
     try {
       const { id } = req.params;
@@ -256,11 +246,11 @@ class WaiterController {
           .json({ message: "Not all items are served yet" });
       }
 
-      // Update order status thành 'ready' (để customer biết order đã xong và sẵn sàng)
-      order.status = "ready";
+      // Update order status thành 'served' (order hoàn thành)
+      order.status = "served";
       await order.save();
 
-      // Emit socket tới waiter, kitchen VÀ customer (CHỈ KHI COMPLETE)
+      // Emit socket tới waiter, kitchen VÀ customer
       const io = req.app.get("socketio");
       const restaurantId = order.restaurantId.toString();
       const sessionId = order.sessionId._id.toString();
@@ -270,7 +260,7 @@ class WaiterController {
         "order_completed",
         order
       );
-      io.to(`session_${sessionId}`).emit("order_update", order); // Customer nhận update ở đây
+      io.to(`session_${sessionId}`).emit("order_update", order); // Customer nhận order status 'served'
 
       res
         .status(200)
