@@ -33,7 +33,7 @@ export default function OrderTrackingPage() {
 
         // 2. Listen Socket Events (Realtime Update)
         // Khi bếp đổi trạng thái -> Server bắn 'order_update' -> Client nhận và cập nhật state
-        socket.on("order_update", (updatedOrder) => {
+        socket.on("kitchen:orderItem_ready", (updatedOrder) => {
             setOrders(prevOrders => {
                 // Kiểm tra xem order này đã có trong list chưa
                 const exists = prevOrders.find(o => o._id === updatedOrder._id);
