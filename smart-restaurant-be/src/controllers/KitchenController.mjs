@@ -80,7 +80,11 @@ class KitchenController {
             const { orderId } = req.params;
             const { status, itemId } = req.body; 
 
-            const order = await Order.findById(orderId);
+            const order = await Order.findById(orderId)
+                .populate({
+                    path: 'sessionId',
+                    populate: { path: 'tableId', select: 'name' }
+                })
             if (!order) {
                 return res.status(404).json({ message: "Order not found" });
             }
@@ -123,13 +127,8 @@ class KitchenController {
             
             // 1. Notify Customer (session room), item ready mới báo cho customer
             if (order.sessionId && status === 'ready') {
-                io.to(`session_${order.sessionId}`).emit('kitchen:orderItem_ready', {
-                    id: order._id,
-                    status: order.status,
-                    itemId: itemId,
-                    itemStatus: status,
-                    updatedAt: new Date()
-                });
+                const sessionId = order.sessionId._id.toString();
+                io.to(`session_${sessionId}`).emit('kitchen:orderItem_ready', order);
             }
 
             // 2. Notify Waiter (waiter room) - Emit cho mọi update
