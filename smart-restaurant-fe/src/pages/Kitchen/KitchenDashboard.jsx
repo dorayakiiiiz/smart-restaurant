@@ -125,6 +125,7 @@ export default function KitchenDashboard() {
             socket.on('connect', joinRoom);
         }
 
+        //data ở đây là socket bên BE gửi
         const handleRefetch = (data) => {
             console.log('🔔 Socket event received:', data);
             queryClient.invalidateQueries(['kitchenOrders']);
