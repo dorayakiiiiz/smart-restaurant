@@ -23,12 +23,30 @@ import OrderCard from "./Components/OrderCard";
 import Column from "./Components/Column";
 import StatItem from "./Components/StatItem";
 import RecycleBinModal from "./Components/RecyckeBinModal";
+import { useRef } from "react";
 
 export default function KitchenDashboard() {
     const { user, logout } = useAuth();
     const queryClient = useQueryClient();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showHistory, setShowHistory] = useState(false);
+    const [isSoundEnabled, setIsSoundEnabled] = useState(true); // Trạng thái bật/tắt âm thanh
+    const audioRef = useRef(new Audio('/cheerful-trombone-and-trumpet-march-432177.mp3'));
+    const soundRef = useRef(true); // Tạo Ref để đồng bộ
+    const stopTimerRef = useRef(null);
+
+    // Cập nhật Ref mỗi khi State thay đổi
+    useEffect(() => {
+        soundRef.current = isSoundEnabled;
+    }, [isSoundEnabled]);
+
+    // Thêm useEffect này để dọn dẹp khi tắt trang Dashboard
+    useEffect(() => {
+        return () => {
+            if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+            audioRef.current.pause();
+        };
+    }, []);
 
     // --- Queries ---
 
@@ -40,7 +58,6 @@ export default function KitchenDashboard() {
             return Array.isArray(res.data) ? res.data : [];
         },
         // tự động gọi lại API mỗi 5 giây để cập nhật đơn hàng mới
-        refetchInterval: 5000, // Fallback polling every 30s
     });
 
     //history orders
@@ -58,6 +75,14 @@ export default function KitchenDashboard() {
     const acceptOrderMutation = useMutation({
         //Chuyển sang preparing
         mutationFn: (orderId) => kitchenService.updateOrderStatus(orderId, 'preparing'),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['kitchenOrders']);
+        }
+    });
+
+    const finishOrderMutation = useMutation({
+        //Chuyển sang preparing
+        mutationFn: (orderId) => kitchenService.updateOrderStatus(orderId, 'ready'),
         onSuccess: () => {
             queryClient.invalidateQueries(['kitchenOrders']);
         }
@@ -85,12 +110,6 @@ export default function KitchenDashboard() {
     });
 
     // --- Effects ---
-
-    useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-
     
     //kết nối socket khi component mount
     useEffect(() => {
@@ -129,19 +148,17 @@ export default function KitchenDashboard() {
         const handleRefetch = (data) => {
             console.log('🔔 Socket event received:', data);
             queryClient.invalidateQueries(['kitchenOrders']);
-            // playNotificationSound();
+            playNotificationSound();
         };
 
         // Listen to events
         socket.on('order_accepted', handleRefetch); // From Waiter
         socket.on('kitchen:order_update', handleRefetch); // From Kitchen (sync)
-        socket.on('kitchen:new_order', handleRefetch); // Legacy/Backup
 
         return () => {
             socket.off('connect', joinRoom);
             socket.off('order_accepted', handleRefetch);
             socket.off('kitchen:order_update', handleRefetch);
-            socket.off('kitchen:new_order', handleRefetch);
             // socket.disconnect(); // Tạm thời comment để tránh ngắt kết nối nếu component re-render nhanh
         };
     }, [user?.restaurantId, queryClient]); // Chỉ chạy lại khi restaurantId thay đổi
@@ -149,8 +166,44 @@ export default function KitchenDashboard() {
     // --- Actions ---
 
     const playNotificationSound = () => {
-        // const audio = new Audio('/sounds/bell.mp3');
-        // audio.play();
+        // 1. Sửa tên biến từ isSoundEnabledRef thành soundRef cho đúng với khai báo
+        if (!soundRef.current) return;
+
+        // 2. Xóa bộ hẹn giờ cũ nếu có (để tránh nhạc bị tắt ngắt quãng khi có nhiều tin đến)
+        if (stopTimerRef.current) {
+            clearTimeout(stopTimerRef.current);
+        }
+
+        // 3. Tua về đầu và phát
+        audioRef.current.currentTime = 0;
+        
+        // play() trả về một Promise, chúng ta nên xử lý nó
+        const playPromise = audioRef.current.play();
+
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                // Nhạc đã bắt đầu phát thành công -> Mới bắt đầu đếm ngược 3s để tắt
+                stopTimerRef.current = setTimeout(() => {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                    console.log("⏱️ Nhạc đã dừng sau 3s");
+                }, 3000);
+            }).catch(error => {
+                console.warn("🔇 Trình duyệt chặn tự động phát nhạc:", error);
+            });
+        }
+    };
+
+    const toggleSound = () => {
+        const newStatus = !isSoundEnabled;
+        setIsSoundEnabled(newStatus);
+        // soundRef.current sẽ được cập nhật ở useEffect phía trên bạn đã viết
+        
+        if (!newStatus) {
+            if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
     };
 
     // --- Helpers ---
@@ -165,9 +218,17 @@ export default function KitchenDashboard() {
         preparing: orders.filter(o => o.status === 'preparing').length,
         ready: orders.filter(o => o.status === 'ready').length,
         overdue: orders.filter(o => {
-            const elapsed = (new Date() - new Date(o.createdAt)) / 1000 / 60;
-            // Quá 15 phút và chưa sẵn sàng 
-            return elapsed > 15 && o.status !== 'ready';
+            // Chỉ tính overdue cho các đơn đang chế biến (preparing)
+            if (o.status !== 'preparing' || !o.preparingAt) return false;
+
+            // 1. Tìm thời gian chuẩn bị tối đa của items trong order (mặc định 15p)
+            const maxPrepTime = Math.max(...o.items.map(i => i.prepTime || 15));
+
+            // 2. Tính số phút đã trôi qua kể từ lúc preparingAt
+            const elapsedMinutes = (currentTime - new Date(o.preparingAt)) / 1000 / 60;
+
+            // 3. Trả về true nếu thời gian trôi qua vượt quá thời gian cho phép
+            return elapsedMinutes > maxPrepTime;
         }).length,
     };
 
@@ -213,9 +274,15 @@ export default function KitchenDashboard() {
                             <FaHistory />
                             <span>Recycle Bin</span>
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 bg-emerald-500/10 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/20">
+                        <button 
+                            onClick={toggleSound}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 
+                            ${isSoundEnabled 
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/20" 
+                                : "bg-gray-700/50 text-gray-400 border border-gray-600"}`}
+                        >
                             <FaVolumeUp />
-                            <span>Sound ON</span>
+                            <span>Sound {isSoundEnabled ? 'ON' : 'OFF'}</span>
                         </button>
                         <button 
                             onClick={logout}
@@ -266,6 +333,7 @@ export default function KitchenDashboard() {
                             key={order.id} 
                             order={order} 
                             type="preparing"
+                            onAction={() => finishOrderMutation.mutate(order.id)}
                             onItemAction={(itemId, status) => updateItemStatusMutation.mutate({ orderId: order.id, itemId, status })}
                         />
                     ))}

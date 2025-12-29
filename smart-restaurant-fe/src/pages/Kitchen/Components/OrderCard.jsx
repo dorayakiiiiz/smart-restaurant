@@ -1,152 +1,206 @@
 import { useEffect, useState } from "react";
-import { FaCheckCircle, FaCheckSquare, FaExclamationTriangle, FaSquare, FaClock } from "react-icons/fa";
+import { FaCheckCircle, FaCheckSquare, FaExclamationTriangle, FaSquare, FaClock, FaUtensils } from "react-icons/fa";
 
 export default function OrderCard({ order, type, onAction, onItemAction }) {
     const [elapsed, setElapsed] = useState("");
-    // console.log('Order', order);
 
-    //Effect to update elapsed time every second
-    //Thời gian kể từ lúc order.createdAt đến hiện tại
+    //Effect thời gian
     useEffect(() => {
         const interval = setInterval(() => {
-            const start = new Date(order.createdAt);
+            let startTime = null;
+
+            if (type === 'accepted') {
+                startTime = order.acceptedAt ? new Date(order.acceptedAt) : new Date(order.createdAt);
+            } else if (type === 'preparing') {
+                startTime = order.preparingAt ? new Date(order.preparingAt) : new Date(order.createdAt);
+            } else if (type === 'ready') {
+                // Lọc ra các item đã xong và có finishedAt
+                const finishedTimes = order.items
+                    .filter(i => i.status === 'ready' && i.finishedAt)
+                    .map(i => new Date(i.finishedAt).getTime());
+
+                if (finishedTimes.length > 0) {
+                    // Lấy món xong sớm nhất (nhỏ nhất)
+                    startTime = new Date(Math.min(...finishedTimes));
+                } 
+            }
+
             const now = new Date();
-            const diffInSeconds = Math.floor((now - start) / 1000);
+            const diffInSeconds = Math.floor((now - startTime) / 1000);
+            
+            // Đảm bảo không bị số âm
+            const totalSecs = Math.max(0, diffInSeconds);
 
-            // Tính toán Giờ, Phút, Giây
-            const hours = Math.floor(diffInSeconds / 3600);
-            const minutes = Math.floor((diffInSeconds % 3600) / 60);
-            const seconds = diffInSeconds % 60;
+            const hours = Math.floor(totalSecs / 3600);
+            const minutes = Math.floor((totalSecs % 3600) / 60);
+            const seconds = totalSecs % 60;
 
-            // Format chuỗi HH:mm:ss (đảm bảo luôn có 2 chữ số)
-            const formattedTime = [
+            setElapsed([
                 hours.toString().padStart(2, '0'),
                 minutes.toString().padStart(2, '0'),
                 seconds.toString().padStart(2, '0')
-            ].join(':');
-
-            setElapsed(formattedTime);
+            ].join(':'));
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [order.createdAt]);
+    }, [order, type]); // Dependency nên là cả object order để nhạy bén với thay đổi
 
-    //Logic overdue, quá 15 phút chưa xong
-    const isOverdue = type !== 'ready' && (new Date() - new Date(order.createdAt)) > 1000 * 60 * 15;
+    // Calculate max prep time from items
+    // Vì mỗi item có prepTime khác nhau
+    const maxPrepTime = Math.max(...order.items.map(i => i.prepTime || 15));
 
-    // Filter items based on column type
+    // Overdue logic: Chỉ tính khi đang preparing, dựa vào preparingAt và maxPrepTime
+    let isOverdue = false;
+    if (type === 'preparing' && order.preparingAt) {
+         const elapsedMinutes = (new Date() - new Date(order.preparingAt)) / 1000 / 60;
+         //chỉ overdue khi thời gian từ lúc bấm accept lớn hơn preptime
+         isOverdue = elapsedMinutes > maxPrepTime;
+    }
+
     const displayItems = order.items.filter(item => {
-        if (type === 'accepted') return true; // Show all
+        if (type === 'accepted') return true;
         if (type === 'preparing') return item.status === 'preparing';
         if (type === 'ready') return item.status === 'ready';
         return true;
     });
 
     if (displayItems.length === 0) return null;
+    // Phân loại màu sắc theo Type
+    const themeColor = {
+        pending: 'border-amber-500 text-amber-500 bg-amber-500/10',
+        preparing: 'border-sky-500 text-sky-500 bg-sky-500/10',
+        ready: 'border-emerald-500 text-emerald-500 bg-emerald-500/10',
+        accepted: 'border-indigo-500 text-indigo-500 bg-indigo-500/10'
+    }[type] || 'border-gray-500';
 
     return (
         <div className={`
-            relative bg-[#1F2937] rounded-lg border-l-4 shadow-md overflow-hidden group transition-all duration-200
-            ${type === 'pending' ? 'border-amber-500' : type === 'preparing' ? 'border-blue-500' : 'border-emerald-500'}
+            relative flex flex-col h-full bg-[#1A1F2B] rounded-xl border-t-4 shadow-xl 
+            transition-all duration-300 hover:translate-y-[-4px] hover:shadow-2xl overflow-hidden
+            ${isOverdue && type === 'preparing' ? 'ring-2 ring-rose-500 ring-inset' : 'border-[#2D3748]'}
+            ${themeColor.split(' ')[0]} 
         `}>
-            {/* Overdue Badge */}
+            
+            {/* Overdue Alert Layer */}
             {isOverdue && type === 'preparing' && (
-                <div className="bg-rose-500 text-white text-xs font-bold px-3 py-1 flex items-center gap-2 animate-pulse">
-                    <FaExclamationTriangle /> OVERDUE
+                <div className="absolute top-0 left-0 right-0 bg-rose-500 text-white text-[10px] font-black py-1 px-3 flex items-center justify-between z-10 tracking-widest uppercase">
+                    <span className="flex items-center gap-1"><FaExclamationTriangle className="animate-bounce" /> Attention Needed</span>
+                    <span>15M+ LATE</span>
                 </div>
             )}
 
-            {/* Card Header */}
-            <div className="p-3 pb-2 flex justify-between items-start">
-                <div>
-                    <h3 className="text-lg font-bold text-gray-100">#{order.id.substring(0, 6)}</h3>
-                    <div className={`flex items-center gap-2 text-sm font-mono mt-0.5 ${isOverdue ? 'text-rose-400 font-bold' : 'text-gray-400'}`}>
-                        <FaClock className="text-xs" />
-                        <span>{elapsed}</span>
+            {/* Header Area */}
+            <div className={`p-4 flex justify-between items-start ${isOverdue && type === 'preparing' ? 'pt-7' : ''}`}>
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Order ID</span>
+                        <h3 className="text-xl font-black text-white tracking-tight leading-none">
+                            #{order.id.substring(0, 6).toUpperCase()}
+                        </h3>
+                    </div>
+                    <div className={`
+                        inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-mono text-xs
+                        ${isOverdue ? 'bg-rose-500/20 text-rose-400' : 'bg-gray-800 text-gray-300'}
+                    `}>
+                        <FaClock className={isOverdue ? 'animate-pulse' : ''} />
+                        <span className="font-bold">{elapsed}</span>
                     </div>
                 </div>
-                <span className={`
-                    px-2 py-1 rounded text-xs font-bold uppercase tracking-wide
-                    ${type === 'pending' ? 'bg-amber-500/20 text-amber-500' : 
-                      type === 'preparing' ? 'bg-blue-500/20 text-blue-500' : 
-                      'bg-emerald-500/20 text-emerald-500'}
-                `}>
-                    {order.table || "Table ?"}
-                </span>
+
+                <div className={`px-3 py-1.5 rounded-lg border-2 font-black text-sm shadow-inner ${themeColor}`}>
+                    {order.table || "T-00"}
+                </div>
             </div>
 
-            {/* Items List */}
-            <div className="px-3 py-2 space-y-2">
-                <div className="h-px bg-gray-700 w-full"></div>
-                {/* Duyệt các item của 1 order */}
-                {displayItems.map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3 group/item">
-                        {/* Checkbox for preparing/Ready columns */}
-                        {type !== 'accepted' && (
-                            <button 
-                                onClick={() => {
-                                    if (type === 'preparing' && item.status !== 'ready') {
-                                        onItemAction(item.itemId, 'ready'); //Chuyển trạng thái item sang ready
-                                    }
-                                }}
-                                className={`mt-0.5 text-lg transition-colors ${
-                                    item.status === 'ready' ? 'text-emerald-500' : 'text-gray-600 hover:text-blue-500'
-                                }`}
-                                disabled={item.status === 'ready' && type === 'preparing'}
-                            >
-                                {item.status === 'ready' ? <FaCheckSquare /> : <FaSquare />}
-                            </button>
-                        )}
+            {/* Content Area */}
+            <div className="flex-1 px-4 py-2 custom-scrollbar overflow-y-auto max-h-[300px]">
+                <div className="space-y-3">
+                    {displayItems.map((item, idx) => (
+                        <div key={idx} className="group/item relative bg-[#242C3D] p-3 rounded-lg border border-gray-700/50 transition-colors hover:bg-[#2D3748]">
+                            <div className="flex items-start gap-3">
+                                {/* Interactive Checkbox */}
+                                {type !== 'accepted' && (
+                                    <button 
+                                        onClick={() => {
+                                            if (type === 'preparing' && item.status !== 'ready') {
+                                                onItemAction(item.itemId, 'ready');
+                                            }
+                                        }}
+                                        className={`mt-0.5 text-xl transition-all duration-200 transform active:scale-90 ${
+                                            item.status === 'ready' ? 'text-emerald-400' : 'text-gray-600 hover:text-sky-400'
+                                        }`}
+                                        disabled={item.status === 'ready' && type === 'preparing'}
+                                    >
+                                        {item.status === 'ready' ? <FaCheckSquare /> : <FaSquare />}
+                                    </button>
+                                )}
 
-                        <span className={`
-                            flex items-center justify-center w-5 h-5 rounded text-xs font-bold shrink-0
-                            ${item.status === 'ready' ? 'bg-emerald-500 text-white' : 'bg-gray-600 text-white'}
-                        `}>
-                            {item.qty}
-                        </span>
-                        <div className="flex-1">
-                            <p className={`text-sm font-medium ${item.status === 'ready' && type === 'preparing' ? 'text-emerald-400' : 'text-gray-200'}`}>
-                                {item.name}
-                            </p>
-                            <p className={`text-sm font-medium ${item.status === 'ready' && type === 'preparing' ? 'text-emerald-400' : 'text-gray-200'}`}>
-                                {item.prepTime} mins prep
-                            </p>
-                            <p className={`text-sm font-medium ${item.status === 'ready' && type === 'preparing' ? 'text-emerald-400' : 'text-gray-200'}`}>
-                                {item.modifiers.map(mod => `${mod.name}: ${mod.option}`).join(', ')}
-                            </p>
-                            {item.note && (
-                                <p className="text-xs text-indigo-400 italic mt-0.5">
-                                    {item.note}
-                                </p>
-                            )}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className={`text-[15px] font-bold truncate leading-tight ${item.status === 'ready' ? 'text-emerald-400/70 line-through' : 'text-gray-100'}`}>
+                                            {item.name}
+                                        </p>
+                                        <span className={`
+                                            ml-2 flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded font-black text-xs
+                                            ${item.status === 'ready' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-700 text-white'}
+                                        `}>
+                                            x{item.qty}
+                                        </span>
+                                    </div>
+
+                                    {/* Item Details */}
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                                            <FaUtensils className="text-[10px]" />
+                                            <span>{item.prepTime} mins prep</span>
+                                        </div>
+                                        
+                                        {item.modifiers?.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {item.modifiers.map((mod, mIdx) => (
+                                                    <span key={mIdx} className="text-[10px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/20">
+                                                        {mod.option}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {item.note && (
+                                            <div className="mt-2 text-[11px] text-amber-400 bg-amber-400/5 p-1.5 rounded border-l-2 border-amber-500/50 italic">
+                                                "{item.note}"
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
 
             {/* Footer Actions */}
-            <div className="p-2 mt-1 bg-[#111827]/30 border-t border-gray-700">
-                {/* CỘT RECEIVED  */}
+            <div className="p-4 mt-2 bg-[#111827]/80 backdrop-blur-sm border-t border-gray-800">
                 {type === 'accepted' && (
                     <button 
                         onClick={onAction}
-                        className="w-full py-2 bg-[#dfa33b] hover:bg-[#e2aa48] text-white rounded font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white rounded-lg font-black text-sm shadow-lg shadow-orange-900/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                     >
-                        <FaCheckCircle /> Accept & Start
+                        <FaCheckCircle className="text-lg" /> ACCEPT & START COOKING
                     </button>
                 )}
                 
-                {/* CỘT PREPARING */}
                 {type === 'preparing' && (
-                    <div className="text-center text-xs text-gray-500 font-medium py-1">
-                        Check items to mark ready
-                    </div>
+                    <button 
+                        onClick={onAction}
+                        className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg font-black text-sm shadow-lg shadow-orange-900/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                    >
+                        <FaCheckCircle className="text-lg" /> Finish all
+                    </button>
                 )}
 
-                {/* CỘT READY */}
                 {type === 'ready' && (
-                    <div className="text-center text-xs text-gray-500 font-medium py-1">
-                        Check items to mark served
+                    <div className="py-1 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-center">
+                        <span className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Ready to Serve</span>
                     </div>
                 )}
             </div>

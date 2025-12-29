@@ -144,6 +144,7 @@ class WaiterController {
       if (status === "accepted") {
         // Waiter accept order → Gửi vào bếp
         order.status = "accepted";
+        order.acceptedAt = new Date(); //Thời điểm bắt đầu bấm accept
         await order.save();
 
         // Cập nhật tổng tiền vào Session (chỉ khi accept)
@@ -162,7 +163,7 @@ class WaiterController {
         );
         io.to(`restaurant_${restaurantId}_kitchen`).emit(
           "order_accepted",
-          order
+          {...order, acceptedTime: Date.now()}
         );
         io.to(`session_${sessionId}`).emit("order_update", order);
 
