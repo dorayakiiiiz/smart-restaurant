@@ -178,7 +178,7 @@ export default function WaiterDashboard() {
         </div>
 
         {/* Tabs - Responsive with Counts */}
-        <div className="flex bg-white border-b border-gray-200 shadow-sm sticky top-[52px] sm:top-[60px] z-10">
+        <div className="flex bg-white border-b border-gray-200 shadow-sm sticky top-[52px] sm:top-[80px] z-10">
           {tabs.map((tab) => (
             <NavLink
               key={tab.path}
