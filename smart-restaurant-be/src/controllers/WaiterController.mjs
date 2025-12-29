@@ -211,6 +211,10 @@ class WaiterController {
         }
       });
 
+      if (order.items.every((item) => item.status === "served")) {
+        order.status = "served";
+      }
+
       // KHÔNG update order.status thành 'served' ở đây
       // Chỉ update khi waiter mark complete
       await order.save();
