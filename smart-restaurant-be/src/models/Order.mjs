@@ -22,7 +22,8 @@ const OrderItemSchema = new Schema({
         enum: ['pending', 'accepted', 'preparing', 'ready', 'served'],
         default: 'pending'
     },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
+    finishedAt: { type: Date } // Thời điểm món này được đánh dấu là ready
 });
 
 //DB của nguyên 1 order (gồm nhiều món ăn)
@@ -44,6 +45,9 @@ const OrderSchema = new Schema({
         enum: ['pending', 'accepted', 'rejected', 'preparing', 'ready', 'served'], 
         default: 'pending'
     },
+
+    acceptedAt: { type: Date }, // Thời điểm Waiter accept
+    preparingAt: { type: Date }, // Thời điểm Kitchen accept (bắt đầu làm)
     
     rejectionReason: { type: String } // Nếu Waiter từ chối
 }, { timestamps: true });
