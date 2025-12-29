@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { socket } from "../services/socket"; // Import socket
 
 const CartContext = createContext();
 
@@ -46,6 +47,43 @@ export const CartProvider = ({ children }) => {
         
         _setSessionInfo(newSessionData);
     };
+
+    // --- Lắng nghe sự kiện kết thúc session ---
+    useEffect(() => {
+        if (sessionInfo?.session?._id) {
+            // Đảm bảo socket đã connect
+            if (!socket.connected) socket.connect();
+            
+            // Join room session
+            socket.emit("join_session", sessionInfo.session._id);
+
+            // Hàm xử lý khi nhận tín hiệu kết thúc
+            const handleSessionEnded = () => {
+                console.log("Session ended by waiter. Clearing data...");
+                
+                // 1. Xóa State
+                setCartItems([]);
+                _setSessionInfo(null);
+
+                // 2. Xóa LocalStorage
+                localStorage.removeItem("customer_cart");
+                localStorage.removeItem("session_info");
+
+                // 3. Thông báo và reload/redirect
+                alert("Payment successful! Thank you for dining with us.");
+                window.location.href = "/"; // Đá về trang chủ
+            };
+
+            // Lắng nghe
+            socket.on("session_ended", handleSessionEnded);
+
+            // Cleanup
+            return () => {
+                socket.off("session_ended", handleSessionEnded);
+            };
+        }
+    }, [sessionInfo]); 
+    // ---------------------------------------------------------
 
     const addToCart = (product, quantity, modifiers = [], note = "") => {
         setCartItems(prev => {

@@ -71,10 +71,12 @@ export default function AcceptedOrders() {
 
     if (orders.length === 0) {
         return (
-            <div className="text-center py-20">
-                <div className="text-6xl mb-4 animate-bounce">👨‍🍳</div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">Kitchen is clear!</h3>
-                <p className="text-gray-500">No orders in preparation</p>
+            <div className="flex flex-col items-center justify-center h-[60vh] text-gray-400 animate-fade-in">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                    <i className="fa-solid fa-fire-burner text-4xl text-gray-300"></i>
+                </div>
+                <h3 className="text-xl font-bold text-gray-600">Kitchen is Quiet</h3>
+                <p className="text-sm">No orders are currently being prepared.</p>
             </div>
         );
     }
