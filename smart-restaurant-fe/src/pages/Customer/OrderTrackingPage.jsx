@@ -28,6 +28,8 @@ export default function OrderTrackingPage() {
         // khi customer quét -> đặt 1 order -> gọi place order trên controller
         // -> controller .to(sessionid).emit(order_update) và .to(waiter).emit(new_order_alert)
         // -> orrder_update ở đây nhận dc và thêm order mới vào order page
+        // lưu ý order chứa status, khi socket update thì nó in lại order nma
+        // ở status mới -> tự cập nhật
 
         // 2. Listen Socket Events (Realtime Update)
         // Khi bếp đổi trạng thái -> Server bắn 'order_update' -> Client nhận và cập nhật state
