@@ -39,6 +39,7 @@ import MenuItemDetail from "./pages/AdminDashboard/MenuItemDetail";
 import MenuPage from "./pages/Customer/MenuPage";
 import CartPage from "./pages/Customer/CartPage";
 import OrderTrackingPage from "./pages/Customer/OrderTrackingPage";
+import MenuDetailPage from "./pages/Customer/MenuDetailPage";
 
 // Import Pages mới
 import WaiterDashboard from "./pages/Waiter/WaiterDashboard";
@@ -110,6 +111,7 @@ function App() {
                         {/* CUSTOMER ROUTES */}
                         <Route element={<CustomerLayout />}>
                             <Route path="/menu" element={<MenuPage />} />
+                            <Route path="/menu/public/:id/:restaurantId" element={<MenuDetailPage />} />
                             <Route path="/cart" element={<CartPage />} />
                             <Route path="/orders" element={<OrderTrackingPage />} /> {/* Đã thay thế placeholder */}
                         </Route>
