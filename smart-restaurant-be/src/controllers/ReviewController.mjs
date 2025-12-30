@@ -20,23 +20,26 @@ class ReviewController {
         }
     }
 
-    // CHỈNH SỬA: Chuyển các hàm này thành Arrow Functions
+    //[GET] /reviews/:restaurantId/:menuItemId
     getReviews = async (req, res) => {
         try {
-            const { menuItemId } = req.params;
-            const reviews = await Review.find({ menuItemId }).sort({ createdAt: -1 });
+            const {restaurantId, menuItemId } = req.params;
+            const reviews = await Review.find({ restaurantId, menuItemId })
+                .populate('userId', 'fullName')
+                .sort({ createdAt: -1 });
             res.status(200).json(reviews);
         } catch (error) {
             res.status(500).json({ message: error.message });
         }
     }
 
+    //[POST] /reviews
     addReview = async (req, res) => {
         try {
-            const { menuItemId, restaurantId, sessionId, customerName, rating, comment } = req.body;
+            const { menuItemId, restaurantId, sessionId, rating, comment, userId, customerName } = req.body;
             
             const newReview = new Review({
-                menuItemId, restaurantId, sessionId, customerName, rating, comment
+                menuItemId, restaurantId, sessionId, rating, comment, userId, customerName: customerName || "Guest" 
             });
             await newReview.save();
             
@@ -52,6 +55,7 @@ class ReviewController {
         }
     }
 
+    //[PUT] /reviews/:id
     updateReview = async (req, res) => {
         try {
             const { id } = req.params;
@@ -73,6 +77,7 @@ class ReviewController {
         }
     }
 
+    //[DELETE] /reviews/:id
     deleteReview = async (req, res) => {
         try {
             const { id } = req.params;
