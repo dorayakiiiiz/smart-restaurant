@@ -48,16 +48,30 @@ export default function WaiterDashboard() {
 
     // Listen events
     socket.on("new_order_alert", handleInvalidate);
+    socket.on("order_accepted", handleInvalidate);
+    socket.on("order_rejected", handleInvalidate);
     socket.on("kitchen:order_update", handleInvalidate);
+    socket.on("waiter:order_ready", handleInvalidate);
     socket.on("order_served", handleInvalidate);
+    socket.on("order_completed", handleInvalidate);
+    socket.on("payment_request", handleInvalidate);
     socket.on("payment_requested", handleInvalidate);
+    socket.on("payment_completed", handleInvalidate);
+    socket.on("order_update", handleInvalidate);
     socket.on("session_update", handleInvalidate);
 
     return () => {
       socket.off("new_order_alert", handleInvalidate);
+      socket.off("order_accepted", handleInvalidate);
+      socket.off("order_rejected", handleInvalidate);
       socket.off("kitchen:order_update", handleInvalidate);
+      socket.off("waiter:order_ready", handleInvalidate);
       socket.off("order_served", handleInvalidate);
+      socket.off("order_completed", handleInvalidate);
+      socket.off("payment_request", handleInvalidate);
       socket.off("payment_requested", handleInvalidate);
+      socket.off("payment_completed", handleInvalidate);
+      socket.off("order_update", handleInvalidate);
       socket.off("session_update", handleInvalidate);
     };
   }, [user?.restaurantId, queryClient]);
