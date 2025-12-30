@@ -4,8 +4,8 @@ const { Schema } = mongoose;
 const UserSchema = new Schema({
     email: { 
         type: String, 
-        unique: true,
-        sparse: true // Cho phép null (dành cho guest hoặc nhân viên tạo bởi admin ko cần email ngay)
+        // BỎ unique: true ở đây
+        sparse: true 
     },
     fullName: {
         type: String,
@@ -20,14 +20,12 @@ const UserSchema = new Schema({
         default: 'customer',
         required: true
     },
-    // Link tới nhà hàng nào (dành cho nhân viên)
+    // Link tới nhà hàng nào
     restaurantId: {
         type: Schema.Types.ObjectId,
         ref: 'Restaurant'
     },
-    googleId: {
-        type: String
-    },
+    googleId: { type: String },
     loginMethod: {
         type: String,
         enum: ['local', 'google', 'guest'],
@@ -40,5 +38,9 @@ const UserSchema = new Schema({
 }, {
     timestamps: true
 })
+
+// TẠO COMPOUND INDEX: Email + RestaurantId phải là duy nhất
+// Nghĩa là: 1 email có thể tạo nhiều acc, miễn là khác restaurantId
+UserSchema.index({ email: 1, restaurantId: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model('User', UserSchema);
