@@ -379,7 +379,8 @@ export default function KitchenDashboard() {
                 show={showHistory} 
                 onClose={() => setShowHistory(false)} 
                 historyOrders={historyOrders} 
-                onRecall={(orderId) => recallOrderMutation.mutate(orderId)} 
+                onRecall={(orderId) => recallOrderMutation.mutate(orderId)}
+                onItemAction={(orderId, itemId, status) => updateItemStatusMutation.mutate({ orderId, itemId, status })}
             />
         </div>
     );

@@ -11,7 +11,12 @@ const getMenu = async (restaurantId = null) => {
     return response.data;
 };
 
-const getMenuItem = async (id) => {
+const getMenuItem = async (id, restaurantId) => {
+    if (restaurantId && typeof restaurantId === 'string') {
+        // Gọi API Public dành cho khách
+        const response = await api.get(`/menu/public/${id}/${restaurantId}`);
+        return response.data;
+    }
     const response = await api.get(`/menu/${id}`);
     return response.data;
 };

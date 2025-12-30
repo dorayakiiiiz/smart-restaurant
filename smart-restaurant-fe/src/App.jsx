@@ -40,6 +40,7 @@ import MenuItemDetail from "./pages/AdminDashboard/MenuItemDetail";
 import MenuPage from "./pages/Customer/MenuPage";
 import CartPage from "./pages/Customer/CartPage";
 import OrderTrackingPage from "./pages/Customer/OrderTrackingPage";
+import MenuDetailPage from "./pages/Customer/MenuDetailPage";
 import CustomerLogin from "./pages/Auth/CustomerLogin";
 import CustomerRegister from "./pages/Auth/CustomerRegister";
 import CustomerForgotPassword from "./pages/Auth/CustomerForgotPassword"; // Import mới
@@ -122,6 +123,7 @@ function App() {
                         {/* 2. Customer Flow (Mobile First) */}
                         <Route element={<CustomerLayout />}>
                             <Route path="/menu" element={<MenuPage />} />
+                            <Route path="/menu/public/:id/:restaurantId" element={<MenuDetailPage />} />
                             <Route path="/cart" element={<CartPage />} />
                             <Route path="/orders" element={<OrderTrackingPage />} />
                             
