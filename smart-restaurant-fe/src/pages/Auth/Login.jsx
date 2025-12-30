@@ -81,8 +81,8 @@ export default function Login() {
                 content: 'Login successfully! Redirecting...'
             });
 
-            setTimeout(() => {
-                login(refreshToken, accessToken);
+            setTimeout(async () => {
+                await login(refreshToken, accessToken);
             }, 2600);
 
         } catch (err) {
