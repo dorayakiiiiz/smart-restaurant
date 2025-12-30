@@ -139,10 +139,12 @@ class KitchenController {
             // Emit Socket
             const io = req.app.get('socketio');
             
-            // 1. Notify Customer (session room), item ready mới báo cho customer
-            if (order.sessionId && status === 'ready') {
-                const sessionId = order.sessionId._id.toString();
-                io.to(`session_${sessionId}`).emit('kitchen:orderItem_ready', order);
+            // 1. Notify Customer (session room)
+            // FIX: Emit sự kiện order_update về cho Customer khi món chuyển sang trạng thái Ready
+            // Lưu ý: order.sessionId đã được populate ở trên nên phải lấy ._id để có string ID chính xác
+            if (order.sessionId && (status === 'preparing' || status === 'ready' || status === 'served')) {
+                const sessionIdStr = order.sessionId._id ? order.sessionId._id.toString() : order.sessionId.toString();
+                io.to(`session_${sessionIdStr}`).emit('order_update', order);
             }
 
             // 2. Notify Waiter (waiter room) - Emit cho mọi update
