@@ -40,6 +40,7 @@ export default function MenuDetailPage() {
     const [editingReviewId, setEditingReviewId] = useState(null);
 
     const { user } = useAuth();
+    console.log("Current User:", user);
 
     // Fetch item detail
     const { data, isLoading, error } = useQuery({
@@ -49,19 +50,18 @@ export default function MenuDetailPage() {
 
     // Fetch reviews
     const { data: reviews = [] } = useQuery({
-        queryKey: ['reviews', id],
-        queryFn: () => reviewService.getReviews(id),
+        queryKey: ['reviews', restaurantId, id],
+        queryFn: () => reviewService.getReviews(restaurantId, id),
         enabled: !!id
     });
 
     const item = data?.item;
-    console.log("Menu Item Detail:", item);
 
     // Mutations
     const addReviewMutation = useMutation({
         mutationFn: (newReview) => reviewService.addReview(newReview),
         onSuccess: () => {
-            queryClient.invalidateQueries(['reviews', id]);
+            queryClient.invalidateQueries(['reviews', restaurantId, id]);
             queryClient.invalidateQueries(['menuItem', id]);
             setComment("");
             setRating(5);
@@ -73,7 +73,7 @@ export default function MenuDetailPage() {
     const updateReviewMutation = useMutation({
         mutationFn: ({ id, data }) => reviewService.updateReview(id, data),
         onSuccess: () => {
-            queryClient.invalidateQueries(['reviews', id]);
+            queryClient.invalidateQueries(['reviews', restaurantId, id]);
             queryClient.invalidateQueries(['menuItem', id]);
             setEditingReviewId(null);
             setComment("");
@@ -84,7 +84,7 @@ export default function MenuDetailPage() {
     const deleteReviewMutation = useMutation({
         mutationFn: (reviewId) => reviewService.deleteReview(reviewId),
         onSuccess: () => {
-            queryClient.invalidateQueries(['reviews', id]);
+            queryClient.invalidateQueries(['reviews', restaurantId, id]);
             queryClient.invalidateQueries(['menuItem', id]);
         }
     });
@@ -109,7 +109,8 @@ export default function MenuDetailPage() {
                 menuItemId: item._id,
                 restaurantId: restaurantId,
                 sessionId: sessionInfo.session._id,
-                customerName: customerName || "Guest",
+                userId: user.id || user._id, // Đảm bảo dùng _id
+                customerName: user.fullName, // Gửi kèm tên
                 rating,
                 comment
             });
@@ -126,9 +127,20 @@ export default function MenuDetailPage() {
     };
 
     // Phân loại review của mình và người khác
-    const currentSessionId = sessionInfo?.session?._id;
-    const myReview = reviews.find(r => r.sessionId === currentSessionId);
-    const otherReviews = reviews.filter(r => r.sessionId !== currentSessionId);
+// 2. Sửa logic phân loại Review (QUAN TRỌNG)
+const currentUserId = user?.id || user?._id;
+
+// So sánh ID phải so sánh string với string
+const myReview = reviews.find(r => {
+    const reviewUserId = typeof r.userId === 'object' ? r.userId?._id : r.userId;
+    return reviewUserId === currentUserId;
+});
+
+// Lọc các review của người khác
+const otherReviews = reviews.filter(r => {
+    const reviewUserId = typeof r.userId === 'object' ? r.userId?._id : r.userId;
+    return reviewUserId !== currentUserId;
+});
 
 
     if (isLoading) return <div className="p-10 text-center">Loading...</div>;
@@ -277,58 +289,98 @@ export default function MenuDetailPage() {
                     <h3 className="font-black text-2xl text-gray-800 uppercase tracking-tight">Guest Reviews</h3>
                     
                     {/* Review Stat Card */}
-                    <div className="flex items-center gap-5 bg-white px-6 py-4 rounded-[1.5rem] shadow-sm border border-gray-100">
-                        <div className="text-center border-r border-gray-100 pr-5">
-                            <span className="block text-3xl font-black text-gray-900 leading-none tracking-tighter">{item.averageRating || "0.0"}</span>
-                            <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest mt-1 block">Rating</span>
+                    <div className="flex items-center gap-6 bg-gradient-to-br from-white to-gray-50 px-8 py-5 rounded-2xl shadow-md border border-gray-100">
+                        <div className="text-center border-r border-gray-200 pr-6">
+                            <span className="block text-4xl font-extrabold text-[#D4AF37] leading-none">{item.averageRating || "0.0"}</span>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1 block">Average</span>
                         </div>
-                        <div>
-                            <StarRating rating={Math.round(item.averageRating || 0)} editable={false} size="text-sm" />
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">From {item.totalReviews || 0} Reviews</span>
+                        <div className="flex flex-col justify-center">
+                            <div className="mb-1">
+                                <StarRating rating={Math.round(item.averageRating || 0)} editable={false} />
+                            </div>
+                            <span className="text-xs text-gray-500 font-medium">
+                                Based on <span className="font-bold text-gray-800">{item.totalReviews || 0}</span> reviews
+                            </span>
                         </div>
                     </div>
                 </div>
 
                 {/* Form Review */}
-                {(!myReview || editingReviewId) && (
-                    <div className="bg-white p-8 rounded-[2rem] shadow-xl border-2 border-[#D4AF37]/5 mb-10">
-                        <h4 className="font-black text-gray-800 mb-6 uppercase text-xs tracking-widest flex items-center gap-2">
-                            <i className="fa-solid fa-quote-left text-[#D4AF37]"></i>
-                            {editingReviewId ? 'Modify Opinion' : 'Write a Review'}
-                        </h4>
-                        <div className="space-y-5">
-                            {!editingReviewId && (
-                                <input 
-                                    type="text" 
-                                    placeholder="Your Signature Name" 
-                                    className="w-full p-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-[#D4AF37] outline-none transition-all font-bold text-sm"
-                                    value={customerName}
-                                    onChange={e => setCustomerName(e.target.value)}
-                                />
-                            )}
-                            <div className="flex items-center justify-between bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Star Impression</span>
-                                <StarRating rating={rating} setRating={setRating} size="text-2xl" />
-                            </div>
-                            <textarea 
-                                className="w-full p-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-[#D4AF37] outline-none transition-all font-medium text-sm"
-                                rows="4"
-                                placeholder="Describe your culinary journey..."
-                                value={comment}
-                                onChange={e => setComment(e.target.value)}
-                            ></textarea>
-                            <div className="flex gap-3">
-                                <button 
-                                    onClick={handleSubmitReview}
-                                    className="flex-1 bg-[#1a1a1a] text-[#D4AF37] py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-black hover:shadow-2xl transition-all active:scale-95"
-                                >
-                                    {editingReviewId ? 'Confirm Updates' : 'Publish Review'}
-                                </button>
-                                {editingReviewId && (
-                                    <button onClick={() => { setEditingReviewId(null); setComment(""); setRating(5); }} className="px-6 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase hover:bg-gray-200">Cancel</button>
+                {/* Có đăng nhập mới cho review */}
+                {user ? (
+                    (!myReview || editingReviewId) ? (
+                        <div className="bg-white p-8 rounded-[2rem] shadow-xl border-2 border-[#D4AF37]/5 mb-10">
+                            <h4 className="font-black text-gray-800 mb-6 uppercase text-xs tracking-widest flex items-center gap-2">
+                                <i className="fa-solid fa-quote-left text-[#D4AF37]"></i>
+                                {editingReviewId ? 'Modify Opinion' : 'Write a Review'}
+                            </h4>
+                            <div className="space-y-5">
+                                {!editingReviewId && (
+                                    <input 
+                                        type="text" 
+                                        placeholder="Your Signature Name" 
+                                        className="w-full p-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-[#D4AF37] outline-none transition-all font-bold text-sm"
+                                        value={user.fullName || customerName}
+                                        onChange={e => setCustomerName(e.target.value)}                    
+                                    />
                                 )}
+                                <div className="flex items-center justify-between bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Star Impression</span>
+                                    <StarRating rating={rating} setRating={setRating} size="text-2xl" />
+                                </div>
+                                <textarea 
+                                    className="w-full p-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-[#D4AF37] outline-none transition-all font-medium text-sm"
+                                    rows="4"
+                                    placeholder="Describe your culinary journey..."
+                                    value={comment}
+                                    onChange={e => setComment(e.target.value)}
+                                ></textarea>
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={handleSubmitReview}
+                                        className="flex-1 bg-[#1a1a1a] text-[#D4AF37] py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-black hover:shadow-2xl transition-all active:scale-95"
+                                    >
+                                        {editingReviewId ? 'Confirm Updates' : 'Publish Review'}
+                                    </button>
+                                    {editingReviewId && (
+                                        <button onClick={() => { setEditingReviewId(null); setComment(""); setRating(5); }} className="px-6 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs uppercase hover:bg-gray-200">Cancel</button>
+                                    )}
+                                </div>
                             </div>
                         </div>
+                    ) : 
+                    (
+                    // Trường hợp 2: Đã có review rồi (Hiển thị thông báo thay vì để trống)
+                    <div className="mb-10 p-8 bg-[#fdfaf3] rounded-[2rem] border border-[#D4AF37]/20 text-center shadow-sm">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-[#D4AF37]">
+                            <i className="fa-solid fa-circle-check text-2xl"></i>
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-800 mb-2">Review Captured!</h4>
+                        <p className="text-gray-500 text-sm mb-4">
+                            You have already shared your thoughts on this item. <br/>
+                            Thank you for your feedback!
+                        </p>
+                        <button 
+                            onClick={() => document.getElementById('my-review-section')?.scrollIntoView({ behavior: 'smooth' })}
+                            className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37] hover:underline"
+                        >
+                            View your feedback below
+                        </button>
+                    </div>
+                    )
+                ) : (
+                    <div className="mb-10 p-8 bg-gray-50 rounded-2xl border border-gray-200 text-center">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-[#D4AF37]">
+                            <i className="fa-solid fa-user-lock text-2xl"></i>
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-800 mb-2">Want to share your experience?</h4>
+                        <p className="text-gray-500 text-sm mb-6">Please sign in to leave a review for this item.</p>
+                        <button 
+                            onClick={() => navigate('/auth/system/login')}
+                            className="px-6 py-2.5 bg-[#1a1a1a] text-[#D4AF37] rounded-xl font-bold text-sm hover:bg-black transition-colors"
+                        >
+                            Sign In Now
+                        </button>
                     </div>
                 )}
 
@@ -345,9 +397,19 @@ export default function MenuDetailPage() {
                                 <StarRating rating={myReview.rating} editable={false} />
                             </div>
                             <p className="text-gray-700 text-sm leading-relaxed mb-5 italic">"{myReview.comment}"</p>
-                            <div className="flex gap-5 border-t border-[#D4AF37]/10 pt-4">
-                                <button onClick={() => handleEditClick(myReview)} className="text-[10px] font-black uppercase text-blue-500 hover:text-blue-700 tracking-widest">Edit Entry</button>
-                                <button onClick={() => deleteReviewMutation.mutate(myReview._id)} className="text-[10px] font-black uppercase text-red-400 hover:text-red-600 tracking-widest">Discard</button>
+                            <div className="flex gap-3 border-t border-[#D4AF37]/10 pt-4 mt-2">
+                                <button 
+                                    onClick={() => handleEditClick(myReview)} 
+                                    className="flex items-center gap-2 px-4 py-2 bg-[#f8f9fa] text-[#495057] rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 transition-colors"
+                                >
+                                    <i className="fa-solid fa-pen"></i> Edit
+                                </button>
+                                <button 
+                                    onClick={() => deleteReviewMutation.mutate(myReview._id)} 
+                                    className="flex items-center gap-2 px-4 py-2 bg-rose-50/50 text-rose-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-red-100 transition-colors"
+                                >
+                                    <i className="fa-solid fa-trash"></i> Delete
+                                </button>
                             </div>
                         </div>
                     )}
@@ -356,7 +418,11 @@ export default function MenuDetailPage() {
                         <div key={review._id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start mb-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-gray-50 text-gray-300 flex items-center justify-center font-black text-xs">{review.customerName[0]}</div>
+                                    {review.userId?.avatar ? (
+                                        <img src={review.userId.avatar} alt={review.customerName} className="w-10 h-10 rounded-full object-cover" />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 text-gray-300 flex items-center justify-center font-black text-xs">{review.customerName[0]}</div>
+                                    )}
                                     <div>
                                         <span className="font-bold text-gray-800 block text-sm tracking-tight">{review.customerName}</span>
                                         <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Verified Guest</span>
