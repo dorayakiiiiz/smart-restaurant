@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { socket } from "../services/socket"; // Import socket
+import { useAuth } from "./AuthContext"; // Import AuthContext để check login
 
 const CartContext = createContext();
 
@@ -48,6 +49,8 @@ export const CartProvider = ({ children }) => {
         _setSessionInfo(newSessionData);
     };
 
+    const { user } = useAuth();
+
     // --- Lắng nghe sự kiện kết thúc session ---
     useEffect(() => {
         if (sessionInfo?.session?._id) {
@@ -71,7 +74,10 @@ export const CartProvider = ({ children }) => {
 
                 // 3. Thông báo và reload/redirect
                 alert("Payment successful! Thank you for dining with us.");
-                window.location.href = "/"; // Đá về trang chủ
+                if (user)
+                    window.location.href = "/profile";
+                else 
+                    window.location.href = "/menu";
             };
 
             // Lắng nghe
