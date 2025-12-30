@@ -1,7 +1,8 @@
 import Table from "../models/Table.mjs";
-import OrderSession from "../models/OrderSession.mjs";
 import Order from "../models/Order.mjs";
+import OrderSession from "../models/OrderSession.mjs"; // Import thêm
 import MenuItem from "../models/MenuItem.mjs";
+import mongoose from "mongoose";
 
 class OrderController {
   // [POST] /api/orders/session/start
@@ -193,6 +194,97 @@ class OrderController {
 
       res.status(200).json({ message: "Bill requested successfully", session });
     } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
+  // [POST] /api/orders/session/:sessionId/claim (MỚI)
+  // Gán session và các order ẩn danh trong session đó cho user đang login
+  async claimSession(req, res) {
+    try {
+      const { sessionId } = req.params;
+      const userId = req.user.id;
+
+      // 1. Cập nhật Session: Gán customerId nếu chưa có
+      await OrderSession.findByIdAndUpdate(sessionId, {
+        customerId: userId,
+      });
+
+      // 2. Cập nhật các Order: Chỉ cập nhật các order chưa có người sở hữu (orderedBy: null)
+      // thuộc session này thành của user này.
+      await Order.updateMany(
+        { sessionId: sessionId, orderedBy: null },
+        { orderedBy: userId }
+      );
+
+      res.status(200).json({ message: "Session claimed successfully" });
+    } catch (err) {
+      console.error("Claim Session Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+
+  // [GET] /api/orders/history
+  // Lấy lịch sử đơn hàng của user đang login
+  async getCustomerHistory(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const history = await Order.aggregate([
+        // 1. Lọc các order của user này
+        { $match: { orderedBy: new mongoose.Types.ObjectId(userId) } },
+
+        // 2. Sắp xếp order theo thời gian tạo (để hiển thị đúng thứ tự gọi món)
+        { $sort: { createdAt: 1 } },
+
+        // 3. Group theo Session (Mỗi session là 1 lần đi ăn)
+        {
+          $group: {
+            _id: "$sessionId",
+
+            // Gom các order con vào mảng ordersList
+            ordersList: {
+              $push: {
+                _id: "$_id",
+                status: "$status",
+                createdAt: "$createdAt",
+                items: "$items" // Giữ nguyên cấu trúc items của từng lần order
+              }
+            }
+          }
+        },
+
+        // 4. Lookup Session để lấy thông tin thanh toán & ngày giờ
+        {
+          $lookup: {
+            from: "ordersessions",
+            localField: "_id",
+            foreignField: "_id",
+            as: "sessionInfo"
+          }
+        },
+        { $unwind: "$sessionInfo" },
+
+        // 5. Sắp xếp Session mới nhất lên đầu
+        { $sort: { "sessionInfo.startTime": -1 } },
+
+        // 6. Project output
+        {
+          $project: {
+            sessionId: "$_id",
+            date: "$sessionInfo.startTime",
+            paymentStatus: "$sessionInfo.paymentStatus",
+            // Tổng tiền lấy từ session (Backend đã tính khi checkout)
+            // Hoặc nếu muốn tính lại từ items thì dùng $reduce, nhưng lấy từ session cho chuẩn bill
+            totalAmount: "$sessionInfo.totalAmount",
+            ordersList: 1
+          }
+        }
+      ]);
+
+      res.status(200).json({ orders: history });
+    } catch (err) {
+      console.error("Get History Error:", err);
       res.status(500).json({ error: err.message });
     }
   }
