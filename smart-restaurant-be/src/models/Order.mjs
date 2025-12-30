@@ -48,6 +48,12 @@ const OrderSchema = new Schema({
 
     acceptedAt: { type: Date }, // Thời điểm Waiter accept
     preparingAt: { type: Date }, // Thời điểm Kitchen accept (bắt đầu làm)
+    readyAt: { type: Date },
+    servedAt: { type: Date },
+    
+    acceptedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    preparedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    servedBy: { type: Schema.Types.ObjectId, ref: "User" },
     
     rejectionReason: { type: String } // Nếu Waiter từ chối
 }, { timestamps: true });

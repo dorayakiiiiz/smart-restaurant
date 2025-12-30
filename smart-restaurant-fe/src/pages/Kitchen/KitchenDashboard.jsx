@@ -132,11 +132,15 @@ export default function KitchenDashboard() {
 
         socket.on('order_accepted', handleRefetch);
         socket.on('kitchen:order_update', handleRefetch);
+        socket.on('order_served', handleRefetch);
+        socket.on('order_completed', handleRefetch);
 
         return () => {
             socket.off('connect', joinRoom);
             socket.off('order_accepted', handleRefetch);
             socket.off('kitchen:order_update', handleRefetch);
+            socket.off('order_served', handleRefetch);
+            socket.off('order_completed', handleRefetch);
         };
     }, [user?.restaurantId, queryClient]);
 

@@ -27,7 +27,8 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard
 import DashboardOverview from "./pages/AdminDashboard/DashboardOverview";
 import MenuManagement from "./pages/AdminDashboard/MenuManagement";
 import  CategoriesManagement  from "./pages/AdminDashboard/CategoriesManagement";
-import { OrdersPage, KDSPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
+import OrdersPage from "./pages/AdminDashboard/OrdersPage";
+import { KDSPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
 import StaffManagementPage from "./pages/AdminDashboard/StaffManagementPage";
 import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
 import SettingsPage from "./pages/AdminDashboard/SettingsPage"; 

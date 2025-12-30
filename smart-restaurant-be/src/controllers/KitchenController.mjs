@@ -88,6 +88,9 @@ class KitchenController {
                     path: 'sessionId',
                     populate: { path: 'tableId', select: 'name' }
                 })
+                .populate('acceptedBy', 'fullName email role')
+                .populate('preparedBy', 'fullName email role')
+                .populate('servedBy', 'fullName email role');
             if (!order) {
                 return res.status(404).json({ message: "Order not found" });
             }
@@ -100,6 +103,7 @@ class KitchenController {
 
                     // TỰ ĐỘNG CẬP NHẬT TẤT CẢ ITEMS
                     if (status === 'ready') {
+                        order.readyAt = new Date();
                         order.items.forEach(item => {
                             if (item.status === 'preparing') { // Chỉ cập nhật những món đang làm
                                 item.status = 'ready';
@@ -110,6 +114,7 @@ class KitchenController {
                     // Đồng bộ status items nếu cần lúc chuyển từ rêceived -> preparing
                     if (status === 'preparing') {
                         order.preparingAt = new Date(); //Thời điểm lúc bếp bấm accept -> preparing
+                        order.preparedBy = req.user.id;
                         order.items.forEach(item => {
                             // Support Recall: pending -> preparing AND served -> preparing
                             if (item.status === 'pending' || item.status === 'served') {
@@ -139,10 +144,21 @@ class KitchenController {
                     const allReady = order.items.every(i => i.status === 'ready');
                     if (allReady && order.status !== 'served') {
                         order.status = 'ready';
+                        order.readyAt = new Date();
                     }
                 }
             }
             await order.save();
+
+            await order.populate([
+                {
+                    path: 'sessionId',
+                    populate: { path: 'tableId', select: 'name' }
+                },
+                { path: 'acceptedBy', select: 'fullName email' },
+                { path: 'preparedBy', select: 'fullName email' },
+                { path: 'servedBy', select: 'fullName email' }
+            ]);
 
             // Emit Socket
             const io = req.app.get('socketio');
@@ -157,10 +173,12 @@ class KitchenController {
 
             // 2. Notify Waiter (waiter room) - Emit cho mọi update
             io.to(`restaurant_${order.restaurantId}_waiter`).emit('kitchen:order_update', order);
+            io.to(`restaurant_${order.restaurantId}_admin`).emit('kitchen:order_update', order);
             
             //2b. Emit event đặc biệt khi có item ready
             if (status === 'ready' || order.status === 'ready') {
                 io.to(`restaurant_${order.restaurantId}_waiter`).emit('waiter:order_ready', order);
+                io.to(`restaurant_${order.restaurantId}_admin`).emit('waiter:order_ready', order);
             }
 
             // 3. Notify Kitchen (kitchen room) - Sync across kitchen devices
