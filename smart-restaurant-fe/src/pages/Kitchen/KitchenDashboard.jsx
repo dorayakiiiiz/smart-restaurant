@@ -195,7 +195,7 @@ export default function KitchenDashboard() {
         <div className="flex flex-col h-screen bg-[#0a0c10] text-gray-100 font-sans overflow-hidden selection:bg-amber-500 selection:text-black">
             
             {/* === HEADER BAR === */}
-            <header className="h-[80px] bg-gradient-to-r from-[#12151c] via-[#1a1e28] to-[#12151c] border-b border-gray-800/50 flex items-center justify-between px-4 lg:px-8 shadow-2xl z-20 shrink-0 relative overflow-hidden">
+            <header className="h-[70px] md:h-[80px] bg-gradient-to-r from-[#12151c] via-[#1a1e28] to-[#12151c] border-b border-gray-800/50 flex items-center justify-between px-3 md:px-4 lg:px-8 shadow-2xl z-20 shrink-0 relative overflow-hidden">
                 
                 {/* Background Pattern */}
                 <div className="absolute inset-0 opacity-5" style={{
@@ -203,24 +203,24 @@ export default function KitchenDashboard() {
                 }}></div>
 
                 {/* LEFT: Logo */}
-                <div className="flex items-center gap-4 relative z-10">
+                <div className="flex items-center gap-2 md:gap-4 relative z-10">
                     <div className="relative">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/30 ring-2 ring-white/10">
-                            <i className="fa-solid fa-fire-burner text-white text-2xl drop-shadow-lg"></i>
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/30 ring-2 ring-white/10">
+                            <i className="fa-solid fa-fire-burner text-white text-lg md:text-2xl drop-shadow-lg"></i>
                         </div>
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-[#12151c] animate-pulse"></div>
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 md:w-4 md:h-4 bg-emerald-500 rounded-full border-2 border-[#12151c] animate-pulse"></div>
                     </div>
-                    <div className="hidden sm:block">
-                        <h1 className="text-2xl lg:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 leading-none font-momo tracking-tight">
+                    <div className="">
+                        <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 leading-none font-momo tracking-tight">
                             KDS
                         </h1>
-                        <span className="text-[10px] text-gray-500 font-bold tracking-[0.3em] uppercase">Kitchen Display</span>
+                        <span className="text-gray-500 font-bold font-quicksand">Kitchen Display System</span>
                     </div>
                 </div>
 
                 {/* CENTER: Stats Bar (Desktop LG+) */}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex">
-                    <div className="flex items-center bg-[#0a0c10]/80 backdrop-blur-xl rounded-2xl border border-gray-700/50 shadow-2xl px-3 py-2">
+                    <div className="flex items-center bg-[#0a0c10]/80 backdrop-blur-xl rounded-2xl border border-gray-700/50 shadow-2xl">
                         <StatItem label="PENDING" count={stats.pending} color="text-amber-500" animate={stats.pending > 0} />
                         <div className="w-px h-10 bg-gradient-to-b from-transparent via-gray-600 to-transparent mx-2"></div>
                         <StatItem label="COOKING" count={stats.preparing} color="text-blue-500" />
@@ -232,13 +232,13 @@ export default function KitchenDashboard() {
                 </div>
 
                 {/* RIGHT: Controls & Time */}
-                <div className="flex items-center gap-5 relative z-10">
+                <div className="flex items-center gap-2 md:gap-5 relative z-10">
                     {/* Time Display */}
-                    <div className="text-right hidden md:block">
-                        <div className="text-3xl font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-200 to-gray-400 leading-none tracking-wider">
+                    <div className="text-right">
+                        <div className="text-xl md:text-2xl font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-200 to-gray-400 leading-none tracking-wider">
                             {formatTime(currentTime)}
                         </div>
-                        <div className="text-[10px] text-gray-500 font-bold uppercase mt-1 tracking-widest">
+                        <div className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase mt-1 tracking-widest">
                             {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                         </div>
                     </div>
@@ -246,55 +246,55 @@ export default function KitchenDashboard() {
                     <div className="h-10 w-px bg-gradient-to-b from-transparent via-gray-600 to-transparent hidden xl:block"></div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 md:gap-2">
                         <button 
                             onClick={toggleSound}
                             className={`
-                                w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0
+                                w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center transition-all duration-300 shrink-0
                                 ${isSoundEnabled 
-                                    ? 'bg-gradient-to-br from-emerald-500/20 to-green-600/20 text-emerald-400 hover:from-emerald-500/30 hover:to-green-600/30 border border-emerald-500/30 shadow-lg shadow-emerald-500/10' 
-                                    : 'bg-gray-800/50 text-gray-500 hover:bg-gray-800 border border-gray-700'
+                                    ? 'bg-gradient-to-br from-emerald-500/20 to-green-600/20 text-emerald-400 hover:from-emerald-500/30 hover:to-green-600/30 shadow-lg shadow-emerald-500/10' 
+                                    : 'bg-gray-800/50 text-gray-500 hover:bg-gray-800'
                                 }
                             `}
                             title={isSoundEnabled ? "Mute Sound" : "Enable Sound"}
                         >
-                            <i className={`fa-solid text-lg ${isSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}`}></i>
+                            <i className={`fa-solid text-sm md:text-lg ${isSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}`}></i>
                         </button>
 
                         <button 
                             onClick={() => setShowHistory(true)}
-                            className="w-11 h-11 rounded-xl bg-gray-800/50 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 border border-gray-700 shrink-0 hover:border-gray-600"
+                            className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
                             title="View History"
                         >
-                            <i className="fa-solid fa-clock-rotate-left text-lg"></i>
+                            <i className="fa-solid fa-clock-rotate-left text-sm md:text-lg"></i>
                         </button>
 
                         <button 
                             onClick={logout}
-                            className="w-11 h-11 rounded-xl bg-gradient-to-br from-red-500/10 to-rose-600/10 text-red-500 hover:from-red-500/20 hover:to-rose-600/20 flex items-center justify-center transition-all duration-300 border border-red-500/20 shrink-0"
+                            className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-500/20 text-red-500 hover:from-red-500/20 hover:to-rose-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
                             title="Logout"
                         >
-                            <i className="fa-solid fa-power-off text-lg"></i>
+                            <i className="fa-solid fa-power-off text-sm md:text-lg"></i>
                         </button>
                     </div>
                 </div>
             </header>
 
             {/* === TABLET STATS BAR (MD only) === */}
-            <div className="hidden md:flex lg:hidden bg-gradient-to-r from-[#12151c] to-[#1a1e28] border-b border-gray-800/50 py-3 justify-center shrink-0 z-10 shadow-lg">
-                <div className="flex items-center justify-around w-full px-6">
+            <div className="flex lg:hidden bg-gradient-to-r from-[#12151c] to-[#1a1e28] border-b border-gray-800/50 justify-center z-10 shadow-lg">
+                <div className="flex items-center justify-around w-full px-4 md:px-6">
                     <StatItem label="PENDING" count={stats.pending} color="text-amber-500" animate={stats.pending > 0} />
-                    <div className="w-px h-10 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
+                    <div className="w-px h-8 md:h-10 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
                     <StatItem label="COOKING" count={stats.preparing} color="text-blue-500" />
-                    <div className="w-px h-10 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
+                    <div className="w-px h-8 md:h-10 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
                     <StatItem label="READY" count={stats.ready} color="text-emerald-500" />
-                    <div className="w-px h-10 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
+                    <div className="w-px h-8 md:h-10 bg-gradient-to-b from-transparent via-gray-600 to-transparent"></div>
                     <StatItem label="LATE" count={stats.overdue} color="text-red-500" animate={stats.overdue > 0} />
                 </div>
             </div>
 
             {/* === MAIN BOARD === */}
-            <main className="flex-1 p-4 lg:p-6 overflow-hidden relative">
+            <main className="flex-1 p-2 md:p-4 lg:p-6 overflow-hidden relative">
                 
                 {/* Background with gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-br from-[#0a0c10] via-[#0d1017] to-[#0a0c10]"></div>
@@ -307,14 +307,14 @@ export default function KitchenDashboard() {
                 {loadingOrders && (
                     <div className="absolute inset-0 flex items-center justify-center bg-[#0a0c10]/90 z-50 backdrop-blur-sm">
                         <div className="flex flex-col items-center gap-4">
-                            <div className="w-16 h-16 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin"></div>
-                            <span className="text-gray-400 font-bold uppercase tracking-widest text-sm">Loading Orders...</span>
+                            <div className="w-12 h-12 md:w-16 md:h-16 border-4 border-amber-500/30 border-t-amber-500 rounded-full animate-spin"></div>
+                            <span className="text-gray-400 font-bold uppercase tracking-widest text-xs md:text-sm">Loading Orders...</span>
                         </div>
                     </div>
                 )}
 
-                {/* Columns Grid */}
-                <div className="flex h-full gap-5 lg:gap-6 overflow-x-auto pb-2 relative z-10">
+                {/* Columns Grid - FIXED: Always 3 columns on md+ */}
+                <div className="flex h-full gap-2 md:gap-4 lg:gap-6 relative z-10">
                     
                     {/* COLUMN: RECEIVED */}
                     <Column 

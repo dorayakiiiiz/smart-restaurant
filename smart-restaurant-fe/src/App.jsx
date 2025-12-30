@@ -40,6 +40,10 @@ import MenuPage from "./pages/Customer/MenuPage";
 import CartPage from "./pages/Customer/CartPage";
 import OrderTrackingPage from "./pages/Customer/OrderTrackingPage";
 import MenuDetailPage from "./pages/Customer/MenuDetailPage";
+import CustomerLogin from "./pages/Auth/CustomerLogin";
+import CustomerRegister from "./pages/Auth/CustomerRegister";
+import CustomerForgotPassword from "./pages/Auth/CustomerForgotPassword"; // Import mới
+import CustomerProfilePage from "./pages/Customer/CustomerProfilePage";
 
 // Import Pages mới
 import WaiterDashboard from "./pages/Waiter/WaiterDashboard";
@@ -64,10 +68,17 @@ function App() {
             <AuthProvider>
                 <CartProvider>
                     <Routes>
-                        {/* Public Routes */}
+                        {/* 1. Landing Page & Profile (Giữ Header/Footer cho các trang này) */}
                         <Route element={<BaseLayout />}>
                             <Route path="/" element={<Home />} />
+                            
                         </Route>
+
+                        {/* 2. Customer Auth (Login/Register/Forgot) - TÁCH RA KHỎI BaseLayout */}
+                        <Route path="/auth/login" element={<CustomerLogin />} />
+                        <Route path="/auth/register" element={<CustomerRegister />} />
+                        <Route path="/auth/forgot-password" element={<CustomerForgotPassword />} />
+
 
                         {/* Auth Routes for restaurant system */}
                         <Route element={<BlankLayout />}>
@@ -108,12 +119,17 @@ function App() {
                             </Route>
                         </Route>
 
-                        {/* CUSTOMER ROUTES */}
+                        {/* 2. Customer Flow (Mobile First) */}
                         <Route element={<CustomerLayout />}>
                             <Route path="/menu" element={<MenuPage />} />
                             <Route path="/menu/public/:id/:restaurantId" element={<MenuDetailPage />} />
                             <Route path="/cart" element={<CartPage />} />
-                            <Route path="/orders" element={<OrderTrackingPage />} /> {/* Đã thay thế placeholder */}
+                            <Route path="/orders" element={<OrderTrackingPage />} />
+                            
+                            {/* SỬA: Đưa Profile vào đây và bọc ProtectedRoute */}
+                            <Route element={<ProtectedRoute allowedRoles={['customer']} loginPath="/auth/login" />}>
+                                <Route path="/profile" element={<CustomerProfilePage />} />
+                            </Route>
                         </Route>
 
                         {/* WAITER ROUTES */}

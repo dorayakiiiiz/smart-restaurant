@@ -27,43 +27,43 @@ export default function Column({ title, count, color, icon, children }) {
 
     return (
         <div className={`
-            flex-1 flex flex-col min-w-[320px] md:min-w-[360px]
+            flex-1 flex flex-col min-w-0
             bg-gradient-to-b from-[#1a1d24] to-[#12141a] 
-            rounded-2xl overflow-hidden 
+            rounded-xl md:rounded-2xl overflow-hidden 
             shadow-2xl ${theme.glow}
             border ${theme.border}
-            transition-all duration-300 hover:shadow-3xl
+            transition-all duration-300
         `}>
             {/* Header với Gradient */}
             <div className={`
-                relative py-4 px-5 flex items-center justify-between 
+                relative p-3 flex items-center justify-between 
                 ${theme.header}
-                shadow-lg
+                shadow-lg shrink-0
             `}>
                 {/* Pattern overlay */}
                 <div className="absolute inset-0 opacity-10" style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.4' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='1'/%3E%3C/g%3E%3C/svg%3E")`
                 }}></div>
                 
-                <div className="flex items-center gap-3 relative z-10">
-                    <div className={`w-10 h-10 rounded-xl ${theme.iconBg} backdrop-blur-sm flex items-center justify-center text-white text-lg shadow-inner`}>
+                <div className="flex items-center gap-2 md:gap-3 relative z-10">
+                    <div className={`w-8 h-8 rounded-lg md:rounded-xl ${theme.iconBg} backdrop-blur-sm flex items-center justify-center text-white text-sm md:text-lg shadow-inner`}>
                         {icon}
                     </div>
-                    <span className="text-base md:text-lg font-black tracking-wider text-white uppercase font-momo drop-shadow-md">
+                    <span className="font-black tracking-wide md:tracking-wider text-white uppercase font-momo drop-shadow-md truncate">
                         {title}
                     </span>
                 </div>
                 
                 <span className={`
-                    relative z-10 px-4 py-1.5 rounded-full text-sm font-black font-mono
-                    ${theme.badge} backdrop-blur-sm shadow-inner
+                    relative z-10 px-2.5 md:px-4 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-black font-mono
+                    ${theme.badge} backdrop-blur-sm shadow-inner shrink-0
                 `}>
                     {count}
                 </span>
             </div>
 
             {/* Body */}
-            <div className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-4">
+            <div className="flex-1 p-2 md:p-3 lg:p-4 overflow-y-auto custom-scrollbar space-y-3 md:space-y-4">
                 {children}
             </div>
         </div>
