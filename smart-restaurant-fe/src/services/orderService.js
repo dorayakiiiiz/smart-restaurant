@@ -21,9 +21,21 @@ const requestCheckout = async (sessionId, paymentMethod) => {
     return response.data;
 };
 
+const claimSession = async (sessionId) => {
+    const response = await api.post(`/orders/session/${sessionId}/claim`);
+    return response.data;
+};
+
+const getCustomerHistory = async () => {
+    const response = await api.get('/orders/history');
+    return response.data;
+};
+
 export const orderService = {
     startSession,
     placeOrder,
     getSessionDetails,
-    requestCheckout
+    requestCheckout,
+    claimSession,
+    getCustomerHistory
 };

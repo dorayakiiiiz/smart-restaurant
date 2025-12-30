@@ -1,16 +1,19 @@
 import { Outlet, Link, useLocation, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function CustomerLayout() {
     const { cartItems, sessionInfo } = useCart();
     const location = useLocation();
     const [searchParams] = useSearchParams();
+    const { user, logout } = useAuth();
     
     const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
     const tokenParam = searchParams.get('token');
 
-    // Logic chặn: Chưa có session VÀ không phải đang quét QR
-    const shouldBlock = !sessionInfo && !location.pathname.includes('scan') && !tokenParam;
+    // Logic chặn: Chưa có session VÀ không phải đang quét QR và không phải đang ở trang profile
+    const isProfilePage = location.pathname === '/profile';
+    const shouldBlock = !sessionInfo && !tokenParam && !isProfilePage;
 
     if (shouldBlock) {
         return (
@@ -22,6 +25,12 @@ export default function CustomerLayout() {
                 <p className="text-gray-300 text-lg max-w-xs leading-relaxed">
                     Please scan the QR code on your table to start ordering.
                 </p>
+
+                {user && (
+                    <Link to="/profile" className="mt-8 px-6 py-3 bg-white/10 rounded-full text-sm font-bold hover:bg-white/20 transition">
+                        Go to My Profile
+                    </Link>
+                )}
             </div>
         );
     }
@@ -38,14 +47,18 @@ export default function CustomerLayout() {
                         {sessionInfo?.restaurant?.name || "Smart Restaurant"}
                     </h1>
                     <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] mt-0.5">
-                        <span className="bg-[#FFF8E1] px-2 py-0.5 rounded-md border border-[#FCEabb]">
+                        <span className={`${sessionInfo?.session ? '' : 'hidden'} bg-[#FFF8E1] px-2 py-0.5 rounded-md border border-[#FCEabb]`}>
                             {/* Lấy tên bàn an toàn */}
-                            {sessionInfo?.session?.tableId?.name || "..."}
+                            {sessionInfo?.session?.tableId?.name}
                         </span>
                     </div>
                 </div>
-                <Link to="/auth/customer/login" className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition">
-                    <i className="fa-regular fa-user"></i>
+                <Link to="/profile" className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
+                    {user ? (
+                        <span className="font-bold text-sm">{user.fullName.charAt(0)}</span>
+                    ) : (
+                        <i className="fa-regular fa-user"></i>
+                    )}
                 </Link>
             </div>
 
@@ -79,7 +92,7 @@ export default function CustomerLayout() {
                     <span className="text-[10px] font-bold tracking-wide">Orders</span>
                 </Link>
 
-                <Link to="/auth/customer/login" className={`flex flex-col items-center gap-1 p-2 transition ${isActive('/auth/customer/login') ? 'text-[#D4AF37]' : 'text-gray-400'}`}>
+                <Link to={user ? '/profile' : '/auth/login'} className={`flex flex-col items-center gap-1 p-2 transition ${isActive('/profile') ? 'text-[#D4AF37]' : 'text-gray-400'}`}>
                     <i className="fa-solid fa-user text-lg"></i>
                     <span className="text-[10px] font-bold tracking-wide">Profile</span>
                 </Link>

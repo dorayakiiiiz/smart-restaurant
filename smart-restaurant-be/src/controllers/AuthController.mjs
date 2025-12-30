@@ -1,4 +1,3 @@
-
 import jwt from 'jsonwebtoken'
 import bcrypt from "bcrypt"
 import User from "../models/User.mjs";
@@ -24,21 +23,25 @@ const generateAuthScript = (type, data) => {
 
 class AuthController {
     // [POST] /auth/register -> của customer
-    // TODO: xử lí validate data ng dùng gửi lên
     async register(req, res, next) {
         try {
+            // Nhận thêm restaurantId từ Frontend gửi lên
+            const { email, fullName, password, restaurantId } = req.body;
 
-            const { email, fullName, password } = req.body;
-            const user = await User.findOne({ email });
-            if (user) 
-                return res.status(400).json({ message: 'User existed.'});
+            // Tìm user có email này TRONG NHÀ HÀNG NÀY
+            const user = await User.findOne({ email, restaurantId });
             
+            if (user) {
+                return res.status(400).json({ message: 'Email already exists in this restaurant.' });
+            }
+
             const hashPassword = await bcrypt.hash(password, saltRounds);
             
             const newUser = await User.create({
                 email,
                 fullName,
-                password: hashPassword
+                password: hashPassword,
+                restaurantId: restaurantId // Lưu khóa ngoại
             });
 
             res.json({ message: 'Register successfully!', userId: newUser._id });

@@ -1,11 +1,14 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function ProtectedRoute({ allowedRoles = [] }) {
+export default function ProtectedRoute({ allowedRoles = [], loginPath = null }) {
     const { user, isLogin } = useAuth();
 
     if (!isLogin) {
-        return <Navigate to="/auth/system/login" replace />;
+        if (loginPath)
+            return <Navigate to={loginPath} replace />;
+        else 
+            return <Navigate to="/auth/system/login" replace />;
     }
 
     if (!user) {
