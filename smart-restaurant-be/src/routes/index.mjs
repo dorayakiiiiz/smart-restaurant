@@ -9,6 +9,7 @@ import superAdminRouter from "./superAdmin.mjs";
 import staffRouter from "./staff.mjs"; 
 import waiterRouter from "./waiter.mjs";
 import kitchenRouter from "./kitchen.mjs";
+import reviewRouter from "./review.mjs";
 
 export default function route(app) {
     app.use("/api/super/admin", superAdminRouter);
@@ -23,6 +24,7 @@ export default function route(app) {
     app.use("/api/staff", staffRouter);
     app.use("/api/waiter", waiterRouter);
     app.use("/api/kitchen", kitchenRouter);
+    app.use("/api/reviews", reviewRouter);
 
     app.use("/api/health", (req, res) => {
         console.log('[PING]');
