@@ -127,6 +127,14 @@ class KitchenController {
                         item.finishedAt = new Date(); // Cập nhật thời điểm món này được đánh dấu là ready 
                     }
                     item.status = status;
+
+                    if (status === 'preparing') {
+                        if (order.status === 'served') {
+                            order.status = 'preparing';
+                        }
+                    }
+
+
                     // Ví dụ: Nếu tất cả items đều ready -> Order ready
                     const allReady = order.items.every(i => i.status === 'ready');
                     if (allReady && order.status !== 'served') {
@@ -213,6 +221,7 @@ class KitchenController {
                     table: order.sessionId?.tableId?.name || 'Unknown',
                     updatedAt: order.updatedAt,
                     items: servedItems.map(i => ({
+                        itemId: i._id,
                         name: i.name,
                         qty: i.quantity,
                         status: i.status                  

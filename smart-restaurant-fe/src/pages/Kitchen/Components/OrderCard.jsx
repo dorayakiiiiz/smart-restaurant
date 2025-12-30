@@ -4,6 +4,7 @@ import { FaCheckCircle, FaCheckSquare, FaExclamationTriangle, FaSquare, FaClock,
 export default function OrderCard({ order, type, onAction, onItemAction }) {
     const [elapsed, setElapsed] = useState("");
 
+    //Effect tính thời gian đã trôi qua kể từ trạng thái hiện tại
     useEffect(() => {
         const interval = setInterval(() => {
             let startTime = null;
