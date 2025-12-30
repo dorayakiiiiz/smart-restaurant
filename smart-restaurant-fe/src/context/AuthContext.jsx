@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { userService } from "../services/userService";
+import { orderService } from "../services/orderService"; // Import service
 import { injectTokenUtils, API_URL } from "../services/api";
 
 const AuthContext = createContext();
@@ -111,17 +112,59 @@ export const AuthProvider = ({ children }) => {
         initializeAuth();
     }, []); // Chỉ chạy 1 lần
 
-    const login = (refreshTokenValue, accessTokenValue) => {
-        setIsLoading(true);
-        localStorage.setItem('refreshToken', refreshTokenValue);
-        setAccessToken(accessTokenValue);
-        setRefreshToken(refreshTokenValue);
+    // const login = (refreshTokenValue, accessTokenValue) => {
+    //     setIsLoading(true);
+    //     localStorage.setItem('refreshToken', refreshTokenValue);
+    //     setAccessToken(accessTokenValue);
+    //     setRefreshToken(refreshTokenValue);
 
-        // Force clear any cached user data
-        setUser(null);
+    //     // Force clear any cached user data
+    //     setUser(null);
 
-        // reload lại tránh đứng yên khi vừa login
-        window.location.reload();
+    //     // reload lại tránh đứng yên khi vừa login
+    //     window.location.reload();
+    // }
+
+    // --- SỬA LẠI HÀM LOGIN ---
+    const login = async (refreshTokenValue, accessTokenValue) => {
+        setIsLoading(true); 
+        try {
+            // 1. Lưu token
+            localStorage.setItem('refreshToken', refreshTokenValue);
+            setAccessToken(accessTokenValue);
+            setRefreshToken(refreshTokenValue);
+
+            // 2. Inject token ngay lập tức
+            injectTokenUtils(accessTokenValue, setAccessToken);
+
+            // 3. Lấy user info
+            const { user: userData } = await userService.getAccount();
+            setUser(userData);
+
+            // 4. [MỚI] CHECK VÀ CLAIM SESSION (Gộp order)
+            // Kiểm tra xem trong localStorage có session_info (đang ngồi bàn) không
+            const savedSession = localStorage.getItem("session_info");
+            if (savedSession) {
+                const parsedSession = JSON.parse(savedSession);
+                if (parsedSession?.session?._id) {
+                    try {
+                        console.log("Claiming session orders for user...");
+                        await orderService.claimSession(parsedSession.session._id);
+                    } catch (err) {
+                        console.warn("Failed to claim session:", err);
+                        // Không throw error ở đây để user vẫn login được bình thường
+                    }
+                }
+            }
+            
+            return true; 
+        } catch (error) {
+            console.error("Login error:", error);
+            logout();
+            return false;
+        } finally {
+            setIsLoading(false); 
+        }
     }
 
     const logout = () => {
