@@ -42,10 +42,7 @@ class KitchenController {
                     // Populate field menuItemId nằm bên trong mảng items
                     path: 'items.menuItemId',
                     select: 'prepTime' // Chỉ lấy field prepTime để tối ưu hiệu suất
-                },
-                { path: 'acceptedBy', select: 'fullName email' },
-                { path: 'preparedBy', select: 'fullName email' },
-                { path: 'servedBy', select: 'fullName email' }
+                }
             ])
             .sort({ createdAt: 1 });
 
@@ -145,7 +142,6 @@ class KitchenController {
             }
             await order.save();
 
-            // Populate lại sau khi save để có đầy đủ thông tin
             await order.populate([
                 {
                     path: 'sessionId',
