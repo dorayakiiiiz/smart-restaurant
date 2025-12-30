@@ -12,6 +12,11 @@ const getReadyOrders = async () => {
     return api.get('/waiter/orders?status=ready');
 };
 
+// Admin: Get ALL orders (including completed)
+const getAllOrders = async () => {
+    return api.get('/waiter/orders/all');
+};
+
 // Example: Get multiple statuses at once
 // const getMultipleOrders = async () => {
 //     return api.get('/waiter/orders?status=pending,accepted');
@@ -52,6 +57,7 @@ export const waiterService = {
     getPendingOrders,
     getAcceptedOrders,
     getReadyOrders,
+    getAllOrders, // Admin dùng
     acceptOrder,
     rejectOrder,
     markAsServed,

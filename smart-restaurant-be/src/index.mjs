@@ -52,6 +52,13 @@ io.on("connection", (socket) => {
         console.log(`Socket ${socket.id} joined Waiter Room: ${waiterRoomName}`);
     });
 
+    // 3. Admin join room để theo dõi tất cả orders
+    socket.on("join_admin", (restaurantId) => {
+        const adminRoomName = `restaurant_${restaurantId}_admin`;
+        socket.join(adminRoomName);
+        console.log(`Socket ${socket.id} joined Admin Room: ${adminRoomName}`);
+    });
+
     socket.on("disconnect", () => {
         console.log("User Disconnected", socket.id);
     });
