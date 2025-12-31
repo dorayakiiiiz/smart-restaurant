@@ -7,8 +7,10 @@ import { categoryService } from "../../services/categoryService";
 import { useCart } from "../../context/CartContext";
 import { socket } from "../../services/socket";
 import ProductModal from "../../components/Modal/ProductModal"; // Import Modal mới
+import { useNavigate } from "react-router-dom";
 
 export default function MenuPage() {
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const tableToken = searchParams.get("token");
     const { setSessionInfo, addToCart, sessionInfo } = useCart();
@@ -150,8 +152,9 @@ export default function MenuPage() {
 
             {/* Menu Grid */}
             <div className="p-6 grid grid-cols-1 gap-6">
-                {filteredItems.map(item => (
+                {filteredItems.map((item) => (
                     <div 
+                        onClick={() => navigate(`/menu/public/${item._id}/${restaurantId}`)}
                         key={item._id} 
                         className={`bg-white p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 flex gap-4 relative overflow-hidden group transition active:scale-[0.98] ${!item.isAvailable ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
                     >
@@ -179,12 +182,12 @@ export default function MenuPage() {
                             
                             <div className="flex justify-between items-end mt-3">
                                 <span className="font-momo font-bold text-xl text-[#1a1a1a]">${item.price}</span>
-                                <button 
+                                {/* <button 
                                     onClick={() => item.isAvailable && setSelectedItem(item)}
                                     className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition ${item.isAvailable ? 'bg-[#D4AF37] text-white' : 'bg-gray-200 text-gray-400'}`}
                                 >
                                     <i className="fa-solid fa-plus"></i>
-                                </button>
+                                </button> */}
                             </div>
                         </div>
                     </div>

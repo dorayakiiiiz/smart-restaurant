@@ -83,12 +83,17 @@ class KitchenController {
             const { orderId } = req.params;
             const { status, itemId } = req.body;
 
-            const order = await Order.findById(orderId).populate({
-                path: 'sessionId',
-                populate: { path: 'tableId', select: 'name' }
-            });
-            if (!order) return res.status(404).json({ message: "Order not found" });
-
+            const order = await Order.findById(orderId)
+                .populate({
+                    path: 'sessionId',
+                    populate: { path: 'tableId', select: 'name' }
+                })
+                .populate('acceptedBy', 'fullName email role')
+                .populate('preparedBy', 'fullName email role')
+                .populate('servedBy', 'fullName email role');
+            if (!order) {
+                return res.status(404).json({ message: "Order not found" });
+            }
             const io = req.app.get('socketio');
             const restaurantId = order.restaurantId.toString();
             const sessionId = order.sessionId._id.toString();
@@ -212,6 +217,7 @@ class KitchenController {
                     table: order.sessionId?.tableId?.name || 'Unknown',
                     updatedAt: order.updatedAt,
                     items: servedItems.map(i => ({
+                        itemId: i._id,
                         name: i.name,
                         qty: i.quantity,
                         status: i.status                  

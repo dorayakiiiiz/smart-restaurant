@@ -27,7 +27,8 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard
 import DashboardOverview from "./pages/AdminDashboard/DashboardOverview";
 import MenuManagement from "./pages/AdminDashboard/MenuManagement";
 import  CategoriesManagement  from "./pages/AdminDashboard/CategoriesManagement";
-import { OrdersPage, KDSPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
+import OrdersPage from "./pages/AdminDashboard/OrdersPage";
+import { KDSPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
 import StaffManagementPage from "./pages/AdminDashboard/StaffManagementPage";
 import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
 import SettingsPage from "./pages/AdminDashboard/SettingsPage"; 
@@ -39,6 +40,7 @@ import MenuItemDetail from "./pages/AdminDashboard/MenuItemDetail";
 import MenuPage from "./pages/Customer/MenuPage";
 import CartPage from "./pages/Customer/CartPage";
 import OrderTrackingPage from "./pages/Customer/OrderTrackingPage";
+import MenuDetailPage from "./pages/Customer/MenuDetailPage";
 import CustomerLogin from "./pages/Auth/CustomerLogin";
 import CustomerRegister from "./pages/Auth/CustomerRegister";
 import CustomerForgotPassword from "./pages/Auth/CustomerForgotPassword"; // Import mới
@@ -124,6 +126,7 @@ function App() {
                         {/* 2. Customer Flow (Mobile First) */}
                         <Route element={<CustomerLayout />}>
                             <Route path="/menu" element={<MenuPage />} />
+                            <Route path="/menu/public/:id/:restaurantId" element={<MenuDetailPage />} />
                             <Route path="/cart" element={<CartPage />} />
                             <Route path="/orders" element={<OrderTrackingPage />} />
                             

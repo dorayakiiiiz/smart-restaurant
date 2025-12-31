@@ -8,6 +8,8 @@ const router = Router();
 // Route Public cho khách (KHÔNG check auth)
 router.get('/public/:restaurantId', menuController.getPublicMenu);
 
+router.get('/public/:id/:restaurantId', menuController.getPublicMenuDetail);
+
 router.use(authMiddleware);
 
 // Lấy danh sách menu (Của Admin)

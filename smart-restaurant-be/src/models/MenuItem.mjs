@@ -46,6 +46,9 @@ const MenuItemSchema = new Schema({
             isActive: { type: Boolean, default: true } // Status
         }]
     }],
+    // Thêm 2 trường này
+    averageRating: { type: Number, default: 0 },
+    totalReviews: { type: Number, default: 0 },
 
     isAvailable: { type: Boolean, default: true }, // Còn hàng/Hết hàng
     isSoldOut: { type: Boolean, default: false },

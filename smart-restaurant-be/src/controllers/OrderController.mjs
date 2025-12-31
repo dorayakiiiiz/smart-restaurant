@@ -121,25 +121,34 @@ class OrderController {
         note: customerNote,
       });
 
-      // Populate đầy đủ để emit cho waiter
-      const populatedOrder = await Order.findById(newOrder._id).populate({
-        path: "sessionId",
-        populate: { path: "tableId", select: "name" },
-      });
+      const populatedOrder = await Order.findById(newOrder._id)
+        .populate({
+          path: "sessionId",
+          populate: { path: "tableId", select: "name" },
+        })
+        .populate('acceptedBy', 'fullName email role')
+        .populate('preparedBy', 'fullName email role')
+        .populate('servedBy', 'fullName email role');
 
-      // 3. KHÔNG cộng tiền ngay, chỉ cộng khi waiter accept
-
-      // 4. REAL-TIME SOCKET EMIT
       const io = req.app.get("socketio");
       const restaurantId = session.restaurantId.toString();
-      // Gửi cho WAITER để duyệt
+      
+      const orderData = populatedOrder.toObject();
+      
       io.to(`restaurant_${restaurantId}_waiter`).emit(
         "new_order_alert",
-        populatedOrder
+        orderData
+      );
+      io.to(`restaurant_${restaurantId}_admin`).emit(
+        "new_order_alert",
+        orderData
+      );
+      io.to(`restaurant_${restaurantId}_kitchen`).emit(
+        "new_order_alert",
+        orderData
       );
 
-      // Báo cho Customer cùng bàn (Room: session_ID)
-      io.to(`session_${sessionId}`).emit("order_update", populatedOrder);
+      io.to(`session_${sessionId}`).emit("order_update", orderData);
 
       res
         .status(201)
@@ -425,3 +434,4 @@ class OrderController {
 }
 
 export default new OrderController();
+

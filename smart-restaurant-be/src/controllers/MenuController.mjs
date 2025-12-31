@@ -29,9 +29,6 @@ class MenuController {
             if (!restaurant) {
                 return res.status(404).json({ message: "Restaurant not found for this user" });
             }
-
-            console.log('123');
-
             // Lấy tất cả món ăn thuộc nhà hàng này, kèm thông tin category
             const items = await MenuItem.find({ 
                 restaurantId: restaurant._id,
@@ -47,6 +44,21 @@ class MenuController {
         }
     }
 
+    // [GET] /api/menu/public/:id/:restaurantId
+    async getPublicMenuDetail(req, res) {
+        try {
+            const { id, restaurantId } = req.params;
+
+            const item = await MenuItem.findOne({ _id: id, restaurantId })
+                .populate('categoryId', 'name isActive');
+            
+            if (!item) return res.status(404).json({ message: "Item not found" });
+
+            res.status(200).json({ item });
+        } catch (err) {
+            res.status(500).json({ message: "Error fetching item", error: err.message });
+        }
+    }
 
     // [GET] /api/menu/:id
     async getMenuItem(req, res) {
