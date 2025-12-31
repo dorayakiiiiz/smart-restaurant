@@ -17,6 +17,9 @@ const OrderSessionSchema = new Schema({
     // Tổng tiền (Backend tự tính, không tin Frontend)
     totalAmount: { type: Number, default: 0 },
     
+    // PayOS Order Code (Bắt buộc là số nguyên int64)
+    orderCode: { type: Number, unique: true, sparse: true },
+
     status: {
         type: String,
         enum: ['active', 'payment_requested', 'completed', 'cancelled'],
