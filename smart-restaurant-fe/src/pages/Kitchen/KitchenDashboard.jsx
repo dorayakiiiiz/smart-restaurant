@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
     FaClock, 
     FaCheckCircle, 
@@ -101,68 +101,75 @@ export default function KitchenDashboard() {
         return () => clearInterval(timer);
     }, []);
 
-    useEffect(() => {
-        if (!user?.restaurantId) {
-            console.warn("⚠️ KitchenDashboard: User missing restaurantId", user);
-            return;
+    const playNotificationSound = useCallback(() => {
+        if (!soundRef.current) return;
+        
+        try {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(err => console.log('Audio play failed:', err));
+            
+            if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+            stopTimerRef.current = setTimeout(() => {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+            }, 3000);
+        } catch (err) {
+            console.log('Audio error:', err);
         }
+    }, []);
 
-        console.log("🔌 KitchenDashboard: Initializing socket...");
+    // Socket setup - JOIN ROOM + LISTENERS
+    useEffect(() => {
+        if (!user?.restaurantId) return;
 
+        // 1. Connect socket
         if (!socket.connected) {
             socket.connect();
         }
 
-        const joinRoom = () => {
-            console.log(`🚀 Emitting join_kitchen for restaurant: ${user.restaurantId}`);
-            socket.emit('join_kitchen', user.restaurantId);
+        // 2. 🔥 JOIN KITCHEN ROOM - QUAN TRỌNG!
+        socket.emit("join_kitchen", user.restaurantId);
+        console.log("✅ Kitchen joined room:", `restaurant_${user.restaurantId}_kitchen`);
+
+        // 3. Listeners
+        const handleOrderUpdate = (updatedOrder) => {
+            console.log("🍳 Kitchen received order update:", updatedOrder);
+            
+            queryClient.setQueryData(['kitchenOrders'], (oldData) => {
+                if (!oldData) return [updatedOrder];
+                
+                const orderId = updatedOrder._id || updatedOrder.id;
+                const existingIndex = oldData.findIndex(o => (o._id || o.id) === orderId);
+                
+                if (existingIndex >= 0) {
+                    const newData = [...oldData];
+                    newData[existingIndex] = updatedOrder;
+                    return newData;
+                }
+                
+                // Order mới - phát âm thanh
+                playNotificationSound();
+                return [updatedOrder, ...oldData];
+            });
         };
 
-        if (socket.connected) {
-            joinRoom();
-        } else {
-            socket.on('connect', joinRoom);
-        }
-
-        const handleRefetch = (data) => {
-            console.log('🔔 Socket event received:', data);
-            queryClient.invalidateQueries(['kitchenOrders']);
-            playNotificationSound();
+        const handleOrderServed = (servedOrder) => {
+            const orderId = servedOrder._id || servedOrder.id;
+            queryClient.setQueryData(['kitchenOrders'], (oldData) => {
+                if (!oldData) return [];
+                return oldData.filter(o => (o._id || o.id) !== orderId);
+            });
         };
 
-        socket.on('order_accepted', handleRefetch);
-        socket.on('kitchen:order_update', handleRefetch);
+        socket.on("kitchen:order_update", handleOrderUpdate);
+        socket.on("order_served", handleOrderServed);
 
         return () => {
-            socket.off('connect', joinRoom);
-            socket.off('order_accepted', handleRefetch);
-            socket.off('kitchen:order_update', handleRefetch);
+            socket.off("kitchen:order_update", handleOrderUpdate);
+            socket.off("order_served", handleOrderServed);
+            socket.disconnect();
         };
-    }, [user?.restaurantId, queryClient]);
-
-    const playNotificationSound = () => {
-        if (!soundRef.current) return;
-
-        if (stopTimerRef.current) {
-            clearTimeout(stopTimerRef.current);
-        }
-
-        audioRef.current.currentTime = 0;
-        
-        const playPromise = audioRef.current.play();
-
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                stopTimerRef.current = setTimeout(() => {
-                    audioRef.current.pause();
-                    audioRef.current.currentTime = 0;
-                    console.log("⏱️ Nhạc đã dừng sau 3s");
-                }, 3000);
-            }).catch(error => {
-                console.warn("🔇 Trình duyệt chặn tự động phát nhạc:", error);
-            });
-        }
-    };
+    }, [user?.restaurantId, queryClient, playNotificationSound]);
 
     const toggleSound = () => {
         const newStatus = !isSoundEnabled;

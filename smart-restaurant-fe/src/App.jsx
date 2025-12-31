@@ -43,6 +43,7 @@ import CustomerLogin from "./pages/Auth/CustomerLogin";
 import CustomerRegister from "./pages/Auth/CustomerRegister";
 import CustomerForgotPassword from "./pages/Auth/CustomerForgotPassword"; // Import mới
 import CustomerProfilePage from "./pages/Customer/CustomerProfilePage";
+import PaymentSuccess from "./pages/Customer/PaymentSuccess";
 
 // Import Pages mới
 import WaiterDashboard from "./pages/Waiter/WaiterDashboard";
@@ -57,6 +58,8 @@ const queryClient = new QueryClient({
         queries: {
             refetchOnWindowFocus: false,
             retry: 1,
+            // staleTime: 0, // Bắt buộc re-render ngay khi data thay đổi
+            // cacheTime: 0  // Không cache (chỉ dùng khi cần real-time tuyệt đối)
         },
     },
 });
@@ -148,6 +151,8 @@ function App() {
                             <Route path="dashboard" element={<KitchenDashboard />} />
                             {/* Team có thể thêm route con: /kitchen/history... */}
                         </Route>
+
+                        <Route path="/payment/success" element={<PaymentSuccess />} />
 
                     </Routes>
                 </CartProvider>
