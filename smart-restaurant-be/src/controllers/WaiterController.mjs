@@ -180,6 +180,7 @@ class WaiterController {
       if (status === "accepted") {
         order.status = "accepted";
         order.acceptedAt = new Date();
+        order.acceptedBy = req.user.id;
         
         // Update all items status to accepted
         order.items.forEach(item => {
@@ -193,7 +194,10 @@ class WaiterController {
                 path: "sessionId",
                 populate: { path: "tableId", select: "name" }
             })
-            .populate("items.menuItemId", "prepTime name");
+            .populate("items.menuItemId", "prepTime name")
+            .populate('acceptedBy', 'fullName email role')
+            .populate('preparedBy', 'fullName email role')
+            .populate('servedBy', 'fullName email role');
 
         // 1. Format dữ liệu CHUẨN cho KITCHEN (Giống hệt API getIncomingOrders)
         const kitchenFormat = {
@@ -219,6 +223,7 @@ class WaiterController {
         // Emit với data đã format
         io.to(`restaurant_${restaurantId}_kitchen`).emit("kitchen:order_update", kitchenFormat);
         io.to(`restaurant_${restaurantId}_waiter`).emit("order_accepted", standardFormat);
+        io.to(`restaurant_${restaurantId}_admin`).emit("order_accepted", standardFormat);
         io.to(`session_${sessionId}`).emit("order_update", standardFormat);
 
         // Cập nhật tổng tiền session
@@ -232,7 +237,7 @@ class WaiterController {
             $inc: { totalAmount: orderTotal }
         });
 
-        return res.status(200).json({ message: "Order accepted", order: orderData });
+        return res.status(200).json({ message: "Order accepted", order: standardFormat });
       } else {
         // Rejected
         order.status = "rejected";
@@ -480,4 +485,3 @@ class WaiterController {
 }
 
 export default new WaiterController();
-
