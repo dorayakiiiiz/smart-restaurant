@@ -28,51 +28,113 @@ export default function WaiterDashboard() {
   useEffect(() => {
     if (!user?.restaurantId) return;
 
-    // Connect socket
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    // Join waiter room
+    socket.connect();
     socket.emit("join_waiter", user.restaurantId);
 
-    const handleInvalidate = () => {
-      // Invalidate tất cả các query liên quan đến waiter
-      queryClient.invalidateQueries({ queryKey: ['waiter-orders'] });
-      queryClient.invalidateQueries({ queryKey: ['waiter-tables'] });
-      
-      // Play sound logic
-    //   const audio = new Audio('/sounds/notification.mp3');
-    //   audio.play().catch(e => console.log('Audio play failed', e));
+    // Hàm helper: Phân loại order vào đúng tab
+    const handleOrderMovement = (updatedOrder) => {
+        const { status } = updatedOrder;
+
+        // 1. Tab PENDING
+        queryClient.setQueryData(['waiter-orders', 'pending'], (old = []) => {
+            if (status === 'pending') {
+                const exists = old.find(o => o._id === updatedOrder._id);
+                return exists ? old.map(o => o._id === updatedOrder._id ? updatedOrder : o) : [updatedOrder, ...old];
+            }
+            return old.filter(o => o._id !== updatedOrder._id);
+        });
+
+        // 2. Tab ACCEPTED
+        queryClient.setQueryData(['waiter-orders', 'accepted'], (old = []) => {
+            if (status === 'accepted' || status === 'preparing') {
+                const exists = old.find(o => o._id === updatedOrder._id);
+                return exists ? old.map(o => o._id === updatedOrder._id ? updatedOrder : o) : [updatedOrder, ...old];
+            }
+            return old.filter(o => o._id !== updatedOrder._id);
+        });
+
+        // 3. Tab READY
+        queryClient.setQueryData(['waiter-orders', 'ready'], (old = []) => {
+            if (status === 'ready') {
+                const exists = old.find(o => o._id === updatedOrder._id);
+                return exists ? old.map(o => o._id === updatedOrder._id ? updatedOrder : o) : [updatedOrder, ...old];
+            }
+            return old.filter(o => o._id !== updatedOrder._id);
+        });
     };
 
-    // Listen events
-    socket.on("new_order_alert", handleInvalidate);
-    socket.on("order_accepted", handleInvalidate);
-    socket.on("order_rejected", handleInvalidate);
-    socket.on("kitchen:order_update", handleInvalidate);
-    socket.on("waiter:order_ready", handleInvalidate);
-    socket.on("order_served", handleInvalidate);
-    socket.on("order_completed", handleInvalidate);
-    socket.on("payment_request", handleInvalidate);
-    socket.on("payment_requested", handleInvalidate);
-    socket.on("payment_completed", handleInvalidate);
-    socket.on("order_update", handleInvalidate);
-    socket.on("session_update", handleInvalidate);
+    const handlePaymentRequested = (data) => {
+        console.log("💰 Payment requested:", data);
+        
+        queryClient.setQueryData(['waiter-tables'], (oldSessions = []) => {
+            return oldSessions.map(session => {
+                if (session._id === data.sessionId) {
+                    return {
+                        ...session,
+                        status: 'payment_requested',
+                        paymentMethod: data.method,
+                        totalAmount: data.amount
+                    };
+                }
+                return session;
+            });
+        });
+    };
+
+    const handlePaymentSuccess = (data) => {
+        console.log("✅ Payment success:", data);
+        
+        // Nếu Transfer: update paymentStatus thành 'paid' (Waiter cần confirm để clear)
+        // Nếu Cash: đã được confirm rồi nên xóa luôn
+        if (data.method === 'transfer') {
+            queryClient.setQueryData(['waiter-tables'], (oldSessions = []) => {
+                return oldSessions.map(session => {
+                    if (session._id === data.sessionId) {
+                        return {
+                            ...session,
+                            paymentStatus: 'paid'
+                        };
+                    }
+                    return session;
+                });
+            });
+        } else {
+            queryClient.setQueryData(['waiter-tables'], (oldSessions = []) => {
+                return oldSessions.filter(session => session._id !== data.sessionId);
+            });
+        }
+    };
+
+    const handleTableCleared = (data) => {
+        console.log("🧹 Table cleared:", data);
+        
+        queryClient.setQueryData(['waiter-tables'], (oldSessions = []) => {
+            return oldSessions.filter(session => session._id !== data.sessionId);
+        });
+    };
+
+    // --- LISTENERS ---
+    socket.on("new_order_alert", handleOrderMovement);
+    socket.on("order_accepted", handleOrderMovement);
+    socket.on("kitchen:order_update", handleOrderMovement);
+    socket.on("waiter:order_ready", handleOrderMovement); // Thêm listener này
+    socket.on("order_served", handleOrderMovement);
+    socket.on("order_rejected", handleOrderMovement);
+    socket.on("payment_requested", handlePaymentRequested);
+    socket.on("payment_success", handlePaymentSuccess);
+    socket.on("table_cleared", handleTableCleared);
 
     return () => {
-      socket.off("new_order_alert", handleInvalidate);
-      socket.off("order_accepted", handleInvalidate);
-      socket.off("order_rejected", handleInvalidate);
-      socket.off("kitchen:order_update", handleInvalidate);
-      socket.off("waiter:order_ready", handleInvalidate);
-      socket.off("order_served", handleInvalidate);
-      socket.off("order_completed", handleInvalidate);
-      socket.off("payment_request", handleInvalidate);
-      socket.off("payment_requested", handleInvalidate);
-      socket.off("payment_completed", handleInvalidate);
-      socket.off("order_update", handleInvalidate);
-      socket.off("session_update", handleInvalidate);
+      socket.off("new_order_alert");
+      socket.off("order_accepted");
+      socket.off("kitchen:order_update");
+      socket.off("waiter:order_ready");
+      socket.off("order_served");
+      socket.off("order_rejected");
+      socket.off("payment_requested", handlePaymentRequested);
+      socket.off("payment_success", handlePaymentSuccess);
+      socket.off("table_cleared", handleTableCleared);
+      socket.disconnect();
     };
   }, [user?.restaurantId, queryClient]);
 

@@ -81,7 +81,7 @@ class KitchenController {
     async updateItemStatus(req, res) {
         try {
             const { orderId } = req.params;
-            const { status, itemId } = req.body; 
+            const { status, itemId } = req.body;
 
             const order = await Order.findById(orderId)
                 .populate({
@@ -94,95 +94,73 @@ class KitchenController {
             if (!order) {
                 return res.status(404).json({ message: "Order not found" });
             }
+            const io = req.app.get('socketio');
+            const restaurantId = order.restaurantId.toString();
+            const sessionId = order.sessionId._id.toString();
 
-            // Case 1: Update status của cả Order (Accept & Start)
+            // Case 1: Update status của cả Order (Accept & Start Cooking)
             if (!itemId) {
-                // Chỉ update nếu status hợp lệ trong enum mới
-                if (['preparing', 'ready', 'served'].includes(status)) {
-                    order.status = status;
-
-                    // TỰ ĐỘNG CẬP NHẬT TẤT CẢ ITEMS
-                    if (status === 'ready') {
-                        order.readyAt = new Date();
-                        order.items.forEach(item => {
-                            if (item.status === 'preparing') { // Chỉ cập nhật những món đang làm
-                                item.status = 'ready';
-                                item.finishedAt = new Date();
-                            }
-                        });
-                    }    
-                    // Đồng bộ status items nếu cần lúc chuyển từ rêceived -> preparing
-                    if (status === 'preparing') {
-                        order.preparingAt = new Date(); //Thời điểm lúc bếp bấm accept -> preparing
-                        order.preparedBy = req.user.id;
-                        order.items.forEach(item => {
-                            // Support Recall: pending -> preparing AND served -> preparing
-                            if (item.status === 'pending' || item.status === 'served') {
-                                item.status = 'preparing';
-                            }
-                        });
-                    }
+                if (status === 'preparing') {
+                    order.status = 'preparing';
+                    order.preparingAt = new Date();
+                    order.items.forEach(item => { item.status = 'preparing'; });
+                } else if (status === 'ready') {
+                    order.status = 'ready';
+                    order.items.forEach(item => { item.status = 'ready'; item.finishedAt = new Date(); });
                 }
-            }
-            // Case 2: Update status của từng Item
-            else if (itemId) {
+            } else {
+                // Case 2: Update status của từng Item
                 const item = order.items.id(itemId);
-                if (item) {
-                    if (status === 'ready') {
-                        item.finishedAt = new Date(); // Cập nhật thời điểm món này được đánh dấu là ready 
-                    }
-                    item.status = status;
+                if (!item) return res.status(404).json({ message: "Item not found" });
 
-                    if (status === 'preparing') {
-                        if (order.status === 'served') {
-                            order.status = 'preparing';
-                        }
-                    }
+                item.status = status;
+                if (status === 'ready') item.finishedAt = new Date();
 
-
-                    // Ví dụ: Nếu tất cả items đều ready -> Order ready
-                    const allReady = order.items.every(i => i.status === 'ready');
-                    if (allReady && order.status !== 'served') {
-                        order.status = 'ready';
-                        order.readyAt = new Date();
-                    }
-                }
+                // Auto-update order status
+                const allReady = order.items.every(i => i.status === 'ready');
+                if (allReady) order.status = 'ready';
             }
+
             await order.save();
 
-            await order.populate([
-                {
-                    path: 'sessionId',
-                    populate: { path: 'tableId', select: 'name' }
-                },
-                { path: 'acceptedBy', select: 'fullName email' },
-                { path: 'preparedBy', select: 'fullName email' },
-                { path: 'servedBy', select: 'fullName email' }
-            ]);
+            // 1. Chuẩn bị data cho Kitchen (Format phẳng)
+            const kitchenFormat = {
+                id: order._id,
+                table: order.sessionId?.tableId?.name || 'Unknown',
+                status: order.status,
+                createdAt: order.createdAt,
+                acceptedAt: order.acceptedAt,
+                preparingAt: order.preparingAt,
+                items: order.items.map(item => ({
+                    itemId: item._id,
+                    name: item.name,
+                    qty: item.quantity, // Map quantity -> qty
+                    note: item.note,
+                    modifiers: item.modifiers,
+                    status: item.status,
+                    // prepTime có thể bị thiếu nếu không populate lại, 
+                    // nhưng update status thì FE có thể lấy từ cache cũ nên tạm chấp nhận hoặc populate thêm.
+                    finishedAt: item.finishedAt
+                }))
+            };
 
-            // Emit Socket
-            const io = req.app.get('socketio');
-            
-            // 1. Notify Customer (session room)
-            // FIX: Emit sự kiện order_update về cho Customer khi món chuyển sang trạng thái Ready
-            // Lưu ý: order.sessionId đã được populate ở trên nên phải lấy ._id để có string ID chính xác
-            if (order.sessionId && (status === 'preparing' || status === 'ready' || status === 'served')) {
-                const sessionIdStr = order.sessionId._id ? order.sessionId._id.toString() : order.sessionId.toString();
-                io.to(`session_${sessionIdStr}`).emit('order_update', order);
-            }
+            // 2. Data cho Waiter/Customer (Format gốc)
+            const standardFormat = order;
 
-            // 2. Notify Waiter (waiter room) - Emit cho mọi update
-            io.to(`restaurant_${order.restaurantId}_waiter`).emit('kitchen:order_update', order);
-            io.to(`restaurant_${order.restaurantId}_admin`).emit('kitchen:order_update', order);
+            // --- EMIT SOCKET (3 điểm đến) ---
+            // 1. Customer (session room) - Cập nhật UI tracking
+            io.to(`session_${sessionId}`).emit('order_update', standardFormat);
+
+            // 2. Kitchen (kitchen room) - Sync giữa các thiết bị bếp
+            io.to(`restaurant_${restaurantId}_kitchen`).emit('kitchen:order_update', kitchenFormat);
+
+            // 3. Waiter (waiter room) - Cập nhật tab Accepted/Ready
+            io.to(`restaurant_${restaurantId}_waiter`).emit('kitchen:order_update', standardFormat);
             
-            //2b. Emit event đặc biệt khi có item ready
+            // 3b. Emit riêng event `waiter:order_ready` khi có món ready
             if (status === 'ready' || order.status === 'ready') {
-                io.to(`restaurant_${order.restaurantId}_waiter`).emit('waiter:order_ready', order);
-                io.to(`restaurant_${order.restaurantId}_admin`).emit('waiter:order_ready', order);
+              io.to(`restaurant_${restaurantId}_waiter`).emit('waiter:order_ready', order);
             }
-
-            // 3. Notify Kitchen (kitchen room) - Sync across kitchen devices
-            io.to(`restaurant_${order.restaurantId}_kitchen`).emit('kitchen:order_update', order);
 
             res.status(200).json({ message: "Status updated", order });
         } catch (error) {

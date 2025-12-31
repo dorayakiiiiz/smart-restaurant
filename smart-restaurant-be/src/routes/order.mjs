@@ -12,6 +12,9 @@ router.post('/', optionalAuthMiddleware, orderController.placeOrder);
 router.get('/session/:sessionId', orderController.getSessionDetails);
 router.post('/session/:sessionId/checkout', orderController.requestCheckout);
 
+// WEBHOOK PAYOS (Không cần auth middleware vì PayOS gọi)
+router.post('/webhook/payos', orderController.handlePayOSWebhook);
+
 // Claim session khi login
 router.post('/session/:sessionId/claim', authMiddleware, orderController.claimSession);
 router.get('/history', authMiddleware, orderController.getCustomerHistory);

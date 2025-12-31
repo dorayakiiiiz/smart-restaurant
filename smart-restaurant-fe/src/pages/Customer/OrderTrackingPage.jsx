@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useCart } from "../../context/CartContext";
+import { useNavigate } from "react-router-dom";
 import { orderService } from "../../services/orderService";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { socket } from "../../services/socket";
@@ -7,8 +8,12 @@ import { socket } from "../../services/socket";
 export default function OrderTrackingPage() {
     const { sessionInfo } = useCart();
     const queryClient = useQueryClient();
-
-   // Thay thế useState/useEffect bằng useQuery
+    const navigate = useNavigate();
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [waitingForWaiter, setWaitingForWaiter] = useState(false); // State mới cho cash
+   
+    // Thay thế useState/useEffect bằng useQuery
     const { data: orders = [], isLoading: loading } = useQuery({
         queryKey: ['customer-orders', sessionInfo?.session?._id],
         queryFn: async () => {
@@ -23,49 +28,49 @@ export default function OrderTrackingPage() {
     useEffect(() => {
         if (!sessionInfo?.session?._id) return;
 
-        // Connect socket
-        if (!socket.connected) {
-            socket.connect();
-        }
+        // Socket đã được join room session ở CartContext
         
-        // Join session room
-        socket.emit("join_session", sessionInfo.session._id);
+        // Backend bắn sự kiện chung 'order_update' cho Customer mỗi khi trạng thái thay đổi
+        const handleOrderUpdate = (updatedOrder) => {
+            queryClient.setQueryData(['customer-orders', sessionInfo.session._id], (oldData) => {
+                if (!oldData) return [updatedOrder];
 
-
-        // khi customer quét -> đặt 1 order -> gọi place order trên controller
-        // -> controller .to(sessionid).emit(order_update) và .to(waiter).emit(new_order_alert)
-        // -> orrder_update ở đây nhận dc và thêm order mới vào order page
-        // lưu ý order chứa status, khi socket update thì nó in lại order nma
-        // ở status mới -> tự cập nhật
-
-        const handleInvalidate = () => {
-            // Invalidate query để fetch lại data mới nhất
-            queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
+                const exists = oldData.find(o => o._id === updatedOrder._id);
+                if (exists) {
+                    // Update trạng thái (VD: Pending -> Preparing -> Ready)
+                    return oldData.map(o => o._id === updatedOrder._id ? updatedOrder : o);
+                } else {
+                    // Trường hợp hiếm: Order mới được tạo từ thiết bị khác cùng bàn
+                    return [updatedOrder, ...oldData];
+                }
+            });
         };
 
-        // Listen events
-        socket.on("order_update", handleInvalidate);
-        socket.on("order_served", handleInvalidate);
-        socket.on("payment_requested", handleInvalidate);
-        
+        socket.on("order_update", handleOrderUpdate);
+
         return () => {
-            socket.off("order_update", handleInvalidate);
-            socket.off("order_served", handleInvalidate);
-            socket.off("payment_requested", handleInvalidate);
+            socket.off("order_update", handleOrderUpdate);
         };
-
     }, [sessionInfo?.session?._id, queryClient]);
 
-    const handleRequestBill = async () => {
-        if (!sessionInfo?.session?._id) return;
+    const handleCheckout = async (method) => {
+        setIsProcessing(true);
         try {
-            await orderService.requestCheckout(sessionInfo.session._id, 'cash');
-            // Invalidate ngay lập tức để cập nhật UI nếu cần
-            queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
-            alert("Bill requested! Waiter will come shortly.");
+            const res = await orderService.requestCheckout(sessionInfo.session._id, method);
+            
+            if (method === 'transfer' && res.checkoutUrl) {
+                // Redirect sang PayOS
+                window.location.href = res.checkoutUrl;
+            } else if (method === 'cash') {
+                // Tiền mặt: Đóng modal, hiện trạng thái chờ waiter
+                setShowPaymentModal(false);
+                setWaitingForWaiter(true);
+            }
         } catch (error) {
-            console.error("Request bill failed", error);
-            alert("Failed to request bill");
+            console.error(error);
+            alert("Failed to request checkout");
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -73,9 +78,33 @@ export default function OrderTrackingPage() {
 
     // Tính tổng tiền session
     const sessionTotal = orders.reduce((acc, order) => {
-        const orderTotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        return acc + orderTotal;
+        if (order.status === 'rejected') return acc;
+        return acc + order.items.reduce((itemAcc, item) => {
+            const modPrice = item.modifiers?.reduce((m, mod) => m + (mod.price || 0), 0) || 0;
+            return itemAcc + (item.price + modPrice) * item.quantity;
+        }, 0);
     }, 0);
+
+    // UI khi đang chờ Waiter thu tiền mặt
+    if (waitingForWaiter) {
+        return (
+            <div className="fixed inset-0 bg-gradient-to-br from-amber-50 to-orange-100 z-50 flex flex-col items-center justify-center p-6">
+                <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center">
+                    <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+                        <i className="fa-solid fa-hand-holding-dollar text-4xl text-amber-600"></i>
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Waiting for Waiter</h2>
+                    <p className="text-gray-500 mb-6">Please prepare <span className="font-bold text-[#800020]">${sessionTotal.toFixed(2)}</span> in cash</p>
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
+                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <span className="ml-2">Waiter is on the way</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 pb-32">
@@ -85,12 +114,91 @@ export default function OrderTrackingPage() {
                 <h2 className="text-gray-400 text-sm mb-1">Current Session Total</h2>
                 <div className="font-momo font-bold text-4xl text-[#D4AF37] mb-4">${sessionTotal.toFixed(2)}</div>
                 <button 
-                    onClick={handleRequestBill}
+                    onClick={() => setShowPaymentModal(true)}
+                    disabled={sessionTotal === 0}
                     className="w-full py-3 bg-white/10 backdrop-blur border border-white/20 rounded-xl font-bold text-sm hover:bg-white/20 transition"
                 >
-                    Request Bill
+                    Request Bill & Pay
                 </button>
             </div>
+
+            {/* Payment Method Modal */}
+            {showPaymentModal && (
+                <div 
+                    className="fixed inset-0 z-[100] bg-black/60  flex items-end md:items-center justify-center"
+                    onClick={() => setShowPaymentModal(false)}
+                >
+                    
+                    
+                    {/* Modal Bottom Sheet */}
+                    <div 
+                        className="relative bg-white w-full md:max-w-md rounded-t-[2rem] md:rounded-[2rem] shadow-2xl overflow-hidden animate-slide-up"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        
+                        {/* Thanh Handle cho Mobile */}
+                        <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mt-3 md:hidden" />
+
+                        <div className="pt-6 pb-2 px-6">
+                            <h3 className="text-xl font-bold text-gray-800 text-center">Select Payment Method</h3>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            {/* Bank Transfer / QR */}
+                            <button 
+                                onClick={() => handleCheckout('transfer')}
+                                disabled={isProcessing}
+                                className="group w-full flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:border-blue-500 hover:shadow-blue-100 transition-all active:scale-[0.98] disabled:opacity-50"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                    <i className="fa-solid fa-qrcode text-xl"></i>
+                                </div>
+                                <div className="text-left flex-1">
+                                    <div className="font-bold text-gray-800 text-sm">Bank Transfer / QR</div>
+                                    <div className="text-[10px] text-gray-400 font-medium">Instant confirmation via PayOS</div>
+                                </div>
+                                <i className="fa-solid fa-chevron-right text-gray-200 group-hover:text-blue-500 transition-colors text-xs"></i>
+                            </button>
+
+                            {/* Cash */}
+                            <button 
+                                onClick={() => handleCheckout('cash')}
+                                disabled={isProcessing}
+                                className="group w-full flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:border-green-500 hover:shadow-green-100 transition-all active:scale-[0.98] disabled:opacity-50"
+                            >
+                                <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600 group-hover:bg-green-600 group-hover:text-white transition-all">
+                                    <i className="fa-solid fa-money-bill-wave text-xl"></i>
+                                </div>
+                                <div className="text-left flex-1">
+                                    <div className="font-bold text-gray-800 text-sm">Cash</div>
+                                    <div className="text-[10px] text-gray-400 font-medium">Pay directly to waiter</div>
+                                </div>
+                                <i className="fa-solid fa-chevron-right text-gray-200 group-hover:text-green-500 transition-colors text-xs"></i>
+                            </button>
+                        </div>
+
+                        {/* Cancel Button */}
+                        <div className="px-6 pb-8 md:pb-6">
+                            <button 
+                                onClick={() => setShowPaymentModal(false)}
+                                className="w-full py-4 text-gray-500 font-semibold hover:bg-gray-100 rounded-2xl transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
+                    <style dangerouslySetInnerHTML={{ __html: `
+                        @keyframes slide-up {
+                            from { transform: translateY(100%); opacity: 0; }
+                            to { transform: translateY(0); opacity: 1; }
+                        }
+                        .animate-slide-up {
+                            animation: slide-up 0.3s ease-out;
+                        }
+                    `}} />
+                </div>
+            )}
 
             <h3 className="font-bold text-xl mb-4 text-gray-800">Order History</h3>
 

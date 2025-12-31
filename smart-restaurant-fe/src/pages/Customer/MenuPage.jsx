@@ -16,6 +16,7 @@ export default function MenuPage() {
     const { setSessionInfo, addToCart, sessionInfo } = useCart();
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
+    const [sortBy, setSortBy] = useState("price-asc"); // State cho sort
     
     // State để quản lý món đang xem
     const [selectedItem, setSelectedItem] = useState(null);
@@ -80,11 +81,18 @@ export default function MenuPage() {
     const items = menuData?.items || [];
     const categories = catData?.categories || [];
 
-    const filteredItems = items.filter(item => {
-        const matchCat = selectedCategory === "all" || item.categoryId._id === selectedCategory;
-        const matchSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchCat && matchSearch;
-    });
+    const filteredItems = items
+        .filter(item => {
+            const matchCat = selectedCategory === "all" || item.categoryId._id === selectedCategory;
+            const matchSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+            return matchCat && matchSearch;
+        })
+        .sort((a, b) => {
+            if (sortBy === 'price-asc') return a.price - b.price;
+            if (sortBy === 'price-desc') return b.price - a.price;
+            if (sortBy === 'popular') return (b.orderCount || 0) - (a.orderCount || 0);
+            return 0;
+        });
 
     if (menuLoading || catLoading) return <div className="p-10 text-center text-[#D4AF37] font-bold">Loading Menu...</div>;
 
@@ -93,8 +101,8 @@ export default function MenuPage() {
             {/* Search Bar */}
             <div className="sticky top-[83px] z-20 bg-white">
 
-                <div className="px-6 pt-4 pb-4">
-                    <div className="relative">
+                <div className="px-6 pt-4 pb-4 flex gap-3">
+                    <div className="relative flex-1">
                         <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                         <input 
                             type="text" 
@@ -103,6 +111,19 @@ export default function MenuPage() {
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
+                    </div>
+                    {/* Sort Dropdown bổ sung vào bên phải thanh search */}
+                    <div className="relative">
+                        <select 
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="h-12 pl-4 pr-8 bg-gray-100 rounded-xl outline-none text-sm font-bold text-gray-700 appearance-none border-none focus:ring-2 focus:ring-[#D4AF37]/50 transition cursor-pointer"
+                        >
+                            <option value="popular">Popular</option>
+                            <option value="price-asc">Price (Low)</option>
+                            <option value="price-desc">Price (High)</option>
+                        </select>
+                        <i className="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
                     </div>
                 </div>
 
