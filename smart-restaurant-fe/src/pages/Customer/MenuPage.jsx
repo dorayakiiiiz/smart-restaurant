@@ -161,12 +161,16 @@ export default function MenuPage() {
                             
                             <div className="flex justify-between items-end mt-3">
                                 <span className="font-momo font-bold text-xl text-[#1a1a1a]">${item.price}</span>
-                                {/* <button 
-                                    onClick={() => item.isAvailable && setSelectedItem(item)}
+                                <button 
+                                    onClick={(e) => {
+                                            e.stopPropagation();
+                                            item.isAvailable && setSelectedItem(item)
+                                        }
+                                    }
                                     className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition ${item.isAvailable ? 'bg-[#D4AF37] text-white' : 'bg-gray-200 text-gray-400'}`}
                                 >
                                     <i className="fa-solid fa-plus"></i>
-                                </button> */}
+                                </button>
                             </div>
                         </div>
                     </div>
