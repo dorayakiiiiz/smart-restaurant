@@ -1,9 +1,11 @@
 import Table from "../models/Table.mjs";
 import Order from "../models/Order.mjs";
-import OrderSession from "../models/OrderSession.mjs"; // Import thêm
+import OrderSession from "../models/OrderSession.mjs";
 import MenuItem from "../models/MenuItem.mjs";
 import mongoose from "mongoose";
-import payos from "../config/payos.mjs";
+// import payos from "../config/payos.mjs"; // KHÔNG DÙNG GLOBAL NỮA
+import { PayOS } from "@payos/node"; // Import Class PayOS
+import { decrypt } from "../utils/crypto.mjs"; // Import giải mã
 
 class OrderController {
   // [POST] /api/orders/session/start
@@ -184,9 +186,11 @@ class OrderController {
             const { sessionId } = req.params;
             const { paymentMethod } = req.body; // 'cash' | 'transfer'
 
-            const session = await OrderSession.findById(sessionId).populate('restaurantId')
-                .populate('restaurantId')
+            // Populate restaurantId để lấy config PayOS
+            const session = await OrderSession.findById(sessionId)
+                .populate('restaurantId') 
                 .populate('tableId', 'name');
+            
             if (!session) return res.status(404).json({ message: "Session not found" });
 
             // Tính lại tổng tiền lần cuối để chắc chắn
@@ -207,20 +211,32 @@ class OrderController {
             const restaurantId = session.restaurantId._id.toString();
 
             if (paymentMethod === 'cash') {
+                // ...existing code...
                 await session.save();
-                
-                // Báo cho Waiter
                 io.to(`restaurant_${restaurantId}_waiter`).emit("payment_requested", {
                     sessionId,
                     tableId: session.tableId,
                     method: 'cash',
                     amount: totalAmount
                 });
-
                 return res.json({ message: "Cash payment requested", method: 'cash' });
             } 
             else if (paymentMethod === 'transfer') {
-                // Tạo mã đơn hàng (Unix timestamp đảo ngược hoặc random số nguyên dương)
+                // 1. Lấy Config PayOS của nhà hàng
+                const restaurant = session.restaurantId;
+                if (!restaurant.payosConfig || !restaurant.payosConfig.isConfigured) {
+                    return res.status(400).json({ message: "Online payment is not configured for this restaurant." });
+                }
+
+                // 2. Giải mã credentials
+                const clientId = decrypt(restaurant.payosConfig.clientId);
+                const apiKey = decrypt(restaurant.payosConfig.apiKey);
+                const checksumKey = decrypt(restaurant.payosConfig.checksumKey);
+
+                // 3. Khởi tạo PayOS Instance riêng cho request này
+                const customPayOS = new PayOS({ clientId, apiKey, checksumKey });
+
+                // Tạo mã đơn hàng
                 const orderCode = Number(String(Date.now()).slice(-9));
                 session.orderCode = orderCode;
                 await session.save();
@@ -236,14 +252,13 @@ class OrderController {
                     orderCode: orderCode,
                     amount: amount,
                     description: description,
-                    // items: [], // Optional: Chi tiết món ăn (nếu cần)
                     cancelUrl: `${process.env.CLIENT_URL}/menu`,
                     returnUrl: `${process.env.CLIENT_URL}/payment/success?session_id=${sessionId}`,
                 };
 
                 console.log("Creating PayOS link with data:", paymentData);
 
-                const paymentLinkRes = await payos.paymentRequests.create(paymentData);
+                const paymentLinkRes = await customPayOS.paymentRequests.create(paymentData);
 
                 console.log("PayOS response:", paymentLinkRes);
 
@@ -305,55 +320,65 @@ class OrderController {
     async handlePayOSWebhook(req, res) {
         try {
             console.log("📩 PayOS Webhook received:", req.body);
+            
+            // Dữ liệu webhook chưa verify
+            const webhookDataRaw = req.body.data;
+            const orderCode = webhookDataRaw.orderCode;
 
-            // PAYOS V2: Verify webhook data
-            const webhookData = await payos.webhooks.verify(req.body);
+            // 1. Tìm Session trước để biết thuộc nhà hàng nào
+            const session = await OrderSession.findOne({ orderCode })
+                .populate('restaurantId')
+                .populate('tableId', 'name');
+            
+            if (!session) {
+                console.log(`⚠️ Session not found for orderCode: ${orderCode}`);
+                return res.json({ success: false, message: "Session not found" });
+            }
+
+            // 2. Lấy Config PayOS của nhà hàng đó để verify
+            const restaurant = session.restaurantId;
+            if (!restaurant.payosConfig || !restaurant.payosConfig.isConfigured) {
+                console.log("❌ Restaurant PayOS config missing");
+                return res.json({ success: false });
+            }
+
+            const clientId = decrypt(restaurant.payosConfig.clientId);
+            const apiKey = decrypt(restaurant.payosConfig.apiKey);
+            const checksumKey = decrypt(restaurant.payosConfig.checksumKey);
+
+            const customPayOS = new PayOS({ clientId, apiKey, checksumKey });
+
+            // 3. Verify Webhook Data
+            const webhookData = customPayOS.webhooks.verify(req.body);
 
             console.log("✅ Webhook verified:", webhookData);
 
             // Check thanh toán thành công
             if (webhookData.code === "00" && webhookData.success === true) {
-                const orderCode = webhookData.data.orderCode;
-
                 console.log(`💰 Payment SUCCESS for orderCode: ${orderCode}`);
-
-                // Tìm session theo orderCode
-                const session = await OrderSession.findOne({ orderCode })
-                    .populate('tableId', 'name');
                 
-                if (session) {
-                    // ⭐ CHỈ CẬP NHẬT paymentStatus, KHÔNG đổi status session
-                    // Waiter sẽ confirm sau để dọn bàn
-                    session.paymentStatus = 'paid';
-                    // KHÔNG set session.status = 'completed' ở đây
-                    // KHÔNG set session.endTime ở đây
-                    // KHÔNG update Table status ở đây
-                    await session.save();
+                // ⭐ CHỈ CẬP NHẬT paymentStatus, KHÔNG đổi status session
+                session.paymentStatus = 'paid';
+                await session.save();
 
-                    const io = req.app.get("socketio");
-                    const restaurantId = (session.restaurantId?._id || session.restaurantId).toString();
-                    const sessionId = session._id.toString();
+                const io = req.app.get("socketio");
+                const restaurantId = restaurant._id.toString();
+                const sessionId = session._id.toString();
 
-                    // 1. Báo cho Customer → Hiển thị Thank You screen NGAY
-                    io.to(`session_${sessionId}`).emit("session_ended", {
-                        reason: 'payment_completed',
-                        method: 'transfer'
-                    });
+                // 1. Báo cho Customer → Hiển thị Thank You screen NGAY
+                io.to(`session_${sessionId}`).emit("session_ended", {
+                    reason: 'payment_completed',
+                    method: 'transfer'
+                });
 
-                    // 2. Báo cho Waiter → Cập nhật UI bàn thành "QR Paid ✓"
-                    io.to(`restaurant_${restaurantId}_waiter`).emit("payment_success", {
-                        sessionId,
-                        tableId: session.tableId._id,
-                        tableName: session.tableId.name,
-                        method: 'transfer',
-                        amount: session.totalAmount
-                    });
-
-                    console.log(`✅ Socket emitted: session_ended to session_${sessionId}`);
-                    console.log(`✅ Socket emitted: payment_success to restaurant_${restaurantId}_waiter`);
-                } else {
-                    console.log(`⚠️ Session not found for orderCode: ${orderCode}`);
-                }
+                // 2. Báo cho Waiter → Cập nhật UI bàn thành "QR Paid ✓"
+                io.to(`restaurant_${restaurantId}_waiter`).emit("payment_success", {
+                    sessionId,
+                    tableId: session.tableId._id,
+                    tableName: session.tableId.name,
+                    method: 'transfer',
+                    amount: session.totalAmount
+                });
             } else {
                 console.log(`❌ Payment failed or cancelled: code=${webhookData.code}`);
             }
@@ -363,6 +388,7 @@ class OrderController {
 
         } catch (err) {
             console.error("❌ Webhook Error:", err);
+            // Vẫn trả 200 để PayOS không retry spam
             res.status(200).json({ success: false, error: err.message });
         }
     }
