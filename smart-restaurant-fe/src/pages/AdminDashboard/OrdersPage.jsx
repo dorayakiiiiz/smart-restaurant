@@ -243,7 +243,7 @@ const StaffRow = ({ staff, role }) => {
         kitchen: { bg: 'bg-green-500', icon: 'fa-fire', label: 'Kitchen' },
         admin: { bg: 'bg-purple-500', icon: 'fa-user-shield', label: 'Admin' }
     };
-    const config = roleConfig[staff.role] || roleConfig.admin;
+    const config = roleConfig[role] || roleConfig.admin;
     
     return (
         <tr className="border-b border-gray-100 last:border-0">
@@ -319,19 +319,23 @@ const OrderTimeline = ({ timelineSteps }) => (
 const StaffInformation = ({ order }) => {
     if (!order.acceptedBy && !order.preparedBy && !order.servedBy) return null;
     
-    const uniqueStaffMap = new Map();
+    const staffList = [];
     
     if (order.acceptedBy && order.acceptedBy._id) {
-        uniqueStaffMap.set(order.acceptedBy._id, order.acceptedBy);
+        staffList.push({ staff: order.acceptedBy, role: 'waiter' });
     }
-    if (order.preparedBy && order.preparedBy._id && !uniqueStaffMap.has(order.preparedBy._id)) {
-        uniqueStaffMap.set(order.preparedBy._id, order.preparedBy);
+    if (order.preparedBy && order.preparedBy._id) {
+        const alreadyAdded = staffList.find(s => s.staff._id === order.preparedBy._id);
+        if (!alreadyAdded) {
+            staffList.push({ staff: order.preparedBy, role: 'kitchen' });
+        }
     }
-    if (order.servedBy && order.servedBy._id && !uniqueStaffMap.has(order.servedBy._id)) {
-        uniqueStaffMap.set(order.servedBy._id, order.servedBy);
+    if (order.servedBy && order.servedBy._id) {
+        const alreadyAdded = staffList.find(s => s.staff._id === order.servedBy._id);
+        if (!alreadyAdded) {
+            staffList.push({ staff: order.servedBy, role: 'waiter' });
+        }
     }
-    
-    const uniqueStaff = Array.from(uniqueStaffMap.values());
     
     return (
         <div className="mb-6">
@@ -347,8 +351,8 @@ const StaffInformation = ({ order }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {uniqueStaff.map((staff, index) => (
-                                <StaffRow key={staff._id || index} staff={staff} role="staff" />
+                            {staffList.map((item, index) => (
+                                <StaffRow key={item.staff._id || index} staff={item.staff} role={item.role} />
                             ))}
                         </tbody>
                     </table>
@@ -491,16 +495,69 @@ export default function OrdersPage() {
     const [customDateStart, setCustomDateStart] = useState("");
     const [customDateEnd, setCustomDateEnd] = useState("");
 
-    // Socket setup
     useEffect(() => {
         if (!user || !user.restaurantId) return;
-        if (!socket.connected) socket.connect();
-        socket.emit("join_admin", user.restaurantId);
 
-        const handleInvalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
-        const events = ["new_order_alert", "order_accepted", "order_rejected", "kitchen:order_update", "waiter:order_ready", "order_served", "order_completed"];
-        events.forEach(event => socket.on(event, handleInvalidate));
-        return () => events.forEach(event => socket.off(event, handleInvalidate));
+        const updateOrderInCache = (updatedOrder) => {
+            queryClient.setQueryData(['admin-orders', 'all'], (old = []) => {
+                const exists = old.find(o => o._id === updatedOrder._id);
+                if (exists) {
+                    return old.map(o => o._id === updatedOrder._id ? updatedOrder : o);
+                }
+                return [updatedOrder, ...old];
+            });
+
+            const tabMapping = {
+                'pending': 'received',
+                'accepted': 'preparing',
+                'preparing': 'preparing',
+                'ready': 'ready',
+                'completed': 'completed',
+                'served': 'completed'
+            };
+
+            const targetTab = tabMapping[updatedOrder.status];
+            if (targetTab) {
+                queryClient.setQueryData(['admin-orders', targetTab], (old = []) => {
+                    const exists = old.find(o => o._id === updatedOrder._id);
+                    if (exists) {
+                        return old.map(o => o._id === updatedOrder._id ? updatedOrder : o);
+                    }
+                    return [updatedOrder, ...old];
+                });
+            }
+
+            Object.values(tabMapping).forEach(tab => {
+                if (tab !== targetTab) {
+                    queryClient.setQueryData(['admin-orders', tab], (old = []) => {
+                        return old ? old.filter(o => o._id !== updatedOrder._id) : [];
+                    });
+                }
+            });
+        };
+
+        const handleNewOrder = (order) => updateOrderInCache(order);
+        const handleOrderUpdate = (order) => updateOrderInCache(order);
+
+        socket.on("new_order_alert", handleNewOrder);
+        socket.on("order_accepted", handleOrderUpdate);
+        socket.on("order_rejected", handleOrderUpdate);
+        socket.on("kitchen:order_update", handleOrderUpdate);
+        socket.on("waiter:order_ready", handleOrderUpdate);
+        socket.on("order_served", handleOrderUpdate);
+        socket.on("order_completed", handleOrderUpdate);
+        socket.on("order_update", handleOrderUpdate);
+
+        return () => {
+            socket.off("new_order_alert", handleNewOrder);
+            socket.off("order_accepted", handleOrderUpdate);
+            socket.off("order_rejected", handleOrderUpdate);
+            socket.off("kitchen:order_update", handleOrderUpdate);
+            socket.off("waiter:order_ready", handleOrderUpdate);
+            socket.off("order_served", handleOrderUpdate);
+            socket.off("order_completed", handleOrderUpdate);
+            socket.off("order_update", handleOrderUpdate);
+        };
     }, [user?.restaurantId, queryClient]);
 
     const { data: allOrdersForCounts = [] } = useQuery({
