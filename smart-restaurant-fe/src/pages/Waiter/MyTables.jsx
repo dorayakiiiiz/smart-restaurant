@@ -19,6 +19,7 @@ export default function MyTables() {
         }
     });
 
+    
     // Helper functions (Đã bổ sung để fix lỗi ReferenceError)
     const getDuration = (startTime) => {
         if (!startTime) return '0m';
@@ -131,6 +132,62 @@ export default function MyTables() {
         );
     }
 
+    // Render Status Badge & Action Button
+    const renderTableAction = (session) => {
+        if (session.status === 'payment_requested') {
+            
+            // CASE 1: Tiền mặt (Giữ nguyên)
+            if (session.paymentMethod === 'cash') {
+                return (
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation(); 
+                            handleConfirmPayment(session._id);
+                        }}
+                        disabled={paymentMutation.isPending}
+                        className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 shadow-sm flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <i className="fa-solid fa-money-bill-wave"></i>
+                        Confirm Cash
+                    </button>
+                );
+            } 
+            // CASE 2: Chuyển khoản (PayOS)
+            else if (session.paymentMethod === 'transfer') {
+                
+                // 👇 SỬA Ở ĐÂY: Check thêm paymentStatus xem đã Paid chưa
+                if (session.paymentStatus === 'paid') {
+                    return (
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleConfirmPayment(session._id);
+                            }}
+                            disabled={paymentMutation.isPending}
+                            className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 animate-bounce-in"
+                        >
+                            <i className="fa-solid fa-check-double"></i>
+                            Paid! Clear Table
+                        </button>
+                    );
+                }
+
+                // Nếu chưa Paid thì mới hiện "QR Paying..."
+                return (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-lg">
+                        <i className="fa-solid fa-qrcode text-blue-600 animate-pulse text-xs"></i>
+                        <span className="text-[11px] font-bold text-blue-600 uppercase tracking-tight">QR Paying...</span>
+                    </div>
+                );
+            }
+        }
+        
+        return (
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">
+                Active
+            </span>
+        );
+    };
     return (
         <>
             {/* Summary Card */}
@@ -200,7 +257,7 @@ export default function MyTables() {
                                     <div>
                                         <div className="font-bold text-gray-800 flex items-center gap-2">
                                             {session.tableId?.name}
-                                            {getStatusBadge(session.status)}
+                                            {renderTableAction(session)}
                                         </div>
                                         <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
                                             <i className="fa-regular fa-clock"></i> {getDuration(session.startTime)}
@@ -249,19 +306,7 @@ export default function MyTables() {
                                     </div>
                                 )}
                                 
-                                {isPaymentRequested && (
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleConfirmPayment(session._id);
-                                        }}
-                                        disabled={paymentMutation.isPending}
-                                        className="w-full mt-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200 flex items-center justify-center gap-2"
-                                    >
-                                        <i className="fa-solid fa-cash-register"></i>
-                                        {paymentMutation.isPending ? 'Processing...' : 'Confirm Payment & Clear Table'}
-                                    </button>
-                                )}
+                            
                             </div>
                         )}
                     </div>

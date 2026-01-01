@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { socket } from "../services/socket"; // Import socket
-import { useAuth } from "./AuthContext"; // Import AuthContext để check login
+import { useAuth } from "./AuthContext";
+import { socket } from "../services/socket";
 
 const CartContext = createContext();
 
@@ -14,11 +14,14 @@ export const CartProvider = ({ children }) => {
     });
 
     // Session Info (Lưu thông tin bàn sau khi quét QR)
-    // Đổi tên state gốc thành _sessionInfo để bọc logic vào hàm setSessionInfo bên dưới
     const [sessionInfo, _setSessionInfo] = useState(() => {
         const saved = localStorage.getItem("session_info");
         return saved ? JSON.parse(saved) : null;
     });
+
+    // State để hiển thị màn hình Thank You
+    const [showThankYou, setShowThankYou] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState(null);
 
     useEffect(() => {
         localStorage.setItem("customer_cart", JSON.stringify(cartItems));
@@ -37,12 +40,10 @@ export const CartProvider = ({ children }) => {
         const oldSessionId = sessionInfo?.session?._id;
         const newSessionId = newSessionData?.session?._id;
 
-        // Nếu có session mới được set
         if (newSessionId) {
-            // Nếu ID session mới KHÁC ID session cũ (hoặc chưa có session cũ)
-            // Nghĩa là người dùng vừa quét QR bàn khác -> Xóa giỏ hàng cũ
             if (oldSessionId !== newSessionId) {
-                setCartItems([]); 
+                console.log("New session detected, clearing old cart");
+                setCartItems([]);
             }
         }
         
@@ -55,29 +56,43 @@ export const CartProvider = ({ children }) => {
     useEffect(() => {
         if (sessionInfo?.session?._id) {
             // Đảm bảo socket đã connect
-            if (!socket.connected) socket.connect();
+            if (!socket.connected) {
+                socket.connect();
+            }
             
             // Join room session
             socket.emit("join_session", sessionInfo.session._id);
 
             // Hàm xử lý khi nhận tín hiệu kết thúc
-            const handleSessionEnded = () => {
-                console.log("Session ended by waiter. Clearing data...");
+            const handleSessionEnded = (data) => {
+                console.log("Session ended event received:", data);
                 
-                // 1. Xóa State
-                setCartItems([]);
-                _setSessionInfo(null);
+                // Nếu là payment completed, hiện màn hình Thank You
+                if (data?.reason === 'payment_completed') {
+                    setPaymentMethod(data?.method || 'unknown');
+                    setShowThankYou(true);
+                    
+                    // Sau 5 giây, xóa session và redirect
+                    setTimeout(() => {
+                        localStorage.removeItem("session_info");
+                        localStorage.removeItem("customer_cart");
+                        setCartItems([]);
+                        _setSessionInfo(null);
+                        setShowThankYou(false);
+                        
 
-                // 2. Xóa LocalStorage
-                localStorage.removeItem("customer_cart");
-                localStorage.removeItem("session_info");
-
-                // 3. Thông báo và reload/redirect
-                alert("Payment successful! Thank you for dining with us.");
-                if (user)
-                    window.location.href = "/profile";
-                else 
-                    window.location.href = "/menu";
+                        if (user)
+                            window.location.href = "/profile";
+                        else
+                            window.location.href = "/menu";
+                    }, 5000);
+                } else {
+                    // Các trường hợp khác (admin kết thúc session, etc.)
+                    localStorage.removeItem("session_info");
+                    localStorage.removeItem("customer_cart");
+                    setCartItems([]);
+                    _setSessionInfo(null);
+                }
             };
 
             // Lắng nghe
@@ -88,12 +103,11 @@ export const CartProvider = ({ children }) => {
                 socket.off("session_ended", handleSessionEnded);
             };
         }
-    }, [sessionInfo]); 
+    }, [sessionInfo?.session?._id]); 
     // ---------------------------------------------------------
 
     const addToCart = (product, quantity, modifiers = [], note = "") => {
         setCartItems(prev => {
-            // Tạo key unique dựa trên ID món và modifiers (để phân biệt cùng món nhưng khác topping)
             const uniqueKey = `${product._id}-${JSON.stringify(modifiers)}`;
             
             const existing = prev.find(item => item.uniqueKey === uniqueKey);
@@ -101,20 +115,20 @@ export const CartProvider = ({ children }) => {
             if (existing) {
                 return prev.map(item => 
                     item.uniqueKey === uniqueKey 
-                        ? { ...item, quantity: item.quantity + quantity } 
+                        ? { ...item, quantity: item.quantity + quantity }
                         : item
                 );
             }
             
-            return [...prev, { 
+            return [...prev, {
                 uniqueKey,
-                menuItemId: product._id, 
-                name: product.name, 
-                price: product.price, 
+                menuItemId: product._id,
+                name: product.name,
+                price: product.price,
                 image: product.images?.[0]?.url,
-                quantity, 
-                modifiers, 
-                note 
+                quantity,
+                modifiers,
+                note
             }];
         });
     };
@@ -130,7 +144,7 @@ export const CartProvider = ({ children }) => {
                 return newQty > 0 ? { ...item, quantity: newQty } : item;
             }
             return item;
-        }));
+        }).filter(item => item.quantity > 0));
     };
 
     const clearCart = () => setCartItems([]);
@@ -144,7 +158,6 @@ export const CartProvider = ({ children }) => {
                         quantity: quantity ?? item.quantity,
                         modifiers: modifiers ?? item.modifiers,
                         note: note ?? item.note,
-                        // Nếu modifiers đổi thì cần đổi uniqueKey để tránh trùng
                         uniqueKey: `${item.menuItemId}-${JSON.stringify(modifiers ?? item.modifiers)}`
                     }
                     : item
@@ -162,7 +175,8 @@ export const CartProvider = ({ children }) => {
         <CartContext.Provider value={{
             cartItems, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal,
             updateCartItem,
-            sessionInfo, setSessionInfo
+            sessionInfo, setSessionInfo,
+            showThankYou, paymentMethod // Export để CustomerLayout có thể hiển thị
         }}>
             {children}
         </CartContext.Provider>
