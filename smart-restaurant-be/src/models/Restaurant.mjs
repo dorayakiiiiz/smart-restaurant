@@ -22,6 +22,24 @@ const RestaurantSchema = new Schema({
     wifiPassword: { type: String },
     currency: { type: String, default: 'VND' },
     
+    // Thêm cấu hình PayOS (Lưu dạng object đã mã hóa hoặc plain text tùy logic controller, ở đây lưu object kết quả từ hàm encrypt)
+    payosConfig: {
+        clientId: { 
+            iv: String,
+            content: String
+        },
+        apiKey: { 
+            iv: String,
+            content: String
+        },
+        checksumKey: { 
+            iv: String,
+            content: String
+        },
+        // Flag để biết nhà hàng đã cấu hình chưa
+        isConfigured: { type: Boolean, default: false }
+    },
+
     isActive: {
         type: Boolean,
         default: true
