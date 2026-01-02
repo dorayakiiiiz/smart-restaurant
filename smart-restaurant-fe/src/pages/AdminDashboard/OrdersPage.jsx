@@ -318,25 +318,46 @@ const OrderTimeline = ({ timelineSteps }) => (
 
 const StaffInformation = ({ order }) => {
     if (!order.acceptedBy && !order.preparedBy && !order.servedBy) return null;
-    
+
     const staffList = [];
-    
+
     if (order.acceptedBy && order.acceptedBy._id) {
-        staffList.push({ staff: order.acceptedBy, role: 'waiter' });
+        if (order.acceptedBy.role !== 'admin') {
+            staffList.push({
+                staff: order.acceptedBy,
+                role: 'waiter'
+            });
+        }
     }
+
     if (order.preparedBy && order.preparedBy._id) {
-        const alreadyAdded = staffList.find(s => s.staff._id === order.preparedBy._id);
-        if (!alreadyAdded) {
-            staffList.push({ staff: order.preparedBy, role: 'kitchen' });
+        const alreadyAdded = staffList.find(
+            s => s.staff._id === order.preparedBy._id
+        );
+
+        if (!alreadyAdded && order.preparedBy.role !== 'admin') {
+            staffList.push({
+                staff: order.preparedBy,
+                role: 'kitchen'
+            });
         }
     }
+
     if (order.servedBy && order.servedBy._id) {
-        const alreadyAdded = staffList.find(s => s.staff._id === order.servedBy._id);
-        if (!alreadyAdded) {
-            staffList.push({ staff: order.servedBy, role: 'waiter' });
+        const alreadyAdded = staffList.find(
+            s => s.staff._id === order.servedBy._id
+        );
+
+        if (!alreadyAdded && order.servedBy.role !== 'admin') {
+            staffList.push({
+                staff: order.servedBy,
+                role: 'waiter'
+            });
         }
     }
-    
+
+    if (staffList.length === 0) return null;
+
     return (
         <div className="mb-6">
             <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Staff Information</h3>
@@ -437,8 +458,9 @@ const ModalFooter = ({ order, onClose, onReject, onAccept, onServe }) => (
 const OrderDetailModal = ({ show, order, onClose, onReject, onAccept, onServe }) => {
     if (!show || !order) return null;
 
-    const actualServedAt = (order.status === 'served' || order.status === 'completed') ? (order.servedAt || order.updatedAt) : order.servedAt;
-    const actualReadyAt = order.readyAt || (order.status === 'ready' || actualServedAt ? order.updatedAt : null);
+    const actualServedAt = order.servedAt;
+    const actualReadyAt = order.readyAt || (order.items?.every(item => item.status === 'served' || item.status === 'ready') ? 
+        order.items.filter(item => item.finishedAt).sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt))[0]?.finishedAt : null);
     const waitTime = calcDiffSeconds(order.createdAt, order.acceptedAt);
     const prepTime = calcDiffSeconds(order.acceptedAt, actualReadyAt);
     const serveTime = calcDiffSeconds(actualReadyAt, actualServedAt);
