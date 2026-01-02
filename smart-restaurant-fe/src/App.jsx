@@ -114,7 +114,7 @@ function App() {
                                 <Route path="menu/:id" element={<MenuItemDetail />} />
                                 <Route path="tables" element={<TablesPage />} />
                                 <Route path="orders" element={<OrdersPage />} />
-                                <Route path="kds" element={<KDSPage />} />
+                                <Route path="kds" element={<KitchenDashboard />} />
                                 <Route path="staff" element={<StaffManagementPage />} />
                                 <Route path="reports" element={<ReportsPage />} />
                                 <Route path="settings" element={<SettingsPage />} />
