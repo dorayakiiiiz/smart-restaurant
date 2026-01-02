@@ -1,10 +1,23 @@
+import { useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import Sidebar from "../components/AdminDashboard/Sidebar";
 import { useAuth } from "../context/AuthContext";
+import { socket } from "../services/socket";
 
 export default function AdminDashboardLayout() {
     const location = useLocation();
     const { user } = useAuth();
+
+    useEffect(() => {
+        if (!user?.restaurantId) return;
+        
+        if (!socket.connected) socket.connect();
+        socket.emit("join_admin", user.restaurantId);
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [user?.restaurantId]);
     
     const getTitle = () => {
         const path = location.pathname;

@@ -29,6 +29,11 @@ export default function SettingsPage() {
     const [logoPreview, setLogoPreview] = useState("");
     const [coverPreview, setCoverPreview] = useState("");
 
+    // --- PAYOS STATE (MỚI) ---
+    const [payosClientId, setPayosClientId] = useState("");
+    const [payosApiKey, setPayosApiKey] = useState("");
+    const [payosChecksumKey, setPayosChecksumKey] = useState("");
+
     // --- 1. FETCH DATA (useQuery) ---
     const { data: restaurantData, isLoading } = useQuery({
         queryKey: ['my-restaurant'],
@@ -46,6 +51,13 @@ export default function SettingsPage() {
             setWifi(r.wifiPassword || "");
             setLogoPreview(r.logoUrl || "");
             setCoverPreview(r.coverUrl || "");
+
+            // Sync PayOS Data
+            if (r.payosConfig) {
+                setPayosClientId(r.payosConfig.clientId || "");
+                setPayosApiKey(r.payosConfig.apiKey || "");
+                setPayosChecksumKey(r.payosConfig.checksumKey || "");
+            }
         }
     }, [restaurantData]);
 
@@ -95,11 +107,18 @@ export default function SettingsPage() {
         if (logo) formData.append('logo', logo);
         if (cover) formData.append('cover', cover);
 
+        // Append PayOS Data
+        formData.append('payosClientId', payosClientId);
+        formData.append('payosApiKey', payosApiKey);
+        formData.append('payosChecksumKey', payosChecksumKey);
+
         updateMutation.mutate(formData);
     };
 
+    if (isLoading) return <div className="p-10 text-center">Loading settings...</div>;
+
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 font-momo">Restaurant Settings</h2>
 
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-8">
@@ -159,6 +178,29 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
+                {/* Payment */}
+                <div className="bg-white ">
+                    <h3 className="text-lg font-bold text-gray-700 mb-4 border-b pb-2">Payment Configuration - PayOS <span className="ml-1 text-gray-500 text-sm font-normal">(Get via <a href="https://payos.vn" className="cursor-pointer text-blue-500 underline">payos.vn</a>)</span></h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-600 mb-1">Client ID</label>
+                            <Input type="text" value={payosClientId} setState={setPayosClientId} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-bold text-gray-600 mb-1">API Key</label>
+                            <Input type="text" value={payosApiKey} setState={setPayosApiKey} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-gray-600 mb-1">Checksum Key</label>
+                            <Input type="text" value={payosChecksumKey} setState={setPayosChecksumKey} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
+                            
+                        </div>
+                    </div>
+                </div>
+
                 {/* Action */}
                 <div className="flex flex-col items-center pt-4">
                     <div className={`min-h-[24px] mb-2 font-bold text-sm ${
@@ -171,7 +213,7 @@ export default function SettingsPage() {
                         color="#fff"
                         text={isLoading ? "Saving..." : "Save Changes"}
                         onClick={handleSave}
-                        disabled={isLoading}
+                        disabled={updateMutation.isPending}
                     />
                 </div>
 

@@ -104,6 +104,7 @@ class KitchenController {
                 if (status === 'preparing') {
                     order.status = 'preparing';
                     order.preparingAt = new Date();
+                    order.preparedBy = req.user.id;
                     order.items.forEach(item => { item.status = 'preparing'; });
                 } else if (status === 'ready') {
                     order.status = 'ready';
@@ -170,10 +171,12 @@ class KitchenController {
 
             // 3. Waiter (waiter room) - Cập nhật tab Accepted/Ready
             io.to(`restaurant_${restaurantId}_waiter`).emit('kitchen:order_update', standardFormat);
+            io.to(`restaurant_${restaurantId}_admin`).emit('kitchen:order_update', standardFormat);
             
             // 3b. Emit riêng event `waiter:order_ready` khi có món ready
             if (status === 'ready' || order.status === 'ready') {
               io.to(`restaurant_${restaurantId}_waiter`).emit('waiter:order_ready', order);
+              io.to(`restaurant_${restaurantId}_admin`).emit('waiter:order_ready', order);
             }
 
             res.status(200).json({ message: "Status updated", order });

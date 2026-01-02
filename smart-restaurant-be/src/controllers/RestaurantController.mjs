@@ -1,4 +1,5 @@
 import Restaurant from "../models/Restaurant.mjs";
+import { encrypt, decrypt } from "../utils/crypto.mjs"; // Import hàm mã hóa
 
 class RestaurantController {
     // [POST] /api/restaurant
@@ -33,7 +34,31 @@ class RestaurantController {
     async getMyRestaurant(req, res) {
         try {
             const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            res.status(200).json({ restaurant });
+            
+            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
+            // Clone object để xử lý dữ liệu trả về
+            const restaurantData = restaurant.toObject();
+
+            // Giải mã thông tin PayOS để hiển thị lại trên form (nếu có)
+            if (restaurantData.payosConfig && restaurantData.payosConfig.isConfigured) {
+                restaurantData.payosConfig = {
+                    clientId: decrypt(restaurant.payosConfig.clientId),
+                    apiKey: decrypt(restaurant.payosConfig.apiKey),
+                    checksumKey: decrypt(restaurant.payosConfig.checksumKey),
+                    isConfigured: true
+                };
+            } else {
+                // Trả về rỗng nếu chưa cấu hình
+                restaurantData.payosConfig = {
+                    clientId: "",
+                    apiKey: "",
+                    checksumKey: "",
+                    isConfigured: false
+                };
+            }
+
+            res.status(200).json({ restaurant: restaurantData });
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
@@ -46,12 +71,39 @@ class RestaurantController {
             if (req.files?.logo?.[0]) updates.logoUrl = req.files.logo[0].path;
             if (req.files?.cover?.[0]) updates.coverUrl = req.files.cover[0].path;
 
+            // Xử lý cập nhật PayOS Config
+            if (updates.payosClientId && updates.payosApiKey && updates.payosChecksumKey) {
+                updates.payosConfig = {
+                    clientId: encrypt(updates.payosClientId),
+                    apiKey: encrypt(updates.payosApiKey),
+                    checksumKey: encrypt(updates.payosChecksumKey),
+                    isConfigured: true
+                };
+                
+                // Xóa các field tạm để không lưu rác vào db (nếu schema strict: false)
+                delete updates.payosClientId;
+                delete updates.payosApiKey;
+                delete updates.payosChecksumKey;
+            }
+
             const restaurant = await Restaurant.findOneAndUpdate(
                 { adminId: req.user.id },
                 updates,
                 { new: true }
             );
-            res.status(200).json({ message: "Updated successfully", restaurant });
+            
+            // Trả về data đã giải mã để UI cập nhật
+            const restaurantData = restaurant.toObject();
+            if (restaurantData.payosConfig && restaurantData.payosConfig.isConfigured) {
+                restaurantData.payosConfig = {
+                    clientId: decrypt(restaurant.payosConfig.clientId),
+                    apiKey: decrypt(restaurant.payosConfig.apiKey),
+                    checksumKey: decrypt(restaurant.payosConfig.checksumKey),
+                    isConfigured: true
+                };
+            }
+
+            res.status(200).json({ message: "Updated successfully", restaurant: restaurantData });
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
