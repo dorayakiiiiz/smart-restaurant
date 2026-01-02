@@ -27,6 +27,7 @@ import { useRef } from "react";
 
 export default function KitchenDashboard() {
     const { user, logout } = useAuth();
+    console.log("🍳 KitchenDashboard rendered for user:", user);
     const queryClient = useQueryClient();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showHistory, setShowHistory] = useState(false);
@@ -141,6 +142,7 @@ export default function KitchenDashboard() {
                 const orderId = updatedOrder._id || updatedOrder.id;
                 const existingIndex = oldData.findIndex(o => (o._id || o.id) === orderId);
                 
+                //Có tồn tại order
                 if (existingIndex >= 0) {
                     const newData = [...oldData];
                     newData[existingIndex] = updatedOrder;
@@ -155,9 +157,50 @@ export default function KitchenDashboard() {
 
         const handleOrderServed = (servedOrder) => {
             const orderId = servedOrder._id || servedOrder.id;
+            
+            // Nếu order đã hoàn thành (status = served) thì xóa khỏi bảng
+            if (servedOrder.status === 'served') {
+                queryClient.setQueryData(['kitchenOrders'], (oldData) => {
+                    if (!oldData) return [];
+                    //Lọc ra những order khác với orderId được phục vụ
+                    return oldData.filter(o => (o._id || o.id) !== orderId);
+                });
+                return;
+            }
+
+            // Nếu chưa hoàn thành (chỉ mới serve 1 phần), update lại trạng thái items
             queryClient.setQueryData(['kitchenOrders'], (oldData) => {
                 if (!oldData) return [];
-                return oldData.filter(o => (o._id || o.id) !== orderId);
+                
+                const existingIndex = oldData.findIndex(o => (o._id || o.id) === orderId);
+                if (existingIndex >= 0) {
+                    const newData = [...oldData];
+                    const existingOrder = newData[existingIndex];
+
+                    // Map data từ socket (WaiterController) sang format của Kitchen
+                    const formattedOrder = {
+                        ...existingOrder,
+                        status: servedOrder.status,
+                        items: servedOrder.items.map(item => {
+                            // Tìm item cũ để giữ lại prepTime (vì socket từ Waiter ko có field này)
+                            // const oldItem = existingOrder.items.find(i => i.itemId === item._id);
+                            return {
+                                itemId: item._id,
+                                name: item.name,
+                                qty: item.quantity, // Waiter trả về quantity
+                                note: item.note,
+                                modifiers: item.modifiers,
+                                status: item.status,
+                                // prepTime: oldItem?.prepTime || 1,
+                                finishedAt: item.finishedAt
+                            };
+                        })
+                    };
+                    
+                    newData[existingIndex] = formattedOrder;
+                    return newData;
+                }
+                return oldData;
             });
         };
 
@@ -276,13 +319,13 @@ export default function KitchenDashboard() {
                             <i className="fa-solid fa-clock-rotate-left text-sm md:text-lg"></i>
                         </button>
 
-                        <button 
+                        {user.role !== 'admin' && (<button 
                             onClick={logout}
                             className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-500/20 text-red-500 hover:from-red-500/20 hover:to-rose-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
                             title="Logout"
                         >
                             <i className="fa-solid fa-power-off text-sm md:text-lg"></i>
-                        </button>
+                        </button>)}
                     </div>
                 </div>
             </header>
@@ -347,7 +390,7 @@ export default function KitchenDashboard() {
                         color="blue" 
                         icon={<FaFire />}
                     >
-                        {orders.filter(o => o.status === 'preparing').map(order => (
+                        {orders.filter(o => o.items.some(i => i.status === 'preparing')).map(order => (
                             <OrderCard 
                                 key={order._id || order.id} 
                                 order={order} 
