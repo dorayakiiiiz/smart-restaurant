@@ -38,6 +38,11 @@ export default function MenuDetailPage() {
     const [comment, setComment] = useState("");
     const [customerName, setCustomerName] = useState("");
     const [editingReviewId, setEditingReviewId] = useState(null);
+    
+    // Filter & Pagination State
+    //State lọc đánh giá theo số rating
+    const [ratingFilter, setRatingFilter] = useState(0); // 0 = All
+    const [showAllReviews, setShowAllReviews] = useState(false);
 
     const { user } = useAuth();
     console.log("Current User:", user);
@@ -127,20 +132,31 @@ export default function MenuDetailPage() {
     };
 
     // Phân loại review của mình và người khác
-// 2. Sửa logic phân loại Review (QUAN TRỌNG)
-const currentUserId = user?.id || user?._id;
+    // 2. Sửa logic phân loại Review (QUAN TRỌNG)
+    const currentUserId = user?.id || user?._id;
 
-// So sánh ID phải so sánh string với string
-const myReview = reviews.find(r => {
-    const reviewUserId = typeof r.userId === 'object' ? r.userId?._id : r.userId;
-    return reviewUserId === currentUserId;
-});
+    // So sánh ID phải so sánh string với string
+    const myReview = reviews.find(r => {
+        const reviewUserId = typeof r.userId === 'object' ? r.userId?._id : r.userId;
+        return reviewUserId === currentUserId;
+    });
 
-// Lọc các review của người khác
-const otherReviews = reviews.filter(r => {
-    const reviewUserId = typeof r.userId === 'object' ? r.userId?._id : r.userId;
-    return reviewUserId !== currentUserId;
-});
+    // Lọc các review của người khác
+    const otherReviews = reviews.filter(r => {
+        const reviewUserId = typeof r.userId === 'object' ? r.userId?._id : r.userId;
+        return reviewUserId !== currentUserId;
+    });
+
+    // Apply Filter
+    const filteredReviews = otherReviews.filter(r => ratingFilter === 0 || r.rating === ratingFilter);
+
+    // Apply Pagination (Limit 3)
+    const displayedReviews = showAllReviews ? filteredReviews : filteredReviews.slice(0, 3);
+
+    //Count số review theo từng rating
+    const countByRating = (star) => {
+        return otherReviews.filter(r => r.rating === star).length;
+    }
 
 
     if (isLoading) return <div className="p-10 text-center">Loading...</div>;
@@ -386,6 +402,36 @@ const otherReviews = reviews.filter(r => {
 
                 {/* List Review */}
                 <div className="space-y-6">
+                    
+                    {/* Filter Tabs */}
+                    <div className="flex flex-wrap gap-2 mb-6">
+                        <button 
+                            onClick={() => { setRatingFilter(0); setShowAllReviews(false); }}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all ${
+                                ratingFilter === 0 
+                                ? 'bg-[#1a1a1a] text-[#D4AF37] border-[#1a1a1a]' 
+                                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                            }`}
+                        >
+                            All Reviews
+                        </button>
+                        {[5, 4, 3, 2, 1].map(star => (
+                            <button 
+                                key={star}
+                                onClick={() => { setRatingFilter(star); setShowAllReviews(false); }}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-1 ${
+                                    ratingFilter === star 
+                                    ? 'bg-[#1a1a1a] text-[#D4AF37] border-[#1a1a1a]' 
+                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                                }`}
+                            >
+                                {star} <i className="fa-solid fa-star text-[10px]"></i>
+                                <span className="ml-1 text-xs text-gray-400">({countByRating(star)})</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* My Review */}
                     {myReview && !editingReviewId && (
                         <div className="bg-[#FFF8E1]/40 p-6 rounded-[2rem] border-2 border-[#D4AF37]/20 shadow-sm relative overflow-hidden group">
                             <div className="absolute top-0 right-0 bg-[#D4AF37] text-white text-[8px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-tighter">Your Review</div>
@@ -414,28 +460,50 @@ const otherReviews = reviews.filter(r => {
                         </div>
                     )}
 
-                    {otherReviews.length > 0 ? otherReviews.map(review => (
-                        <div key={review._id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-3">
-                                <div className="flex items-center gap-3">
-                                    {review.userId?.avatar ? (
-                                        <img src={review.userId.avatar} alt={review.customerName} className="w-10 h-10 rounded-full object-cover" />
-                                    ) : (
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 text-gray-300 flex items-center justify-center font-black text-xs">{review.customerName[0]}</div>
-                                    )}
-                                    <div>
-                                        <span className="font-bold text-gray-800 block text-sm tracking-tight">{review.customerName}</span>
-                                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Verified Guest</span>
+                    {displayedReviews.length > 0 ? (
+                        <>
+                            {displayedReviews.map(review => (
+                                <div key={review._id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex items-center gap-3">
+                                            {review.userId?.avatar ? (
+                                                <img src={review.userId.avatar} alt={review.customerName} className="w-10 h-10 rounded-full object-cover" />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-gray-50 text-gray-300 flex items-center justify-center font-black text-xs">{review.customerName[0]}</div>
+                                            )}
+                                            <div>
+                                                <span className="font-bold text-gray-800 block text-sm tracking-tight">{review.customerName}</span>
+                                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Verified Guest</span>
+                                            </div>
+                                        </div>
+                                        <StarRating rating={review.rating} editable={false} />
                                     </div>
+                                    <p className="text-gray-600 text-sm leading-relaxed pl-13 italic">"{review.comment}"</p>
                                 </div>
-                                <StarRating rating={review.rating} editable={false} />
-                            </div>
-                            <p className="text-gray-600 text-sm leading-relaxed pl-13 italic">"{review.comment}"</p>
-                        </div>
-                    )) : !myReview && (
+                            ))}
+                            
+                            {/* View All Button */}
+                            {filteredReviews.length > 3 && (
+                                <div className="text-center pt-4">
+                                    <button 
+                                        onClick={() => setShowAllReviews(!showAllReviews)}
+                                        className="group flex items-center gap-2 mx-auto px-6 py-3 bg-white border border-gray-200 rounded-full text-xs font-bold uppercase tracking-widest text-gray-600 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all shadow-sm"
+                                    >
+                                        {showAllReviews ? (
+                                            <>Show Less <i className="fa-solid fa-chevron-up group-hover:-translate-y-0.5 transition-transform"></i></>
+                                        ) : (
+                                            <>View All {filteredReviews.length} Reviews <i className="fa-solid fa-chevron-down group-hover:translate-y-0.5 transition-transform"></i></>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    ) : (
                         <div className="py-20 text-center bg-gray-50 rounded-[2.5rem] border-2 border-dashed border-gray-100 shadow-inner">
                             <i className="fa-solid fa-feather text-[#D4AF37]/20 text-5xl mb-4"></i>
-                            <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Be the first to leave an impression</p>
+                            <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">
+                                {ratingFilter === 0 ? "Be the first to leave an impression" : `No ${ratingFilter}-star reviews yet`}
+                            </p>
                         </div>
                     )}
                 </div>
