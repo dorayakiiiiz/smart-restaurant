@@ -155,9 +155,16 @@ export default function KitchenDashboard() {
 
         const handleOrderServed = (servedOrder) => {
             const orderId = servedOrder._id || servedOrder.id;
+            const allServed = servedOrder.items?.every(item => item.status === 'served');
+            
             queryClient.setQueryData(['kitchenOrders'], (oldData) => {
                 if (!oldData) return [];
-                return oldData.filter(o => (o._id || o.id) !== orderId);
+                
+                if (allServed) {
+                    return oldData.filter(o => (o._id || o.id) !== orderId);
+                }
+                
+                return oldData.map(o => (o._id || o.id) === orderId ? servedOrder : o);
             });
         };
 
