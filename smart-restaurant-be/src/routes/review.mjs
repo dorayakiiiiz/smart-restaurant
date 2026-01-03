@@ -1,11 +1,17 @@
 import express from "express";
-import ReviewController from "../controllers/ReviewController.mjs";
+import reviewController from "../controllers/ReviewController.mjs";
+import authMiddleware from "../middleware/AuthMiddleware.mjs";
 
 const router = express.Router();
 
-router.get("/:restaurantId/:menuItemId", ReviewController.getReviews);
-router.post("/", ReviewController.addReview);
-router.put("/:id", ReviewController.updateReview);
-router.delete("/:id", ReviewController.deleteReview);
+// Public routes (có thể xem review mà không cần login)
+router.get('/:restaurantId/item/:itemId', reviewController.getReviews);
+router.get('/:restaurantId/restaurant', reviewController.getRestaurantReviews);
+
+// Protected routes (BẮT BUỘC login mới review được)
+router.use(authMiddleware); // ✅ BẮT BUỘC authMiddleware
+router.post('/', reviewController.addReview);
+router.patch('/:id', reviewController.updateReview);
+router.delete('/:id', reviewController.deleteReview);
 
 export default router;

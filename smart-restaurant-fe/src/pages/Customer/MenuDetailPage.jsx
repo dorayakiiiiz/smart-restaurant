@@ -36,7 +36,6 @@ export default function MenuDetailPage() {
     // State cho Review
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState("");
-    const [customerName, setCustomerName] = useState("");
     const [editingReviewId, setEditingReviewId] = useState(null);
     
     // Filter & Pagination State
@@ -45,7 +44,6 @@ export default function MenuDetailPage() {
     const [showAllReviews, setShowAllReviews] = useState(false);
 
     const { user } = useAuth();
-    console.log("Current User:", user);
 
     // Fetch item detail
     const { data, isLoading, error } = useQuery({
@@ -96,26 +94,28 @@ export default function MenuDetailPage() {
 
     // Hàm xử lý gửi form đánh giá
     const handleSubmitReview = () => {
-        if (!sessionInfo?.session?._id) {
-            alert("Session expired. Please scan QR again.");
+        if (!user) {
+            alert("Please login to leave a review!");
+            navigate('/auth/login');
             return;
         }
-        //Nếu đang sửa đánh giá
+
+        if (!comment.trim()) {
+            alert("Please write a comment!");
+            return;
+        }
+
         if (editingReviewId) {
             updateReviewMutation.mutate({
                 id: editingReviewId,
                 data: { rating, comment }
             });
-
-        }
-        //Nếu đang thêm đánh giá mới
-         else {
+        } else {
+            // ✅ BỎ customerName
             addReviewMutation.mutate({
-                menuItemId: item._id,
-                restaurantId: restaurantId,
-                sessionId: sessionInfo.session._id,
-                userId: user.id || user._id, // Đảm bảo dùng _id
-                customerName: user.fullName, // Gửi kèm tên
+                restaurantId,
+                menuItemId: id,
+                reviewType: 'menu_item',
                 rating,
                 comment
             });
@@ -127,7 +127,6 @@ export default function MenuDetailPage() {
         setEditingReviewId(review._id);
         setRating(review.rating);
         setComment(review.comment);
-        setCustomerName(review.customerName);
         document.getElementById('review-form').scrollIntoView({ behavior: 'smooth' });
     };
 
@@ -333,12 +332,12 @@ export default function MenuDetailPage() {
     
             </div>
             {/* REVIEWS SECTION */}
-            <section id="review-form" className="flex-">
+            <section id="review-form" className="">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 my-8">
                     <h3 className="font-black text-2xl text-gray-800 uppercase tracking-tight">Guest Reviews</h3>
                     
                     {/* Review Stat Card */}
-                    <div className="flex items-center gap-8 bg-gradient-to-br from-white via-gray-50 to-white pl-6 py-6 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100/80 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all">
+                    <div className="flex items-center gap-8 bg-gradient-to-br from-white via-gray-50 to-white p-6 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100/80 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all">
                         <div className="text-center border-r border-gray-200 pr-4">
                             <span className="block text-4xl font-black text-[#D4AF37] leading-none">{item.averageRating || "0.0"}</span>
                             <span className="text-xs text-gray-400 font-black uppercase tracking-[0.15em] mt-2 block">Average Rating</span>
@@ -358,24 +357,16 @@ export default function MenuDetailPage() {
                 {/* Form Review */}
                 {/* Có đăng nhập mới cho review */}
                 {user ? (
-                    (!myReview || editingReviewId) ? (
-                        <div className="bg-white p-8 rounded-[2rem] shadow-xl border-2 border-[#D4AF37]/5 mb-10">
+                    (!myReview || editingReviewId) && (
+                        <div className="bg-white p-8 rounded-[2rem] shadow-sm border-2 border-[#D4AF37]/5 mb-10">
                             <h4 className="font-black text-gray-800 mb-6 uppercase text-xs tracking-widest flex items-center gap-2">
                                 <i className="fa-solid fa-quote-left text-[#D4AF37]"></i>
                                 {editingReviewId ? 'Modify Opinion' : 'Write a Review'}
                             </h4>
                             <div className="space-y-5">
-                                {!editingReviewId && (
-                                    <input 
-                                        type="text" 
-                                        placeholder="Your Signature Name" 
-                                        className="w-full p-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-[#D4AF37] outline-none transition-all font-bold text-sm"
-                                        value={user.fullName || customerName}
-                                        onChange={e => setCustomerName(e.target.value)}                    
-                                    />
-                                )}
+                                
                                 <div className="flex items-center justify-between bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Star Impression</span>
+                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">RATING</span>
                                     <StarRating rating={rating} setRating={setRating} size="text-2xl" />
                                 </div>
                                 <textarea 
@@ -398,26 +389,7 @@ export default function MenuDetailPage() {
                                 </div>
                             </div>
                         </div>
-                    ) : 
-                    (
-                    // Trường hợp 2: Đã có review rồi (Hiển thị thông báo thay vì để trống)
-                    <div className="mb-10 p-8 bg-[#fdfaf3] rounded-[2rem] border border-[#D4AF37]/20 text-center shadow-sm">
-                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-[#D4AF37]">
-                            <i className="fa-solid fa-circle-check text-2xl"></i>
-                        </div>
-                        <h4 className="text-lg font-bold text-gray-800 mb-2">Review Captured!</h4>
-                        <p className="text-gray-500 text-sm mb-4">
-                            You have already shared your thoughts on this item. <br/>
-                            Thank you for your feedback!
-                        </p>
-                        <button 
-                            onClick={() => document.getElementById('my-review-section')?.scrollIntoView({ behavior: 'smooth' })}
-                            className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37] hover:underline"
-                        >
-                            View your feedback below
-                        </button>
-                    </div>
-                    )
+                    ) 
                 ) : (
                     <div className="mb-10 p-8 bg-gray-50 rounded-2xl border border-gray-200 text-center">
                         <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-[#D4AF37]">
@@ -437,13 +409,17 @@ export default function MenuDetailPage() {
                 {/* List Review */}
                 <div className="space-y-5 mt-10">
                     {myReview && !editingReviewId && (
-                        <div className="bg-gradient-to-br from-[#FFFBF0] to-[#FFF8E1] p-7 rounded-[2rem] border-2 border-[#D4AF37]/30 shadow-[0_8px_25px_rgba(212,175,55,0.12)] relative overflow-hidden group hover:shadow-[0_12px_35px_rgba(212,175,55,0.15)] transition-all">
+                        <div className="bg-gradient-to-br from-[#FFFBF0] to-[#FFF8E1] p-7 rounded-[2rem] border-2 border-[#D4AF37]/30 shadow-[0_8px_25px_rgba(212,175,55,0.12)] relative overflow-hidden">
                             <div className="absolute top-0 right-0 bg-gradient-to-r from-[#D4AF37] to-[#E5C158] text-[#1a1a1a] text-[8px] font-black uppercase px-4 py-1.5 rounded-bl-[1rem] tracking-[0.2em] shadow-lg">Your Review</div>
                             <div className="flex justify-between items-start mb-5 gap-4">
                                 <div className="flex items-center gap-3 flex-1">
-                                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#C4961F] text-white flex items-center justify-center font-black text-sm shadow-[0_4px_15px_rgba(212,175,55,0.3)]">{myReview.customerName[0]}</div>
+                                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#C4961F] text-white flex items-center justify-center font-black text-sm shadow-[0_4px_15px_rgba(212,175,55,0.3)]">
+                                        {myReview.userId?.fullName?.[0] || 'U'}
+                                    </div>
                                     <div>
-                                        <span className="font-black text-gray-900 uppercase text-sm tracking-tight block">{myReview.customerName}</span>
+                                        <span className="font-black text-gray-900 uppercase text-sm tracking-tight block">
+                                            {myReview.userId?.fullName || 'User'}
+                                        </span>
                                         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Your Opinion</span>
                                     </div>
                                 </div>
@@ -467,50 +443,70 @@ export default function MenuDetailPage() {
                         </div>
                     )}
 
+                    {/* Other Reviews */}
                     {displayedReviews.length > 0 ? (
                         <>
                             {displayedReviews.map(review => (
-                                <div key={review._id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div className="flex items-center gap-3">
+                                <div key={review._id} className="bg-white p-7 rounded-[2rem] border border-gray-100 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_10px_32px_rgba(0,0,0,0.08)] hover:border-gray-200 transition-all duration-300">
+                                    <div className="flex justify-between items-start mb-4 gap-4">
+                                        <div className="flex items-center gap-3 flex-1">
                                             {review.userId?.avatar ? (
-                                                <img src={review.userId.avatar} alt={review.customerName} className="w-10 h-10 rounded-full object-cover" />
+                                                <img src={review.userId.avatar} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
                                             ) : (
-                                                <div className="w-10 h-10 rounded-full bg-gray-50 text-gray-300 flex items-center justify-center font-black text-xs">{review.customerName[0]}</div>
+                                                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400 flex items-center justify-center font-black text-sm border border-gray-200">
+                                                    {review.userId?.fullName?.[0] || 'U'}
+                                                </div>
                                             )}
                                             <div>
-                                                <span className="font-bold text-gray-800 block text-sm tracking-tight">{review.customerName}</span>
-                                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Guest</span>
+                                                <span className="font-black text-gray-900 block text-sm tracking-tight">
+                                                    {review.userId?.fullName || 'User'}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Guest</span>
                                             </div>
                                         </div>
                                         <StarRating rating={review.rating} editable={false} />
                                     </div>
-                                    <p className="text-gray-600 text-sm leading-relaxed pl-13 italic">"{review.comment}"</p>
+                                    <p className="text-gray-650 text-sm leading-relaxed italic font-medium ml-14">"{review.comment}"</p>
                                 </div>
                             ))}
                             
-                            {/* View All Button */}
-                            {filteredReviews.length > 3 && (
-                                <div className="text-center pt-4">
+                            {/* Show All Button */}
+                            {otherReviews.length > 3 && (
+                                <div className="text-center pt-6">
                                     <button 
                                         onClick={() => setShowAllReviews(!showAllReviews)}
-                                        className="group flex items-center gap-2 mx-auto px-6 py-3 bg-white border border-gray-200 rounded-full text-xs font-bold uppercase tracking-widest text-gray-600 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all shadow-sm"
+                                        className="group flex items-center gap-2 mx-auto px-8 py-4 bg-white border-2 border-gray-200 rounded-full text-xs font-black uppercase tracking-[0.2em] text-gray-600 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all shadow-sm hover:shadow-md active:scale-95"
                                     >
                                         {showAllReviews ? (
-                                            <>Show Less <i className="fa-solid fa-chevron-up group-hover:-translate-y-0.5 transition-transform"></i></>
+                                            <>
+                                                Show Less 
+                                                <i className="fa-solid fa-chevron-up text-[10px] group-hover:-translate-y-0.5 transition-transform"></i>
+                                            </>
                                         ) : (
-                                            <>View All {filteredReviews.length} Reviews <i className="fa-solid fa-chevron-down group-hover:translate-y-0.5 transition-transform"></i></>
+                                            <>
+                                                View All {otherReviews.length} Reviews 
+                                                <i className="fa-solid fa-chevron-down text-[10px] group-hover:translate-y-0.5 transition-transform"></i>
+                                            </>
                                         )}
                                     </button>
                                 </div>
                             )}
                         </>
-                    ) : (
-                        <div className="py-20 text-center bg-gray-50 rounded-[2.5rem] border-2 border-dashed border-gray-100 shadow-inner">
-                            <i className="fa-solid fa-feather text-[#D4AF37]/20 text-5xl mb-4"></i>
-                            <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">
-                                {ratingFilter === 0 ? "Be the first to leave an impression" : `No ${ratingFilter}-star reviews yet`}
-                            </p>
+                    ) : !myReview && (
+                        <div className="py-10 flex flex-col items-center justify-center bg-gray-50/50 rounded-[2rem] border border-gray-100">
+                            <div className="relative mb-4">
+                                <i className="fa-light fa-feather-pointed text-gray-200 text-5xl"></i>
+                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-[#D4AF37]/20 rounded-full"></div>
+                            </div>
+
+                            <div className="text-center space-y-2">
+                                <p className="text-[#1a1a1a] font-bold text-sm tracking-wide">
+                                    No reviews yet
+                                </p>
+                                <p className="text-gray-400 text-[10px] uppercase tracking-[0.2em] font-medium">
+                                    Be the first to share your journey
+                                </p>
+                            </div>
                         </div>
                     )}
                 </div>

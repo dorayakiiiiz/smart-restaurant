@@ -1,4 +1,6 @@
 import Restaurant from "../models/Restaurant.mjs";
+import User from "../models/User.mjs";
+import Order from "../models/Order.mjs"; // ✅ Thêm import Order
 import { encrypt, decrypt } from "../utils/crypto.mjs";
 import { PayOS } from "@payos/node"; // Import PayOS để check key
 
@@ -173,7 +175,18 @@ class RestaurantController {
             
             if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
-            res.status(200).json({ restaurant });
+            // ✅ TÍNH TOÁN SỐ ORDER THẬT
+            // Đếm tất cả đơn hàng có status không phải là 'pending' (đã gửi bếp) hoặc 'cancelled'
+            const totalOrders = await Order.countDocuments({ 
+                restaurantId: id,
+                status: { $nin: ['pending', 'cancelled'] } 
+            });
+
+            // Convert sang object để thêm field totalOrders vào response
+            const restaurantData = restaurant.toObject();
+            restaurantData.totalOrders = totalOrders;
+
+            res.status(200).json({ restaurant: restaurantData });
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
