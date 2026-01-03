@@ -7,6 +7,7 @@ import Button from "../../components/Shared/Button";
 import MenuModal from "../../components/Modal/MenuModal";
 import { useNavigate } from "react-router-dom";
 import MenuTrashModal from "./Modal/MenuTrashModal";
+import Fuse from "fuse.js";
 
 export default function MenuManagement() {
     const navigate = useNavigate();
@@ -77,18 +78,27 @@ export default function MenuManagement() {
         return 'Available';
     }
 
+
+    const fuse = new Fuse(menuItems, {
+        keys: ['name'],
+        threshold: 0.3
+    });
+
+    // fuse trả về object { item, refIndex, score }
+    const fuseResults = searchTerm
+        ? fuse.search(searchTerm).map(r => r.item)
+        : menuItems;
+
     // Filter Logic
     // menu là object chứa MẢNG items
-    const filteredItems = menuItems.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()); //Filter search
+    const filteredItems = fuseResults.filter(item => {
         //categoryId ở đây là object có _id và name
         //Ban đầu all hiển thị tất cả, sau đó so sánh _id
-
         //Filter category
         const matchesCategory = selectedCategory === "All" || (item.categoryId && item.categoryId._id === selectedCategory);
         //Filter status
         const matchesStatus = status === "All" || handleStatusText(item) === status;
-        return matchesSearch && matchesCategory && matchesStatus;
+        return matchesCategory && matchesStatus;
     });
 
     filteredItems.sort((a, b) => {

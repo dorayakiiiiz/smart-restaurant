@@ -8,6 +8,7 @@ import { useCart } from "../../context/CartContext";
 import { socket } from "../../services/socket";
 import ProductModal from "../../components/Modal/ProductModal"; // Import Modal mới
 import { useNavigate } from "react-router-dom";
+import Fuse from "fuse.js";
 
 export default function MenuPage() {
     const navigate = useNavigate();
@@ -86,12 +87,21 @@ export default function MenuPage() {
 
     const items = menuData?.items || [];
     const categories = catData?.categories || [];
+    
+    const fuse = new Fuse(items, {
+        keys: ['name'],
+        threshold: 0.3
+    });
 
-    const filteredItems = items
+    // fuse trả về object { item, refIndex, score }
+    const fuseResults = searchTerm
+        ? fuse.search(searchTerm).map(r => r.item)
+        : items;
+
+    const filteredItems = fuseResults
         .filter(item => {
             const matchCat = selectedCategory === "all" || item.categoryId._id === selectedCategory;
-            const matchSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-            return matchCat && matchSearch;
+            return matchCat;
         })
         .sort((a, b) => {
             if (sortBy === 'price-asc') return a.price - b.price;

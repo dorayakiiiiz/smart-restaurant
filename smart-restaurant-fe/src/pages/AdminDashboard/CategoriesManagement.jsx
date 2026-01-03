@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { categoryService } from "../../services/categoryService";
 import Button from "../../components/Shared/Button";
+import Fuse from "fuse.js";
 
 export default function CategoriesManagement() {
     const queryClient = useQueryClient();
@@ -65,10 +66,15 @@ export default function CategoriesManagement() {
         setEditingCategory(null);
     };
 
+    const fuse = new Fuse(categories, {
+        keys: ['name'],
+        threshold: 0.3
+    });
+
     // --- Filter & Sort ---
-    const filteredCategories = categories.filter(cat => 
-        cat.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredCategories = searchTerm
+        ? fuse.search(searchTerm).map(r => r.item)
+        : categories;
 
     filteredCategories.sort((a, b) => {
         if (sortBy === 'name') return a.name.localeCompare(b.name);

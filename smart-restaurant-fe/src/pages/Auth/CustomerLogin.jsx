@@ -56,11 +56,18 @@ export default function CustomerLogin() {
             <div className="w-full lg:w-1/2 flex flex-col bg-[#f8f9fa]">
                 
                 {/* Mobile Header Section - Tạo điểm nhấn cho Mobile */}
-                <div className="relative bg-[#800020] pt-12 pb-24 px-8 text-center overflow-hidden shrink-0">
+                <div className="relative bg-[#800020] pt-8 pb-24 px-8 text-center overflow-hidden shrink-0">
                     {/* Pattern Background */}
                     <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#D4AF37 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                     
-                    <div className="relative z-10">
+                    <button 
+                        className="w-8 h-8 bg-white relative z-10 cursor-pointer rounded-full flex items-center justify-center"
+                        onClick={() => navigate(-1)}
+                    >
+                        <i className="fa-solid fa-arrow-left text-xs text-[#D4AF37]"></i>
+                    </button>
+
+                    <div className="relative z-10 pt-4">
                         <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-inner border border-white/20">
                             <i className="fa-solid fa-utensils text-2xl text-[#D4AF37]"></i>
                         </div>
