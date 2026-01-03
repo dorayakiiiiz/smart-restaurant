@@ -37,7 +37,8 @@ const RestaurantSchema = new Schema({
             content: String
         },
         // Flag để biết nhà hàng đã cấu hình chưa
-        isConfigured: { type: Boolean, default: false }
+        isConfigured: { type: Boolean, default: false },
+        accountHolder: { type: String }
     },
 
     isActive: {

@@ -1,5 +1,6 @@
 import Restaurant from "../models/Restaurant.mjs";
-import { encrypt, decrypt } from "../utils/crypto.mjs"; // Import hàm mã hóa
+import { encrypt, decrypt } from "../utils/crypto.mjs";
+import { PayOS } from "@payos/node"; // Import PayOS để check key
 
 class RestaurantController {
     // [POST] /api/restaurant
@@ -46,7 +47,8 @@ class RestaurantController {
                     clientId: decrypt(restaurant.payosConfig.clientId),
                     apiKey: decrypt(restaurant.payosConfig.apiKey),
                     checksumKey: decrypt(restaurant.payosConfig.checksumKey),
-                    isConfigured: true
+                    isConfigured: true,
+                    accountHolder: restaurant.payosConfig.accountHolder
                 };
             } else {
                 // Trả về rỗng nếu chưa cấu hình
@@ -54,7 +56,8 @@ class RestaurantController {
                     clientId: "",
                     apiKey: "",
                     checksumKey: "",
-                    isConfigured: false
+                    isConfigured: false,
+                    accountHolder: ""
                 };
             }
 
@@ -71,16 +74,54 @@ class RestaurantController {
             if (req.files?.logo?.[0]) updates.logoUrl = req.files.logo[0].path;
             if (req.files?.cover?.[0]) updates.coverUrl = req.files.cover[0].path;
 
-            // Xử lý cập nhật PayOS Config
+            let accountHolder = '';
+
+            // --- KIỂM TRA VÀ CẬP NHẬT PAYOS CONFIG ---
             if (updates.payosClientId && updates.payosApiKey && updates.payosChecksumKey) {
-                updates.payosConfig = {
-                    clientId: encrypt(updates.payosClientId),
-                    apiKey: encrypt(updates.payosApiKey),
-                    checksumKey: encrypt(updates.payosChecksumKey),
-                    isConfigured: true
-                };
                 
-                // Xóa các field tạm để không lưu rác vào db (nếu schema strict: false)
+                // 1. Thử khởi tạo PayOS với key người dùng gửi lên
+                try {
+                    const tempPayOS = new PayOS({
+                        clientId: updates.payosClientId,
+                        apiKey: updates.payosApiKey,
+                        checksumKey: updates.payosChecksumKey
+                    });
+
+
+                    // 2. Gọi thử API tạo link thanh toán giả để verify credentials
+                    // Dùng timestamp làm orderCode để tránh trùng lặp
+                    const testOrderCode = Number(String(Date.now()).slice(-9));
+                    
+                    const response = await tempPayOS.paymentRequests.create({
+                        orderCode: testOrderCode,
+                        amount: 2000, // Mức tối thiểu của PayOS
+                        description: "Verify Key",
+                        cancelUrl: "https://google.com", // Dummy URL
+                        returnUrl: "https://google.com"  // Dummy URL
+                    });
+
+                    accountHolder = response.accountName;
+
+                    // 3. Nếu không lỗi -> Key hợp lệ -> Tiến hành mã hóa và lưu
+                    updates.payosConfig = {
+                        clientId: encrypt(updates.payosClientId),
+                        apiKey: encrypt(updates.payosApiKey),
+                        checksumKey: encrypt(updates.payosChecksumKey),
+                        isConfigured: true,
+                        accountHolder: accountHolder
+                    };
+                    
+
+                } catch (payosError) {
+                    console.error("❌ PayOS Key Verification Failed:", payosError.message);
+                    // Trả về lỗi 400 để Frontend hiển thị
+                    return res.status(400).json({ 
+                        message: "Invalid PayOS Credentials. Please check Client ID, API Key & Checksum Key.",
+                        detail: payosError.message
+                    });
+                }
+
+                // Xóa các field raw để không lưu vào root của document (nếu schema strict: false)
                 delete updates.payosClientId;
                 delete updates.payosApiKey;
                 delete updates.payosChecksumKey;
@@ -99,7 +140,8 @@ class RestaurantController {
                     clientId: decrypt(restaurant.payosConfig.clientId),
                     apiKey: decrypt(restaurant.payosConfig.apiKey),
                     checksumKey: decrypt(restaurant.payosConfig.checksumKey),
-                    isConfigured: true
+                    isConfigured: true,
+                    accountHolder: accountHolder
                 };
             }
 

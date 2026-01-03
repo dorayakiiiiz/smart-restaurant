@@ -131,33 +131,32 @@ export default function MenuDetailPage() {
 const currentUserId = user?.id || user?._id;
 
 // So sánh ID phải so sánh string với string
-const myReview = reviews.find(r => {
-    const reviewUserId = typeof r.userId === 'object' ? r.userId?._id : r.userId;
-    return reviewUserId === currentUserId;
-});
+const myReview = currentUserId ? reviews.find(r => {
+    const reviewUserId = r.userId?._id?.toString() || r.userId?.toString();
+    return reviewUserId === currentUserId.toString();
+}) : null;
 
 // Lọc các review của người khác
-const otherReviews = reviews.filter(r => {
-    const reviewUserId = typeof r.userId === 'object' ? r.userId?._id : r.userId;
-    return reviewUserId !== currentUserId;
-});
-
+const otherReviews = currentUserId ? reviews.filter(r => {
+    const reviewUserId = r.userId?._id?.toString() || r.userId?.toString();
+    return reviewUserId !== currentUserId.toString();
+}) : reviews;
 
     if (isLoading) return <div className="p-10 text-center">Loading...</div>;
     if (error || !item) return <div className="p-10 text-center text-red-500">Item not found</div>;
 
     return (
-        <div className="font-quicksand max-w-6xl mx-auto pb-10 px-4">
+        <div className="font-quicksand max-w-6xl mx-auto pb-10 px-4 overflow-x-hidden">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
+            <div className="flex items-center gap-4 mb-6 mt-4">
+                <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
                     <i className="fa-solid fa-arrow-left"></i>
                 </button>
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold text-[#1a1a1a]">{item.name}</h1>
+                    <h1 className="text-2xl font-bold text-[#1a1a1a]">{item.name}</h1>
                     <div className="">
                         <p className="text-gray-500 text-sm md:texxt-lg flex items-center gap-2">
-                            <span className="text-sm md:text-xl">Category: {item.categoryId?.name}</span>
+                            <span className="text-sm md:text-xl">{item.categoryId?.name}</span>
                             {item.isChefRecommended && (
                                 <span className="bg-[#D4AF37] text-white px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
                                     Chef's Choice
@@ -179,24 +178,52 @@ const otherReviews = reviews.filter(r => {
             {/* Image Slider */}
             <div className="mb-8">
                 <div className="flex justify-between items-end mb-4">
-                    <h3 className="font-bold text-xl text-gray-800">Gallery</h3>
+                    <h3 className="font-bold text-xl text-gray-800">Photo</h3>
                 </div>
                 
                 <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-6 scrollbar-hide">
                     {item.images?.map((img) => (
-                        <div key={img._id} className="relative group w-[80vw] md:w-[500px] h-[350px] flex-shrink-0 snap-center rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+                        <div key={img._id} className="relative w-[85vw] md:w-[500px] aspect-[4/3] flex-shrink-0 snap-center rounded-[2rem] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] bg-white">
                             <img src={img.url} alt="Menu" className="w-full h-full object-cover" />
-
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
                         </div>
                     ))}
 
                     {(!item.images || item.images.length === 0) && (
-                        <div className="w-full md:w-[500px] h-[350px] flex-shrink-0 snap-center rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
-                            <i className="fa-regular fa-images text-4xl mb-3"></i>
-                            <p>No photos available</p>
+                        <div className="w-full md:w-[500px] aspect-[4/3] flex-shrink-0 snap-center rounded-[2rem] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 bg-gray-50/50">
+                            <i className="fa-regular fa-images text-4xl mb-3 opacity-50"></i>
+                            <p className="text-xs font-bold uppercase tracking-widest">No photos</p>
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* 4. Nút Add to Cart */}
+            <div className="flex justify-center mb-10">
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    disabled={!item.isAvailable}
+                    className={`
+                        group relative w-full md:w-auto min-w-[280px] px-10 py-5 rounded-3xl 
+                        flex items-center justify-center gap-4 
+                        transition-all duration-300 active:scale-95 font-quicksand
+                        ${item.isAvailable 
+                            ? 'bg-black text-[#1a1a1a] shadow hover:shadow-lg hover:-translate-y-2' 
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
+                    `}
+                >
+                    {item.isAvailable ? (
+                        <>
+                            <span className="w-8 h-8 rounded-full bg-yellow-500 text-yellow-50 font-bold flex items-center justify-center text-base group-hover:rotate-12 transition-transform duration-300">
+                                <i className="fa-solid fa-plus text-xs"></i>
+                            </span>
+                            <span className="text-white font-bold text-base uppercase tracking-[0.15em]">Add to Order</span>
+                            <span className="text-yellow-100 font-black text-lg ml-1">${item.price.toFixed(2)}</span>
+                        </>
+                    ) : (
+                        <span className="font-bold text-base uppercase tracking-widest">Currently Unavailable</span>
+                    )}
+                </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -227,7 +254,7 @@ const otherReviews = reviews.filter(r => {
                 </div>
 
                 {/* Right Column: Modifiers */}
-                <div className="lg:col-span-2">
+                <div className={`lg:col-span-2 ${item.modifiers && item.modifiers.length > 0 ? '' : 'hidden'}`}>
                     <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 rounded-full bg-[#f7f8f6] flex items-center justify-center text-[#D4AF37]">
@@ -285,21 +312,22 @@ const otherReviews = reviews.filter(r => {
             </div>
             {/* REVIEWS SECTION */}
             <section id="review-form" className="flex-">
-                <div className="flex flex-row md:items-center justify-between gap-4 my-5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 my-8">
                     <h3 className="font-black text-2xl text-gray-800 uppercase tracking-tight">Guest Reviews</h3>
                     
                     {/* Review Stat Card */}
-                    <div className="flex items-center gap-6 bg-gradient-to-br from-white to-gray-50 px-8 py-5 rounded-2xl shadow-md border border-gray-100">
-                        <div className="text-center border-r border-gray-200 pr-6">
-                            <span className="block text-4xl font-extrabold text-[#D4AF37] leading-none">{item.averageRating || "0.0"}</span>
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1 block">Average</span>
+                    <div className="flex items-center gap-8 bg-gradient-to-br from-white via-gray-50 to-white pl-6 py-6 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-gray-100/80 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all">
+                        <div className="text-center border-r border-gray-200 pr-4">
+                            <span className="block text-4xl font-black text-[#D4AF37] leading-none">{item.averageRating || "0.0"}</span>
+                            <span className="text-xs text-gray-400 font-black uppercase tracking-[0.15em] mt-2 block">Average Rating</span>
                         </div>
                         <div className="flex flex-col justify-center">
-                            <div className="mb-1">
+                            <div className="mb-2">
                                 <StarRating rating={Math.round(item.averageRating || 0)} editable={false} />
                             </div>
-                            <span className="text-xs text-gray-500 font-medium">
-                                Based on <span className="font-bold text-gray-800">{item.totalReviews || 0}</span> reviews
+                            <span className="text-sm text-gray-500 font-semibold">
+                                <div className="text-gray-400">Base on</div>
+                                <span className="font-black text-gray-800">{item.totalReviews || 0}</span> customer opinions
                             </span>
                         </div>
                     </div>
@@ -376,7 +404,7 @@ const otherReviews = reviews.filter(r => {
                         <h4 className="text-lg font-bold text-gray-800 mb-2">Want to share your experience?</h4>
                         <p className="text-gray-500 text-sm mb-6">Please sign in to leave a review for this item.</p>
                         <button 
-                            onClick={() => navigate('/auth/system/login')}
+                            onClick={() => navigate('/auth/login')}
                             className="px-6 py-2.5 bg-[#1a1a1a] text-[#D4AF37] rounded-xl font-bold text-sm hover:bg-black transition-colors"
                         >
                             Sign In Now
@@ -385,78 +413,65 @@ const otherReviews = reviews.filter(r => {
                 )}
 
                 {/* List Review */}
-                <div className="space-y-6">
+                <div className="space-y-5 mt-10">
                     {myReview && !editingReviewId && (
-                        <div className="bg-[#FFF8E1]/40 p-6 rounded-[2rem] border-2 border-[#D4AF37]/20 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 bg-[#D4AF37] text-white text-[8px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-tighter">Your Review</div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-[#D4AF37] text-white flex items-center justify-center font-black text-xs">{myReview.customerName[0]}</div>
-                                    <span className="font-black text-gray-900 uppercase text-xs tracking-tight">{myReview.customerName}</span>
+                        <div className="bg-gradient-to-br from-[#FFFBF0] to-[#FFF8E1] p-7 rounded-[2rem] border-2 border-[#D4AF37]/30 shadow-[0_8px_25px_rgba(212,175,55,0.12)] relative overflow-hidden group hover:shadow-[0_12px_35px_rgba(212,175,55,0.15)] transition-all">
+                            <div className="absolute top-0 right-0 bg-gradient-to-r from-[#D4AF37] to-[#E5C158] text-[#1a1a1a] text-[8px] font-black uppercase px-4 py-1.5 rounded-bl-[1rem] tracking-[0.2em] shadow-lg">Your Review</div>
+                            <div className="flex justify-between items-start mb-5 gap-4">
+                                <div className="flex items-center gap-3 flex-1">
+                                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#C4961F] text-white flex items-center justify-center font-black text-sm shadow-[0_4px_15px_rgba(212,175,55,0.3)]">{myReview.customerName[0]}</div>
+                                    <div>
+                                        <span className="font-black text-gray-900 uppercase text-sm tracking-tight block">{myReview.customerName}</span>
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Your Opinion</span>
+                                    </div>
                                 </div>
                                 <StarRating rating={myReview.rating} editable={false} />
                             </div>
-                            <p className="text-gray-700 text-sm leading-relaxed mb-5 italic">"{myReview.comment}"</p>
-                            <div className="flex gap-3 border-t border-[#D4AF37]/10 pt-4 mt-2">
+                            <p className="text-gray-700 text-sm leading-relaxed mb-6 italic font-medium">"{myReview.comment}"</p>
+                            <div className="flex gap-3 border-t border-[#D4AF37]/20 pt-5">
                                 <button 
                                     onClick={() => handleEditClick(myReview)} 
-                                    className="flex items-center gap-2 px-4 py-2 bg-[#f8f9fa] text-[#495057] rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 transition-colors"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-[#495057] rounded-xl text-xs font-black uppercase tracking-[0.15em] border border-gray-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all active:scale-95"
                                 >
-                                    <i className="fa-solid fa-pen"></i> Edit
+                                    <i className="fa-solid fa-pen text-sm"></i> Edit
                                 </button>
                                 <button 
                                     onClick={() => deleteReviewMutation.mutate(myReview._id)} 
-                                    className="flex items-center gap-2 px-4 py-2 bg-rose-50/50 text-rose-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-red-100 transition-colors"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-rose-400 rounded-xl text-xs font-black uppercase tracking-[0.15em] border border-rose-100 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-600 transition-all active:scale-95"
                                 >
-                                    <i className="fa-solid fa-trash"></i> Delete
+                                    <i className="fa-solid fa-trash text-sm"></i> Delete
                                 </button>
                             </div>
                         </div>
                     )}
 
                     {otherReviews.length > 0 ? otherReviews.map(review => (
-                        <div key={review._id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-3">
-                                <div className="flex items-center gap-3">
+                        <div key={review._id} className="bg-white py-5 px-6 rounded-[2rem] border border-gray-100 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_10px_32px_rgba(0,0,0,0.08)] hover:border-gray-200 transition-all duration-300 group">
+                            <div className="flex justify-between items-start mb-4 gap-4">
+                                <div className="flex items-center gap-3 flex-1">
                                     {review.userId?.avatar ? (
-                                        <img src={review.userId.avatar} alt={review.customerName} className="w-10 h-10 rounded-full object-cover" />
+                                        <img src={review.userId.avatar} alt={review.customerName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
                                     ) : (
-                                        <div className="w-10 h-10 rounded-full bg-gray-50 text-gray-300 flex items-center justify-center font-black text-xs">{review.customerName[0]}</div>
+                                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400 flex items-center justify-center font-black text-sm border border-gray-200">{review.customerName[0]}</div>
                                     )}
                                     <div>
-                                        <span className="font-bold text-gray-800 block text-sm tracking-tight">{review.customerName}</span>
-                                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Verified Guest</span>
+                                        <span className="font-black text-gray-900 block text-sm tracking-tight">{review.customerName}</span>
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Guest</span>
                                     </div>
                                 </div>
                                 <StarRating rating={review.rating} editable={false} />
                             </div>
-                            <p className="text-gray-600 text-sm leading-relaxed pl-13 italic">"{review.comment}"</p>
+                            <p className="text-gray-650 text-sm leading-relaxed italic font-medium ml-14">"{review.comment}"</p>
                         </div>
                     )) : !myReview && (
-                        <div className="py-20 text-center bg-gray-50 rounded-[2.5rem] border-2 border-dashed border-gray-100 shadow-inner">
-                            <i className="fa-solid fa-feather text-[#D4AF37]/20 text-5xl mb-4"></i>
-                            <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Be the first to leave an impression</p>
+                        <div className="py-24 text-center bg-gradient-to-b from-gray-50 to-white rounded-[2.5rem] border-2 border-dashed border-gray-150 shadow-inner">
+                            <i className="fa-solid fa-feather text-[#D4AF37]/15 text-6xl mb-5 inline-block"></i>
+                            <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Be the first to share your experience</p>
                         </div>
                     )}
                 </div>
             </section>
-            {/* 4. Nút Add to Cart - ĐẶT Ở ĐÂY (Con trực tiếp của div ngoài cùng) */}
-            <button
-                onClick={() => setIsModalOpen(true)}
-                disabled={!item.isAvailable}
-                className={`fixed top-3 right-2 -translate-x-1/2 px-2 md:px-4 py-4 text-sm md:text-lg rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.2)] transition-all font-bold text-white z-50 whitespace-nowrap active:scale-95
-                    ${item.isAvailable 
-                        ? 'bg-[#D4AF37] hover:bg-[#b8912e] opacity-100' 
-                        : 'bg-gray-400 cursor-not-allowed opacity-80'}
-                `}
-            >
-                {item.isAvailable ? (
-                    <div className="flex items-center gap-2">
-                        <i className="fa-solid fa-cart-plus"></i>
-                        Add to Cart
-                    </div>
-                ) : 'Sold Out'}
-            </button>
+            
             {isModalOpen && (
                 <ProductModal 
                     item={item} 

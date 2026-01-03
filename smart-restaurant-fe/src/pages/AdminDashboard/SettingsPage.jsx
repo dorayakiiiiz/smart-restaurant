@@ -34,6 +34,8 @@ export default function SettingsPage() {
     const [payosApiKey, setPayosApiKey] = useState("");
     const [payosChecksumKey, setPayosChecksumKey] = useState("");
 
+    const [accountHolder, setAccountHolder] = useState('');
+
     // --- 1. FETCH DATA (useQuery) ---
     const { data: restaurantData, isLoading } = useQuery({
         queryKey: ['my-restaurant'],
@@ -57,6 +59,7 @@ export default function SettingsPage() {
                 setPayosClientId(r.payosConfig.clientId || "");
                 setPayosApiKey(r.payosConfig.apiKey || "");
                 setPayosChecksumKey(r.payosConfig.checksumKey || "");
+                setAccountHolder(r.payosConfig.accountHolder || "");
             }
         }
     }, [restaurantData]);
@@ -196,8 +199,14 @@ export default function SettingsPage() {
                         <div>
                             <label className="block text-sm font-bold text-gray-600 mb-1">Checksum Key</label>
                             <Input type="text" value={payosChecksumKey} setState={setPayosChecksumKey} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
-                            
                         </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-gray-600 mb-1">Account Holder</label>
+                    <div className="h-[50px] w-full max-w-[500px] flex items-center my-[10px] rounded-xl bg-[#f7f8f6] px-[20px] cursor-not-allowed text-gray-400">
+                        {accountHolder}
                     </div>
                 </div>
 
