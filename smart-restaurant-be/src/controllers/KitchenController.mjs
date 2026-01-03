@@ -27,6 +27,7 @@ class KitchenController {
 
             const orders = await Order.find({
                 restaurantId,
+                // Chỉ lấy các order có một trong các trạng thái sau
                 status: { $in: ['accepted', 'preparing', 'ready'] } 
             })
             .populate([
@@ -116,10 +117,23 @@ class KitchenController {
 
                 item.status = status;
                 if (status === 'ready') item.finishedAt = new Date();
+                if (status === 'preparing') item.finishedAt = null;
 
                 // Auto-update order status
-                const allReady = order.items.every(i => i.status === 'ready');
-                if (allReady) order.status = 'ready';
+                const itemStatuses = order.items.map(i => i.status);
+                const allServed = itemStatuses.every(s => s === 'served');
+                const allReady = itemStatuses.every(s => s === 'ready');
+                const allAccepted = itemStatuses.every(s => s === 'accepted');
+
+                if (allServed) {
+                    order.status = 'served';
+                } else if (allReady) {
+                    order.status = 'ready';
+                } else if (allAccepted) {
+                    order.status = 'accepted';
+                } else {
+                    order.status = 'preparing';
+                }
             }
 
             await order.save();

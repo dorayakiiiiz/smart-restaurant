@@ -38,6 +38,11 @@ export default function MenuDetailPage() {
     const [comment, setComment] = useState("");
     const [customerName, setCustomerName] = useState("");
     const [editingReviewId, setEditingReviewId] = useState(null);
+    
+    // Filter & Pagination State
+    //State lọc đánh giá theo số rating
+    const [ratingFilter, setRatingFilter] = useState(0); // 0 = All
+    const [showAllReviews, setShowAllReviews] = useState(false);
 
     const { user } = useAuth();
     console.log("Current User:", user);
@@ -127,20 +132,31 @@ export default function MenuDetailPage() {
     };
 
     // Phân loại review của mình và người khác
-// 2. Sửa logic phân loại Review (QUAN TRỌNG)
-const currentUserId = user?.id || user?._id;
+    // 2. Sửa logic phân loại Review (QUAN TRỌNG)
+    const currentUserId = user?.id || user?._id;
 
-// So sánh ID phải so sánh string với string
-const myReview = currentUserId ? reviews.find(r => {
-    const reviewUserId = r.userId?._id?.toString() || r.userId?.toString();
-    return reviewUserId === currentUserId.toString();
-}) : null;
+    // So sánh ID phải so sánh string với string
+    const myReview = currentUserId ? reviews.find(r => {
+        const reviewUserId = r.userId?._id?.toString() || r.userId?.toString();
+        return reviewUserId === currentUserId.toString();
+    }) : null;
 
-// Lọc các review của người khác
-const otherReviews = currentUserId ? reviews.filter(r => {
-    const reviewUserId = r.userId?._id?.toString() || r.userId?.toString();
-    return reviewUserId !== currentUserId.toString();
-}) : reviews;
+    // Lọc các review của người khác
+    const otherReviews = currentUserId ? reviews.filter(r => {
+        const reviewUserId = r.userId?._id?.toString() || r.userId?.toString();
+        return reviewUserId !== currentUserId.toString();
+    }) : reviews;
+
+    // Apply Filter
+    const filteredReviews = otherReviews.filter(r => ratingFilter === 0 || r.rating === ratingFilter);
+
+    // Apply Pagination (Limit 3)
+    const displayedReviews = showAllReviews ? filteredReviews : filteredReviews.slice(0, 3);
+
+    //Count số review theo từng rating
+    const countByRating = (star) => {
+        return otherReviews.filter(r => r.rating === star).length;
+    }
 
     if (isLoading) return <div className="p-10 text-center">Loading...</div>;
     if (error || !item) return <div className="p-10 text-center text-red-500">Item not found</div>;
@@ -304,11 +320,7 @@ const otherReviews = currentUserId ? reviews.filter(r => {
                         )}
                     </div>
                 </div>
-
-
-
-
-                
+    
             </div>
             {/* REVIEWS SECTION */}
             <section id="review-form" className="flex-">
@@ -467,9 +479,54 @@ const otherReviews = currentUserId ? reviews.filter(r => {
                         <div className="py-24 text-center bg-gradient-to-b from-gray-50 to-white rounded-[2.5rem] border-2 border-dashed border-gray-150 shadow-inner">
                             <i className="fa-solid fa-feather text-[#D4AF37]/15 text-6xl mb-5 inline-block"></i>
                             <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Be the first to share your experience</p>
+                    {displayedReviews.length > 0 ? (
+                        <>
+                            {displayedReviews.map(review => (
+                                <div key={review._id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex items-center gap-3">
+                                            {review.userId?.avatar ? (
+                                                <img src={review.userId.avatar} alt={review.customerName} className="w-10 h-10 rounded-full object-cover" />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-gray-50 text-gray-300 flex items-center justify-center font-black text-xs">{review.customerName[0]}</div>
+                                            )}
+                                            <div>
+                                                <span className="font-bold text-gray-800 block text-sm tracking-tight">{review.customerName}</span>
+                                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Verified Guest</span>
+                                            </div>
+                                        </div>
+                                        <StarRating rating={review.rating} editable={false} />
+                                    </div>
+                                    <p className="text-gray-600 text-sm leading-relaxed pl-13 italic">"{review.comment}"</p>
+                                </div>
+                            ))}
+                            
+                            {/* View All Button */}
+                            {filteredReviews.length > 3 && (
+                                <div className="text-center pt-4">
+                                    <button 
+                                        onClick={() => setShowAllReviews(!showAllReviews)}
+                                        className="group flex items-center gap-2 mx-auto px-6 py-3 bg-white border border-gray-200 rounded-full text-xs font-bold uppercase tracking-widest text-gray-600 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all shadow-sm"
+                                    >
+                                        {showAllReviews ? (
+                                            <>Show Less <i className="fa-solid fa-chevron-up group-hover:-translate-y-0.5 transition-transform"></i></>
+                                        ) : (
+                                            <>View All {filteredReviews.length} Reviews <i className="fa-solid fa-chevron-down group-hover:translate-y-0.5 transition-transform"></i></>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="py-20 text-center bg-gray-50 rounded-[2.5rem] border-2 border-dashed border-gray-100 shadow-inner">
+                            <i className="fa-solid fa-feather text-[#D4AF37]/20 text-5xl mb-4"></i>
+                            <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">
+                                {ratingFilter === 0 ? "Be the first to leave an impression" : `No ${ratingFilter}-star reviews yet`}
+                            </p>
                         </div>
                     )}
                 </div>
+            
             </section>
             
             {isModalOpen && (
