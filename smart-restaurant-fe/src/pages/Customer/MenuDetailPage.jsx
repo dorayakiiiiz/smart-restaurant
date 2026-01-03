@@ -197,9 +197,9 @@ export default function MenuDetailPage() {
                     <h3 className="font-bold text-xl text-gray-800">Photo</h3>
                 </div>
                 
-                <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-6 scrollbar-hide">
+                <div className={`flex ${item.images.length === 1 && 'justify-center'} gap-4 overflow-x-auto snap-x snap-mandatory pb-6 scrollbar-hide`}>
                     {item.images?.map((img) => (
-                        <div key={img._id} className="relative w-[85vw] md:w-[500px] aspect-[4/3] flex-shrink-0 snap-center rounded-[2rem] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] bg-white">
+                        <div key={img._id} className="relative w-[85vw] md:w-[500px] aspect-[4/3] flex-shrink-0 snap-center rounded-3xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] bg-white">
                             <img src={img.url} alt="Menu" className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
                         </div>
@@ -215,29 +215,39 @@ export default function MenuDetailPage() {
             </div>
 
             {/* 4. Nút Add to Cart */}
-            <div className="flex justify-center mb-10">
+            <div className="flex justify-center mb-10 px-4">
                 <button
                     onClick={() => setIsModalOpen(true)}
                     disabled={!item.isAvailable}
                     className={`
-                        group relative w-full md:w-auto min-w-[280px] px-10 py-5 rounded-3xl 
-                        flex items-center justify-center gap-4 
-                        transition-all duration-300 active:scale-95 font-quicksand
+                        group relative w-full md:w-[400px] h-16 rounded-2xl 
+                        flex items-center overflow-hidden transition-all duration-300
                         ${item.isAvailable 
-                            ? 'bg-black text-[#1a1a1a] shadow hover:shadow-lg hover:-translate-y-2' 
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
+                            ? 'bg-[#1a1a1a] hover:bg-[#D4AF37] shadow-lg active:scale-[0.98]' 
+                            : 'bg-gray-100 cursor-not-allowed'}
                     `}
                 >
                     {item.isAvailable ? (
                         <>
-                            <span className="w-8 h-8 rounded-full bg-yellow-500 text-yellow-50 font-bold flex items-center justify-center text-base group-hover:rotate-12 transition-transform duration-300">
-                                <i className="fa-solid fa-plus text-xs"></i>
-                            </span>
-                            <span className="text-white font-bold text-base uppercase tracking-[0.15em]">Add to Order</span>
-                            <span className="text-yellow-100 font-black text-lg ml-1">${item.price.toFixed(2)}</span>
+                            {/* Phần giá tiền bên trái - ngăn cách bằng vạch mờ */}
+                            <div className="flex items-center justify-center w-24 h-full border-r border-white/30 group-hover:border-black/10 transition-colors">
+                                <span className="text-yellow-300 group-hover:text-white font-bold text-lg transition-colors">
+                                    ${item.price}
+                                </span>
+                            </div>
+
+                            {/* Phần chữ chính */}
+                            <div className="flex-1 flex items-center justify-center gap-3">
+                                <span className="text-white font-black uppercase tracking-[0.2em] text-sm transition-colors">
+                                    Add to Order
+                                </span>
+                                <i className="fa-solid fa-arrow-right text-[#D4AF37] group-hover:text-black text-xs transition-colors group-hover:translate-x-1 duration-300"></i>
+                            </div>
                         </>
                     ) : (
-                        <span className="font-bold text-base uppercase tracking-widest">Currently Unavailable</span>
+                        <span className="w-full text-center font-bold text-gray-400 uppercase tracking-widest text-xs">
+                            Currently Sold Out
+                        </span>
                     )}
                 </button>
             </div>
@@ -457,28 +467,6 @@ export default function MenuDetailPage() {
                         </div>
                     )}
 
-                    {otherReviews.length > 0 ? otherReviews.map(review => (
-                        <div key={review._id} className="bg-white py-5 px-6 rounded-[2rem] border border-gray-100 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-[0_10px_32px_rgba(0,0,0,0.08)] hover:border-gray-200 transition-all duration-300 group">
-                            <div className="flex justify-between items-start mb-4 gap-4">
-                                <div className="flex items-center gap-3 flex-1">
-                                    {review.userId?.avatar ? (
-                                        <img src={review.userId.avatar} alt={review.customerName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
-                                    ) : (
-                                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400 flex items-center justify-center font-black text-sm border border-gray-200">{review.customerName[0]}</div>
-                                    )}
-                                    <div>
-                                        <span className="font-black text-gray-900 block text-sm tracking-tight">{review.customerName}</span>
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Guest</span>
-                                    </div>
-                                </div>
-                                <StarRating rating={review.rating} editable={false} />
-                            </div>
-                            <p className="text-gray-650 text-sm leading-relaxed italic font-medium ml-14">"{review.comment}"</p>
-                        </div>
-                    )) : !myReview && (
-                        <div className="py-24 text-center bg-gradient-to-b from-gray-50 to-white rounded-[2.5rem] border-2 border-dashed border-gray-150 shadow-inner">
-                            <i className="fa-solid fa-feather text-[#D4AF37]/15 text-6xl mb-5 inline-block"></i>
-                            <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-[10px]">Be the first to share your experience</p>
                     {displayedReviews.length > 0 ? (
                         <>
                             {displayedReviews.map(review => (
@@ -492,7 +480,7 @@ export default function MenuDetailPage() {
                                             )}
                                             <div>
                                                 <span className="font-bold text-gray-800 block text-sm tracking-tight">{review.customerName}</span>
-                                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Verified Guest</span>
+                                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Guest</span>
                                             </div>
                                         </div>
                                         <StarRating rating={review.rating} editable={false} />

@@ -46,6 +46,7 @@ import CustomerRegister from "./pages/Auth/CustomerRegister";
 import CustomerForgotPassword from "./pages/Auth/CustomerForgotPassword"; // Import mới
 import CustomerProfilePage from "./pages/Customer/CustomerProfilePage";
 import PaymentSuccess from "./pages/Customer/PaymentSuccess";
+import RestaurantProfilePage from './pages/Customer/RestaurantProfilePage';
 
 // Import Pages mới
 import WaiterDashboard from "./pages/Waiter/WaiterDashboard";
@@ -129,6 +130,7 @@ function App() {
                             <Route path="/menu/public/:id/:restaurantId" element={<MenuDetailPage />} />
                             <Route path="/cart" element={<CartPage />} />
                             <Route path="/orders" element={<OrderTrackingPage />} />
+                            <Route path="restaurant-profile" element={<RestaurantProfilePage />} />
                             
                             {/* SỬA: Đưa Profile vào đây và bọc ProtectedRoute */}
                             <Route element={<ProtectedRoute allowedRoles={['customer']} loginPath="/auth/login" />}>

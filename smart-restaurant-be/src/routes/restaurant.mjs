@@ -4,6 +4,11 @@ import restaurantController from "../controllers/RestaurantController.mjs";
 import authMiddleware from "../middleware/AuthMiddleware.mjs";
 
 const router = Router();
+
+// Route Public - KHÔNG cần auth
+router.get('/public/:id', restaurantController.getPublicRestaurant);
+
+// Route Private - CẦN auth
 router.use(authMiddleware);
 
 router.get('/me', restaurantController.getMyRestaurant);

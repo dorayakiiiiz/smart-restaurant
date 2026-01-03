@@ -14,18 +14,27 @@ export default function CustomerLayout() {
     // Hiển thị màn hình Thank You khi thanh toán thành công
     if (showThankYou) {
         return (
-            <div className="fixed inset-0 bg-gradient-to-br from-green-500 to-emerald-600 z-[9999] flex flex-col items-center justify-center text-white">
-                <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center mb-8 shadow-2xl animate-bounce">
-                    <i className="fa-solid fa-check text-6xl text-green-500"></i>
-                </div>
-                <h1 className="text-4xl font-bold font-momo mb-3">Thank You!</h1>
-                <p className="text-xl opacity-90 mb-2">Payment Successful</p>
-                <p className="text-sm opacity-75 mb-8">
-                    {paymentMethod === 'cash' ? 'Cash payment received' : 'Online payment confirmed'}
-                </p>
-                <div className="flex items-center gap-2 text-sm opacity-60">
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                    <span>Redirecting in 5 seconds...</span>
+            <div className="fixed inset-0 bg-[#0a0a0a]/95 z-[9999] flex flex-col items-center justify-center p-6 backdrop-blur-sm">
+                <div className="absolute w-[500px] h-[500px] bg-[#D4AF37]/5 rounded-full blur-[120px]"></div>
+
+                <div className="relative flex flex-col items-center max-w-md w-full">
+                    <div className="relative mb-10">
+                        <div className="absolute inset-0 bg-[#D4AF37]/20 rounded-full animate-ping"></div>
+                        <div className="relative w-24 h-24 bg-gradient-to-tr from-[#D4AF37] to-[#F5E0A3] rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(212,175,55,0.3)]">
+                            <i className="fa-solid fa-check text-4xl text-[#1a1a1a]"></i>
+                        </div>
+                    </div>
+
+                    <div className="text-center space-y-4 mb-12">
+                        <h1 className="text-4xl font-black text-white uppercase tracking-[0.2em]">Thank you</h1>
+                        <div className="h-px w-12 bg-[#D4AF37] mx-auto"></div>
+                        <p className="text-[#D4AF37] font-bold text-lg tracking-wide italic">
+                            {paymentMethod === 'cash' ? 'Cash payment received' : 'Payment successfully'}
+                        </p>
+                        <p className="text-gray-400 text-sm font-medium leading-relaxed max-w-[280px] mx-auto">
+                            Thanks for dining with us. Your culinary experience continues shortly.
+                        </p>
+                    </div>
                 </div>
             </div>
         );
@@ -74,11 +83,18 @@ export default function CustomerLayout() {
                         </span>
                     </div>
                 </div>
-                <NavLink to="/profile" className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
-                    {user ? (
-                        <span className="font-bold text-sm">{user.fullName.charAt(0)}</span>
+                <NavLink 
+                    to="/restaurant-profile" 
+                    className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 flex items-center justify-center hover:border-[#D4AF37] transition-all shadow-sm hover:shadow-md"
+                >
+                    {sessionInfo?.restaurant?.logoUrl ? (
+                        <img 
+                            src={sessionInfo.restaurant.logoUrl} 
+                            alt="Restaurant" 
+                            className="w-full h-full object-cover"
+                        />
                     ) : (
-                        <i className="fa-regular fa-user"></i>
+                        <i className="fa-solid fa-utensils text-[#D4AF37]"></i>
                     )}
                 </NavLink>
             </div>

@@ -22,6 +22,12 @@ const RestaurantSchema = new Schema({
     wifiPassword: { type: String },
     currency: { type: String, default: 'VND' },
     
+    // Contact info
+    contact: {
+        phone: { type: String },
+        email: { type: String }
+    },
+    
     // Thêm cấu hình PayOS (Lưu dạng object đã mã hóa hoặc plain text tùy logic controller, ở đây lưu object kết quả từ hàm encrypt)
     payosConfig: {
         clientId: { 

@@ -7,7 +7,7 @@ class RestaurantController {
     //Chỉ có admin (chủ quán) mới được tạo nhà hàng
     async createRestaurant(req, res) {
         try {
-            const { name, address, bio } = req.body;
+            const { name, address, bio, contactPhone, contactEmail } = req.body;
             
             // Kiểm tra xem user đã có nhà hàng chưa (Single restaurant system)
             const existing = await Restaurant.findOne({ adminId: req.user.id });
@@ -17,7 +17,11 @@ class RestaurantController {
                 adminId: req.user.id,
                 name,
                 address,
-                bio
+                bio,
+                contact: {
+                    phone: contactPhone || "",
+                    email: contactEmail || ""
+                }
             };
 
             // Xử lí upload hình ảnh nếu có
@@ -73,6 +77,16 @@ class RestaurantController {
             const updates = req.body;
             if (req.files?.logo?.[0]) updates.logoUrl = req.files.logo[0].path;
             if (req.files?.cover?.[0]) updates.coverUrl = req.files.cover[0].path;
+
+            // Xử lý contact
+            if (updates.contactPhone !== undefined || updates.contactEmail !== undefined) {
+                updates.contact = {
+                    phone: updates.contactPhone || "",
+                    email: updates.contactEmail || ""
+                };
+                delete updates.contactPhone;
+                delete updates.contactEmail;
+            }
 
             let accountHolder = '';
 
@@ -146,6 +160,20 @@ class RestaurantController {
             }
 
             res.status(200).json({ message: "Updated successfully", restaurant: restaurantData });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
+    // [GET] /api/restaurant/public/:id
+    async getPublicRestaurant(req, res) {
+        try {
+            const { id } = req.params;
+            const restaurant = await Restaurant.findById(id).select('-payosConfig -adminId');
+            
+            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
+            res.status(200).json({ restaurant });
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
