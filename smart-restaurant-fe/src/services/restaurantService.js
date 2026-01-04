@@ -20,8 +20,14 @@ const updateRestaurant = async (formData) => {
     return response.data;
 }
 
+const getDashboardStats = async () => {
+    const response = await api.get('/restaurant/stats');
+    return response.data;
+}
+
 export const restaurantService = {
     getMyRestaurant,
     createRestaurant,
-    updateRestaurant
+    updateRestaurant,
+    getDashboardStats,
 };
