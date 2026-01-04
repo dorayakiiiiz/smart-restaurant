@@ -93,6 +93,71 @@ class StaffController {
         }
     }
 
+    // [PATCH] /api/staff/:id
+    // Cập nhật thông tin Staff
+    async updateStaff(req, res) {
+        try {
+            const { id } = req.params;
+            const { email, fullName, role, password } = req.body;
+            const adminId = req.user.id;
+
+            // 1. Validate Role
+            if (role && !['waiter', 'kitchen'].includes(role)) {
+                return res.status(400).json({ message: "Invalid role. Must be 'waiter' or 'kitchen'." });
+            }
+
+            // 2. Tìm nhà hàng của Admin
+            const restaurant = await Restaurant.findOne({ adminId });
+            if (!restaurant) {
+                return res.status(404).json({ message: "Restaurant not found." });
+            }
+
+            // 3. Tìm staff
+            const staff = await User.findOne({ 
+                _id: id, 
+                restaurantId: restaurant._id,
+                role: { $in: ['waiter', 'kitchen'] }
+            });
+
+            if (!staff) {
+                return res.status(404).json({ message: "Staff not found or unauthorized." });
+            }
+
+            // 4. Check email nếu thay đổi
+            if (email && email !== staff.email) {
+                const existingUser = await User.findOne({ email });
+                if (existingUser) {
+                    return res.status(400).json({ message: "Email already exists." });
+                }
+                staff.email = email;
+            }
+
+            // 5. Update các field
+            if (fullName) staff.fullName = fullName;
+            if (role) staff.role = role;
+            
+            // 6. Update password nếu có
+            if (password && password.trim() !== '') {
+                const hashPassword = await bcrypt.hash(password, saltRounds);
+                staff.password = hashPassword;
+            }
+
+            await staff.save();
+
+            res.status(200).json({ 
+                message: "Staff updated successfully.",
+                staff: {
+                    id: staff._id,
+                    fullName: staff.fullName,
+                    role: staff.role,
+                    email: staff.email
+                }
+            });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
     // [PATCH] /api/staff/:id/lock
     // Khóa/Mở khóa tài khoản Staff
     async toggleLockStaff(req, res) {
