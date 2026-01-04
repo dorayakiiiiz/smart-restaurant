@@ -30,7 +30,7 @@ import CategoriesManagement from "./pages/AdminDashboard/CategoriesManagement";
 import LiveOrdersPage from "./pages/AdminDashboard/LiveOrders/OrdersPage";
 import ReportsPage from "./pages/AdminDashboard/Reports/ReportsPage";
 import { KDSPage } from "./pages/AdminDashboard/PlaceholderPage";
-import StaffManagementPage from "./pages/AdminDashboard/StaffManagementPage";
+import StaffManagementPage from "./pages/AdminDashboard/StaffManagement/StaffManagementPage";
 import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
 import SettingsPage from "./pages/AdminDashboard/SettingsPage";
 import TablesPage from "./pages/AdminDashboard/TablesPage";
