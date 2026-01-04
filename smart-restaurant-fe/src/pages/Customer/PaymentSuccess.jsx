@@ -10,6 +10,13 @@ export default function PaymentSuccess() {
         // Trang này chỉ hiển thị tạm khi PayOS redirect về
         // Socket event session_ended sẽ được CartContext xử lý
         // Nếu socket chưa kịp nhận, fallback sau 10s
+
+        // --- Lưu lại nhà hàng đã ghé trước khi xóa session ---
+        const currentSession = JSON.parse(localStorage.getItem("session_info"));
+        if (currentSession?.restaurant) {
+            localStorage.setItem("visited_restaurant", JSON.stringify(currentSession.restaurant));
+        }
+
         const fallbackTimer = setTimeout(() => {
             localStorage.removeItem("session_info");
             localStorage.removeItem("customer_cart");
@@ -17,19 +24,34 @@ export default function PaymentSuccess() {
                 window.location.href = "/profile";
             else
                 window.location.href = "/menu";
-        }, 5000);
+        }, 4000);
 
         return () => clearTimeout(fallbackTimer);
     }, []);
 
     return (
-        <div className="h-screen w-full bg-gradient-to-br from-green-500 to-emerald-600 flex flex-col items-center justify-center text-white">
-            <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center mb-8 shadow-2xl animate-bounce">
-                <i className="fa-solid fa-check text-6xl text-green-500"></i>
+        <div className="fixed inset-0 bg-[#0a0a0a]/95 z-[9999] flex flex-col items-center justify-center p-6 backdrop-blur-sm">
+            <div className="absolute w-[500px] h-[500px] bg-[#D4AF37]/5 rounded-full blur-[120px]"></div>
+
+            <div className="relative flex flex-col items-center max-w-md w-full">
+                <div className="relative mb-10">
+                    <div className="absolute inset-0 bg-[#D4AF37]/20 rounded-full animate-ping"></div>
+                    <div className="relative w-24 h-24 bg-gradient-to-tr from-[#D4AF37] to-[#F5E0A3] rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(212,175,55,0.3)]">
+                        <i className="fa-solid fa-check text-4xl text-[#1a1a1a]"></i>
+                    </div>
+                </div>
+
+                <div className="text-center space-y-4 mb-12">
+                    <h1 className="text-4xl font-black text-white uppercase tracking-[0.2em]">Thank you</h1>
+                    <div className="h-px w-12 bg-[#D4AF37] mx-auto"></div>
+                    <p className="text-[#D4AF37] font-bold text-lg tracking-wide italic">
+                        Payment successfully
+                    </p>
+                    <p className="text-gray-400 text-sm font-medium leading-relaxed max-w-[280px] mx-auto">
+                        Thanks for dining with us. Your culinary experience continues shortly.
+                    </p>
+                </div>
             </div>
-            <h1 className="text-4xl font-bold font-momo mb-3">Payment Successful!</h1>
-            <p className="text-xl opacity-90">Thank you for dining with us.</p>
-            <p className="text-sm mt-8 opacity-60">Processing your payment...</p>
         </div>
     );
 }

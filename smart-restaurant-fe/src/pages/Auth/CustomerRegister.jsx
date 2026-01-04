@@ -15,6 +15,18 @@ export default function CustomerRegister() {
     const [otp, setOtp] = useState(new Array(6).fill(''));
     const otpInputRefs = useRef([]);
 
+    // State timer
+    const [resendTimer, setResendTimer] = useState(0);
+    useEffect(() => {
+        let interval;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer]);
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [successMsg, setSuccessMsg] = useState(""); 
@@ -47,6 +59,7 @@ export default function CustomerRegister() {
     // --- OTP LOGIC ---
     const handleOtpChange = (element, index) => {
         setError("");
+        setSuccessMsg("");
         if (isNaN(element.value)) return;
 
         const newOtp = [...otp];
@@ -103,6 +116,7 @@ export default function CustomerRegister() {
             });
             
             setSuccessMsg("OTP sent to your email.");
+            setResendTimer(60);
             setTimeout(() => {
                 setSuccessMsg("");
                 setStep(2);
@@ -111,6 +125,29 @@ export default function CustomerRegister() {
         } catch (err) {
             const errorMsg = err.response?.data?.message || err.response?.data?.error || "Registration failed.";
             setError(errorMsg);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (resendTimer > 0) return;
+        
+        setLoading(true);
+        setError("");
+        setSuccessMsg("");
+        
+        try {
+            await authService.sendRegisterOtp({
+                email: formData.email,
+                fullName: formData.fullName,
+                password: formData.password,
+                restaurantId
+            });
+            setSuccessMsg("New OTP sent to your email.");
+            setResendTimer(60); // Reset timer
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to resend OTP.");
         } finally {
             setLoading(false);
         }
@@ -236,7 +273,7 @@ export default function CustomerRegister() {
                                         />
                                     </div>
 
-                                    {/* Email - Đã xóa phần check available */}
+                                    {/* Email */}
                                     <div className="space-y-1">
                                         <label className="text-sm font-bold text-gray-700 ml-1">Email</label>
                                         <input 
@@ -377,10 +414,36 @@ export default function CustomerRegister() {
                                         type="submit"
                                         disabled={loading}
                                         onClick={handleSubmitStep2}
-                                        className={`w-full mt-2 py-4 ${loading ? 'bg-[#600018]' : 'bg-[#800020] hover:bg-[#600018]'} text-white font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all transform active:scale-[0.98] text-lg`}
+                                        className={`w-full py-4 ${loading ? 'bg-[#600018]' : 'bg-[#800020] hover:bg-[#600018]'} text-white font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all transform active:scale-[0.98] text-lg`}
                                     >
-                                        {loading ? "Verifying..." : "Verify & Create Account"}
+                                        {loading ? "Processing..." : "Verify & Create Account"}
                                     </button>
+                                    
+                                    <div className="text-center -mt-4">
+                                        <div className="text-gray-400 mb-1">Didn't receive code?</div>
+                                        <div 
+                                            type="button"
+                                            onClick={handleResendOtp}
+                                            disabled={resendTimer > 0 || loading}
+                                            className={`text-sm font-bold transition-colors ${
+                                                resendTimer > 0 
+                                                    ? 'text-gray-400 cursor-not-allowed' 
+                                                    : 'text-[#800020] hover:underline'
+                                            }`}
+                                        >
+                                            {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setStep(1)}
+                                            className="text-sm text-gray-500 hover:text-[#800020] font-semibold"
+                                        >
+                                            <i className="fa-solid fa-arrow-left mr-1"></i> Back to Info
+                                        </button>
+                                    </div>
                                 </form>
                             </>
                         )}

@@ -107,7 +107,7 @@ export default function CustomerLogin() {
                                         type="email" 
                                         required
                                         value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        onChange={(e) => { setEmail(e.target.value); setError("") }}
                                         className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#800020] focus:ring-1 focus:ring-[#800020] transition-all font-medium text-gray-800 placeholder-gray-400"
                                         placeholder="name@example.com"
                                     />
@@ -127,7 +127,7 @@ export default function CustomerLogin() {
                                         type="password" 
                                         required
                                         value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
+                                        onChange={(e) => { setPassword(e.target.value); setError("") }}
                                         className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#800020] focus:ring-1 focus:ring-[#800020] transition-all font-medium text-gray-800 placeholder-gray-400"
                                         placeholder="••••••••"
                                     />
