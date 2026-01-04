@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import PaymentSuccess from "../pages/Customer/PaymentSuccess"; 
 
 export default function CustomerLayout() {
     const { cartItems, sessionInfo, showThankYou, paymentMethod } = useCart();
@@ -13,28 +14,20 @@ export default function CustomerLayout() {
 
     // Hiển thị màn hình Thank You khi thanh toán thành công
     if (showThankYou) {
-        return (
-            <div className="fixed inset-0 bg-gradient-to-br from-green-500 to-emerald-600 z-[9999] flex flex-col items-center justify-center text-white">
-                <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center mb-8 shadow-2xl animate-bounce">
-                    <i className="fa-solid fa-check text-6xl text-green-500"></i>
-                </div>
-                <h1 className="text-4xl font-bold font-momo mb-3">Thank You!</h1>
-                <p className="text-xl opacity-90 mb-2">Payment Successful</p>
-                <p className="text-sm opacity-75 mb-8">
-                    {paymentMethod === 'cash' ? 'Cash payment received' : 'Online payment confirmed'}
-                </p>
-                <div className="flex items-center gap-2 text-sm opacity-60">
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                    <span>Redirecting in 5 seconds...</span>
-                </div>
-            </div>
-        );
+        return <PaymentSuccess />;
     }
 
+    const visitedRestaurant = localStorage.getItem("visited_restaurant");
 
-    // Logic chặn: Chưa có session VÀ không phải đang quét QR và không phải đang ở trang profile
-    const isProfilePage = location.pathname === '/profile';
-    const shouldBlock = !sessionInfo && !tokenParam && !isProfilePage;
+    const isAllowedPage = ['/profile', '/restaurant-profile'].includes(location.pathname);
+    const hasSession = !!sessionInfo || !!tokenParam;
+
+    // Logic chặn:
+    // 1. Nếu KHÔNG có session (và không đang scan QR)
+    // 2. VÀ (Chưa từng ghé quán HOẶC Trang hiện tại không nằm trong danh sách cho phép)
+    const shouldBlock = !hasSession && (
+        !visitedRestaurant || !isAllowedPage
+    );
 
     if (shouldBlock) {
         return (
@@ -74,11 +67,18 @@ export default function CustomerLayout() {
                         </span>
                     </div>
                 </div>
-                <NavLink to="/profile" className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition">
-                    {user ? (
-                        <span className="font-bold text-sm">{user.fullName.charAt(0)}</span>
+                <NavLink 
+                    to="/restaurant-profile" 
+                    className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 flex items-center justify-center hover:border-[#D4AF37] transition-all shadow-sm hover:shadow-md"
+                >
+                    {(sessionInfo?.restaurant?.logoUrl || visitedRestaurant) ? (
+                        <img 
+                            src={sessionInfo?.restaurant.logoUrl || JSON.parse(visitedRestaurant).logoUrl} 
+                            alt="Restaurant" 
+                            className="w-full h-full object-cover"
+                        />
                     ) : (
-                        <i className="fa-regular fa-user"></i>
+                        <i className="fa-solid fa-utensils text-[#D4AF37]"></i>
                     )}
                 </NavLink>
             </div>

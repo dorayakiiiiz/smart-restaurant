@@ -70,7 +70,7 @@ export default function AdminDashboardLayout() {
                     </div>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                    <div className={`flex-1 overflow-y-auto ${!location.pathname.includes('/kds') && 'p-6 md:p-8'}`}>
                         <Outlet />
                     </div>
                 </div>

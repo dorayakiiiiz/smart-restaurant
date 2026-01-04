@@ -23,29 +23,101 @@ const generateAuthScript = (type, data) => {
 
 class AuthController {
     // [POST] /auth/register -> của customer
-    async register(req, res, next) {
+    // async register(req, res, next) {
+    //     try {
+    //         // Nhận thêm restaurantId từ Frontend gửi lên
+    //         const { email, fullName, password, restaurantId } = req.body;
+
+    //         // Tìm user có email này TRONG NHÀ HÀNG NÀY
+    //         const user = await User.findOne({ email, restaurantId });
+            
+    //         if (user) {
+    //             return res.status(400).json({ message: 'Email already exists in this restaurant.' });
+    //         }
+
+    //         const hashPassword = await bcrypt.hash(password, saltRounds);
+            
+    //         const newUser = await User.create({
+    //             email,
+    //             fullName,
+    //             password: hashPassword,
+    //             restaurantId: restaurantId // Lưu khóa ngoại
+    //         });
+
+    //         res.json({ message: 'Register successfully!', userId: newUser._id });
+            
+    //     } catch (err) {
+    //         res.status(500).json({ error: err.message });
+    //     }
+    // }
+
+    // [POST] /auth/register-otp
+    // Step 1: Validate info, check duplicate, send OTP
+    async sendRegisterOtp(req, res, next) {
         try {
-            // Nhận thêm restaurantId từ Frontend gửi lên
             const { email, fullName, password, restaurantId } = req.body;
 
-            // Tìm user có email này TRONG NHÀ HÀNG NÀY
-            const user = await User.findOne({ email, restaurantId });
-            
-            if (user) {
-                return res.status(400).json({ message: 'Email already exists in this restaurant.' });
+            if (!email || !fullName || !password) {
+                return res.status(400).json({ message: "Please fill in all fields." });
             }
 
+            // Check if user exists in this restaurant
+            const user = await User.findOne({ email, restaurantId });
+            if (user) {
+                return res.status(400).json({ message: "Email already exists in this restaurant." });
+            }
+
+            // Generate OTP
+            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+            // Save OTP to DB (Upsert: update if exists, insert if new)
+            await Otp.findOneAndUpdate(
+                { email },
+                { otp, createdAt: Date.now() },
+                { upsert: true, new: true }
+            );
+
+            // Send Email
+            await sendEmail(email, "Smart Restaurant - Verify your account", `Your OTP code is: ${otp}. It expires in 5 minutes.`);
+
+            res.json({ message: "OTP sent to your email." });
+
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
+    // [POST] /auth/register-verify
+    // Step 2: Verify OTP and Create User
+    async verifyRegisterAndCreate(req, res, next) {
+        try {
+            const { email, otp, fullName, password, restaurantId } = req.body;
+
+            // Find OTP
+            const otpRecord = await Otp.findOne({ email });
+            if (!otpRecord) {
+                return res.status(400).json({ message: "OTP expired or not found. Please try again." });
+            }
+
+            if (otpRecord.otp !== otp) {
+                return res.status(400).json({ message: "Invalid OTP." });
+            }
+
+            // OTP Valid -> Create User
             const hashPassword = await bcrypt.hash(password, saltRounds);
             
             const newUser = await User.create({
                 email,
                 fullName,
                 password: hashPassword,
-                restaurantId: restaurantId // Lưu khóa ngoại
+                restaurantId: restaurantId
             });
 
+            // Delete OTP after usage
+            await Otp.deleteOne({ email });
+
             res.json({ message: 'Register successfully!', userId: newUser._id });
-            
+
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
@@ -131,10 +203,10 @@ class AuthController {
 
             await sendEmail(
                 user.email, 
-                'Linkify - Reset your password',
+                'SmartRestaurant - Reset your password',
                 `Hi,
 
-We received a request to reset your Linkify password.
+We received a request to reset your SmartRestaurant password.
 
 Your verification code is:
 ${otp}
@@ -143,7 +215,7 @@ This code will expire in 5 minutes.
 
 If you didn't request this, you can safely ignore this email.
 
-Linkify Team`
+SmartRestaurant Team`
             );
 
 

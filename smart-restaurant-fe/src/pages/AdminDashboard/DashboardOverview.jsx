@@ -1,13 +1,88 @@
 import React from 'react';
+import { restaurantService } from '../../services/restaurantService';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import RecentOrdersTable from './RecentOrdersTable';
 
 export default function DashboardOverview() {
-    // Mock data thống kê
+    const queryClient = useQueryClient();
+
+    const { data: statsData, isLoading, isRefetching, refetch } = useQuery({
+        queryKey: ['dashboardStats'],
+        queryFn: restaurantService.getDashboardStats,
+        refetchOnWindowFocus: false, // Tắt tự động fetch khi focus lại tab
+        refetchInterval: 5000,
+    });
+
+    // 2. Hàm làm mới dữ liệu (Mutation logic)
+    const handleRefreshStats = () => {
+        refetch();
+    };
+
+    // Format tiền tệ
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
+    };
+
+    // Map dữ liệu từ API vào cấu trúc hiển thị
     const stats = [
-        { title: "Today's Revenue", value: "$1,250", icon: "fa-sack-dollar", color: "bg-green-500", trend: "+12%" },
-        { title: "Active Orders", value: "12", icon: "fa-bell-concierge", color: "bg-blue-500", trend: "Now" },
-        { title: "Total Orders", value: "45", icon: "fa-receipt", color: "bg-purple-500", trend: "Today" },
-        { title: "Occupied Tables", value: "8/15", icon: "fa-chair", color: "bg-orange-500", trend: "53%" },
+        { 
+            title: "Today's Revenue", 
+            value: isLoading ? "..." : formatCurrency(statsData?.revenue), 
+            icon: "fa-sack-dollar", 
+            color: "bg-green-500", 
+            trend: "Today" 
+        },
+        { 
+            title: "Active Orders", 
+            value: isLoading ? "..." : statsData?.activeOrders || 0, 
+            icon: "fa-bell-concierge", 
+            color: "bg-blue-500", 
+            trend: "Now" 
+        },
+        { 
+            title: "Total Orders", 
+            value: isLoading ? "..." : statsData?.totalOrders || 0, 
+            icon: "fa-receipt", 
+            color: "bg-purple-500", 
+            trend: "Today" 
+        },
+        { 
+            title: "Occupied Tables", 
+            value: isLoading ? "..." : `${statsData?.occupiedTables || 0}/${statsData?.totalTables || 0}`, 
+            icon: "fa-chair", 
+            color: "bg-orange-500", 
+            trend: statsData?.totalTables > 0 
+                ? `${Math.round((statsData.occupiedTables / statsData.totalTables) * 100)}%` 
+                : "0%" 
+        },
     ];
+
+
+    // Helper render top selling item
+    const renderTopSellingItem = (item, index) => (
+        <div key={index} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition border border-transparent hover:border-gray-100 mb-2 last:mb-0">
+            <div className="flex items-center gap-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                    index === 0 ? 'bg-red-500' : 
+                    index === 1 ? 'bg-orange-500' : 
+                    index === 2 ? 'bg-yellow-500' : 'bg-gray-400'
+                }`}>
+                    {index + 1}
+                </div>
+                {item.image ? (
+                    <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100" />
+                ) : (
+                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                        <i className="fa-solid fa-utensils"></i>
+                    </div>
+                )}
+                <div>
+                    <div className="font-bold text-gray-800 text-sm">{item.name}</div>
+                    <div className="text-xs text-gray-500">{item.totalQuantity} orders | {formatCurrency(item.totalRevenue)}</div>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="w-full max-w-7xl mx-auto">
@@ -52,30 +127,41 @@ export default function DashboardOverview() {
                     </div>
                 </div>
 
+                {/* Top selling */}
+                <div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 h-full">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-gray-800">Top Selling Items</h3>
+                            <button className="text-xs font-bold text-red-500 hover:text-red-700">View All</button>
+                        </div>
+                        
+                        {isLoading ? (
+                            <div className="text-center py-10 text-gray-400">Loading...</div>
+                        ) : statsData?.topSellingItems?.length > 0 ? (
+                            <div className="flex flex-col">
+                                {statsData.topSellingItems.map((item, index) => renderTopSellingItem(item, index))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-10 text-gray-400 text-sm">
+                                <i className="fa-solid fa-basket-shopping text-2xl mb-2"></i>
+                                <p>No sales data yet</p>
+                            </div>
+                        )}
+                    </div>    
+                </div>
+
+
+            </div>
                 {/* Recent Orders List */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-100%">
                     <h3 className="font-bold text-gray-800 mb-4">Recent Orders</h3>
                     <div className="space-y-4">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition cursor-pointer border border-transparent hover:border-gray-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-600">
-                                        T{i}
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-sm text-gray-800">Table {i}</div>
-                                        <div className="text-xs text-gray-500">3 items • $45.00</div>
-                                    </div>
-                                </div>
-                                <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded">Preparing</span>
-                            </div>
-                        ))}
+                        <RecentOrdersTable 
+                            orders={statsData?.recentOrders || []} 
+                            isLoading={isLoading} 
+                        />
                     </div>
-                    <button className="w-full mt-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-lg transition">
-                        View All Orders
-                    </button>
                 </div>
-            </div>
         </div>
     );
 }

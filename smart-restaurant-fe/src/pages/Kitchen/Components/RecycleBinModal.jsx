@@ -53,7 +53,7 @@ export default function RecycleBinModal({ show, onClose, historyOrders, onRecall
                                             </div>
                                             <div className="flex items-center gap-2 text-white font-bold text-lg">
                                                 <FaChair className="text-gray-500 text-sm" />
-                                                Table {order.table}
+                                                {order.table}
                                             </div>
                                         </div>
                                         <button 

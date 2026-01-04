@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { orderService } from "../../services/orderService";
+import { userService } from "../../services/userService"; // Import service
 import { useNavigate } from "react-router-dom"; 
 
 export default function CustomerProfilePage() {
-    const { user, logout } = useAuth();
+    const { user, logout, setUser } = useAuth(); // Lấy thêm setUser để update UI ngay lập tức
     const [activeTab, setActiveTab] = useState("history");
 
     const { data: historyData, isLoading, refetch } = useQuery({
@@ -38,6 +39,81 @@ export default function CustomerProfilePage() {
         if (!dateString) return "";
         return new Date(dateString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     };
+
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [tempName, setTempName] = useState(user?.fullName || "");
+    const [updatingName, setUpdatingName] = useState(false);
+
+    const [showPassModal, setShowPassModal] = useState(false);
+    const [passForm, setPassForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    const [passLoading, setPassLoading] = useState(false);
+    const [passMsg, setPassMsg] = useState({ type: "", content: "" });
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Handler update Name
+    const handleSaveName = async () => {
+        if (!tempName.trim()) return;
+        setUpdatingName(true);
+        try {
+            const res = await userService.updateAccountInfo({ fullName: tempName });
+            // Cập nhật context user
+            setUser({ ...user, fullName: res.user.fullName });
+            setIsEditingName(false);
+        } catch (err) {
+            alert(err.response?.data?.message || "Failed to update name");
+        } finally {
+            setUpdatingName(false);
+        }
+    };
+
+    // Handler update Password
+    const handleSavePassword = async (e) => {
+        e.preventDefault();
+        setPassMsg({ type: "", content: "" });
+
+        if (passForm.newPassword !== passForm.confirmPassword) {
+            setPassMsg({ type: "error", content: "New passwords do not match." });
+            return;
+        }
+        if (passForm.newPassword.length < 5) {
+            setPassMsg({ type: "error", content: "Password must be at least 5 characters." });
+            return;
+        }
+
+        setPassLoading(true);
+        try {
+            await userService.changePassword({
+                currentPassword: passForm.currentPassword,
+                newPassword: passForm.newPassword
+            });
+            setPassMsg({ type: "success", content: "Password changed successfully!" });
+            setTimeout(() => {
+                setShowPassModal(false);
+                setPassForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                setPassMsg({ type: "", content: "" });
+            }, 1500);
+        } catch (err) {
+            setPassMsg({ type: "error", content: err.response?.data?.message || "Failed to change password." });
+        } finally {
+            setPassLoading(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        setIsDeleting(true);
+        try {
+            await userService.deleteAccount();
+            logout();
+            navigate('/auth/login'); 
+        } catch (err) {
+            alert(err.response?.data?.message || "Failed to delete account");
+            setIsDeleting(false);
+            setShowDeleteModal(false);
+        }
+    };
+    // ----------------------------------
 
     return (
         <div className="max-w-2xl mx-auto px-4 pb-24 pt-6 font-sans antialiased text-slate-900">
@@ -183,31 +259,234 @@ export default function CustomerProfilePage() {
                         )}
                     </div>
                 ) : (
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-50 overflow-hidden divide-y divide-gray-50">
-                        <div className="p-6 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
-                            <div>
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Full Name</p>
-                                <p className="text-sm font-bold text-gray-900">{user?.fullName}</p>
+                    <div className="space-y-5 animate-fade-in-up">
+                        {/* PERSONAL INFORMATION */}
+                        <div className="bg-white rounded-2xl px-6 py-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 relative overflow-hidden">
+
+                            <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2 relative z-10">
+                                Personal Information
+                            </h3>
+
+                            <div className="space-y-6 relative z-10">
+                                {/* Full Name Field */}
+                                <div className="group">
+                                    <label className="block text-sm font-quicksand font-bold text-gray-700 mb-2">Full Name</label>
+                                    
+                                    {isEditingName ? (
+                                        <div className="font-quicksand flex items-center gap-2 animate-fade-in">
+                                            <div className="relative flex-1">
+
+                                                <div className="w-8 h-8 absolute inset-y-0 left-4 top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center text-gray-500 bg-white shadow-xs">
+                                                    <i className="fa-regular fa-user"></i>
+                                                </div>
+                                                <input 
+                                                    type="text" 
+                                                    value={tempName}
+                                                    onChange={(e) => setTempName(e.target.value)}
+                                                    className="w-full text-sm pl-14 pr-4 py-3 font-bold text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#800020] transition-all"
+                                                    autoFocus
+                                                    placeholder="Enter your name"
+                                                />
+                                            </div>
+                                            <button 
+                                                onClick={handleSaveName}
+                                                disabled={updatingName}
+                                                className="w-11 h-11 flex items-center justify-center bg-[#800020] text-white rounded-xl hover:bg-[#600018] shadow-lg shadow-red-900/20 transition-all active:scale-95 disabled:opacity-70"
+                                            >
+                                                {updatingName ? <i className="fa-solid fa-circle-notch fa-spin text-xs"></i> : <i className="fa-solid fa-check"></i>}
+                                            </button>
+                                            <button 
+                                                onClick={() => { setIsEditingName(false); setTempName(user?.fullName); }}
+                                                className="w-11 h-11 flex items-center justify-center bg-white border border-gray-200 text-gray-500 rounded-xl hover:bg-gray-50 hover:text-gray-700 transition-all active:scale-95"
+                                            >
+                                                <i className="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div 
+                                            className="flex items-center justify-between p-3 rounded-xl bg-gray-50/50 border border-gray-100 cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 bg-white shadow-xs">
+                                                    <i className="fa-regular fa-user"></i>
+                                                </div>
+                                                <span className="text-sm font-bold text-gray-800 font-quicksand">{user?.fullName}</span>
+                                            </div>
+                                            <div 
+                                                className="w-8 h-8 flex items-center justify-center text-blue-500 hover:text-blue-700" title="Edit"
+                                                onClick={() => { setIsEditingName(true); setTempName(user?.fullName); }}
+                                            >
+                                                <i className="fa-solid fa-pen-to-square"></i>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Email Field (Read Only) */}
+                                <div>
+                                    <label className="block text-sm font-quicksand font-bold text-gray-700 mb-2">Email Address</label>
+                                    <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50/50 border border-gray-100">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                                                <i className="fa-regular fa-envelope"></i>
+                                            </div>
+                                            <span className="text-sm font-bold font-quicksand text-gray-800">{user?.email}</span>
+                                            <div className="text-[9px] text-green-700 bg-green-200 rounded-full flex items-center justify-center w-5 h-5" title="Verified">
+                                                <i className="fa-solid fa-check"></i>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 flex items-center justify-center text-gray-400" title="Cannot change email">
+                                            <i className="fa-solid fa-lock text-xs"></i>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <i className="fa-solid fa-user text-gray-200"></i>
                         </div>
-                        <div className="p-6 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
-                            <div>
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Email Address</p>
-                                <p className="text-sm font-bold text-gray-900">{user?.email}</p>
+
+                        {/* CARD 2: SECURITY & DANGER ZONE */}
+                        <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                Account Security
+                            </h3>
+                            
+                            <div className="space-y-3 font-quicksand">
+                                {/* Change Password */}
+                                <button 
+                                    onClick={() => setShowPassModal(true)}
+                                    className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50/50 transition-all group border border-gray-100"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-white text-gray-700 flex items-center justify-center text-lg shadow-xs">
+                                            <i className="fa-solid fa-key"></i>
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-sm font-bold text-gray-900">Change Password</h4>
+                                            <p className="text-xs text-gray-500 mt-0.5 font-medium">Update your password regularly</p>
+                                        </div>
+                                    </div>
+                                    <i className="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                                </button>
+
+                                {/* Delete Account */}
+                                <button 
+                                    onClick={() => setShowDeleteModal(true)}
+                                    className="w-full flex items-center justify-between p-4 rounded-2xl bg-red-50/50 transition-all group border border-red-100"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-white text-red-600 flex items-center justify-center text-lg shadow-xs">
+                                            <i className="fa-solid fa-trash-can"></i>
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="text-sm font-bold text-red-700">Delete Account</h4>
+                                            <p className="text-xs text-red-400 mt-0.5 font-medium">Permanently remove your account</p>
+                                        </div>
+                                    </div>
+                                    <i className="fa-solid fa-chevron-right text-red-300 text-xs"></i>
+                                </button>
                             </div>
-                            <i className="fa-solid fa-envelope text-gray-200"></i>
                         </div>
-                        <button className="group w-full p-6 text-left hover:bg-red-50/50 transition-all flex justify-between items-center">
-                            <div>
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Security</p>
-                                <p className="text-sm font-bold text-[#800020]">Update Password</p>
-                            </div>
-                            <i className="fa-solid fa-chevron-right text-gray-300 group-hover:text-[#800020] group-hover:translate-x-1 transition-all"></i>
-                        </button>
                     </div>
                 )}
             </div>
+
+            {/* CHANGE PASSWORD MODAL */}
+            {showPassModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 animate-fade-in">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-bold text-gray-900">Change Password</h3>
+                            <button onClick={() => setShowPassModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <i className="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+
+                        {passMsg.content && (
+                            <div className={`mb-2 p-3 ${passMsg.type === 'success' ? 'bg-green-50 border border-green-100 text-green-600' : 'bg-red-50 border border-red-100 text-red-600'} text-sm rounded-xl flex items-center gap-2`}>
+                                <i className="fa-solid fa-circle-check"></i>
+                                {passMsg.content}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSavePassword} className="space-y-4">
+                            <div>
+                                <label className="block text-gray-700 text-sm mb-1 font-quicksand font-semibold">Current Password</label>
+                                <input 
+                                    type="password"
+                                    required
+                                    value={passForm.currentPassword}
+                                    onChange={e => { setPassForm({...passForm, currentPassword: e.target.value}); setPassMsg({ type: "", content: "" }) }}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#800020] focus:ring-1 focus:ring-[#800020] transition-all font-medium"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            <div>
+                                <label className="block font-quicksand text-gray-700 text-sm mb-1 font-semibold">New Password</label>
+                                <input 
+                                    type="password"
+                                    required
+                                    value={passForm.newPassword}
+                                    onChange={e => { setPassForm({...passForm, newPassword: e.target.value}); setPassMsg({ type: "", content: "" }) }}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#800020] focus:ring-1 focus:ring-[#800020] transition-all font-medium"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                            <div>
+                                <label className="block font-quicksand font-semibold text-gray-700 text-sm mb-1">Confirm New Password</label>
+                                <input 
+                                    type="password"
+                                    required
+                                    value={passForm.confirmPassword}
+                                    onChange={e => { setPassForm({...passForm, confirmPassword: e.target.value}); setPassMsg({ type: "", content: "" }) }}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#800020] focus:ring-1 focus:ring-[#800020] transition-all font-medium"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+
+
+                            <button 
+                                type="submit" 
+                                disabled={passLoading}
+                                className="w-full py-3.5 bg-[#800020] text-white font-bold rounded-xl hover:bg-[#600018] transition-all disabled:opacity-70 flex justify-center items-center gap-2 mt-10"
+                            >
+                                {passLoading && <i className="fa-solid fa-circle-notch fa-spin"></i>}
+                                Change Password
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* DELETE ACCOUNT MODAL */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 animate-fade-in">
+                        <div className="mb-10">
+                            <div className="flex items-center text-2xl">
+                                <i className="fa-solid fa-triangle-exclamation text-red-500/90"></i>
+                                <div className="font-bold font-momo text-red-500 ml-3">Delete Account</div>
+                            </div>
+                            <p className="text-gray-700 mt-2 font-quicksand font-bold">Are you sure you want to delete your account? This action is irreversible.</p>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button 
+                                onClick={() => setShowDeleteModal(false)} 
+                                className="font-quicksand flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all font-bold"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleDeleteAccount}
+                                disabled={isDeleting}
+                                className="font-quicksand font-bold flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-all flex items-center justify-center gap-2"
+                            >
+                                {isDeleting && <i className="fa-solid fa-circle-notch fa-spin"></i>}
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

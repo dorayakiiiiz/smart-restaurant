@@ -4,8 +4,14 @@ import restaurantController from "../controllers/RestaurantController.mjs";
 import authMiddleware from "../middleware/AuthMiddleware.mjs";
 
 const router = Router();
+
+// Route Public - KHÔNG cần auth
+router.get('/public/:id', restaurantController.getPublicRestaurant);
+
+// Route Private - CẦN auth
 router.use(authMiddleware);
 
+router.get('/stats', restaurantController.getDashboardStats);
 router.get('/me', restaurantController.getMyRestaurant);
 router.post('/', uploadRestaurant.fields([{ name: 'logo' }, { name: 'cover' }]), restaurantController.createRestaurant);
 router.patch('/', uploadRestaurant.fields([{ name: 'logo' }, { name: 'cover' }]), restaurantController.updateRestaurant);

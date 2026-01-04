@@ -78,11 +78,16 @@ class UserController {
     // [PATCH] /api/user/info
     async updateAccountInfo(req, res, next) {
         try {
-            const { displayName } = req.body;
+            // Sửa displayName thành fullName
+            const { fullName } = req.body;
             const userId = req.user.id;
 
-            //Chỉ update fullName (displayName)
-            const user = await User.findByIdAndUpdate(userId, { displayName }, { new: true });
+            if (!fullName || fullName.trim().length < 2) {
+                return res.status(400).json({ message: "Full name must be at least 2 characters." });
+            }
+
+            // Update fullName
+            const user = await User.findByIdAndUpdate(userId, { fullName }, { new: true });
 
             const userResponse = {
                 id: user._id,
@@ -90,9 +95,11 @@ class UserController {
                 fullName: user.fullName,
                 role: user.role,
                 isLocked: user.isLocked,
+                // Giữ lại thông tin restaurant nếu có
+                restaurantId: user.restaurantId 
             };
 
-            res.status(200).json({ message: 'Account info updated successfully.', userResponse });
+            res.status(200).json({ message: 'Account info updated successfully.', user: userResponse });
         } catch (err) {
             res.status(500).json({ message: err.message });
         }

@@ -1,16 +1,35 @@
 import mongoose from "mongoose";
+const { Schema } = mongoose;
 
-const reviewSchema = new mongoose.Schema({
-    menuItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem', required: true },
-    restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: true },
-    sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'OrderSession', required: true }, // Để xác định người đánh giá
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false }, // Link to User if logged in
-    customerName: { type: String, required: true },
+const ReviewSchema = new Schema({
+    restaurantId: {
+        type: Schema.Types.ObjectId,
+        ref: "Restaurant",
+        required: true
+    },
+    // Thêm field type để phân biệt review món ăn hay nhà hàng
+    reviewType: {
+        type: String,
+        enum: ['menu_item', 'restaurant'],
+        required: true,
+        default: 'menu_item'
+    },
+    // menuItemId chỉ cần khi reviewType = 'menu_item'
+    menuItemId: {
+        type: Schema.Types.ObjectId,
+        ref: "MenuItem"
+    },
+    userId: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true
+    },
     rating: { type: Number, required: true, min: 1, max: 5 },
-    comment: { type: String, trim: true },
+    comment: { type: String, required: true }
 }, { timestamps: true });
 
-// Đảm bảo 1 user chỉ đánh giá 1 món 1 lần (Unique compound index)
-reviewSchema.index({ menuItemId: 1, userId: 1 }, { unique: true });
+// Index để tìm nhanh
+ReviewSchema.index({ restaurantId: 1, menuItemId: 1 });
+ReviewSchema.index({ restaurantId: 1, reviewType: 1 });
 
-export default mongoose.model("Review", reviewSchema);
+export default mongoose.model('Review', ReviewSchema);
