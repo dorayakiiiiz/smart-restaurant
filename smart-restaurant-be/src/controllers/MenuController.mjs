@@ -1,6 +1,7 @@
 import MenuItem from "../models/MenuItem.mjs";
 import Restaurant from "../models/Restaurant.mjs";
 import Category from "../models/Category.mjs";
+import Order from "../models/Order.mjs"; // Import Order model
 
 class MenuController {
     // [GET] /api/menu/public/:restaurantId
@@ -15,7 +16,21 @@ class MenuController {
             .populate('categoryId', 'name isActive')
             .sort({ createdAt: -1 });
 
-            res.status(200).json({ items });
+            // Tính orderCount cho từng item
+            const itemsWithOrderCount = await Promise.all(items.map(async (item) => {
+                const orderCount = await Order.countDocuments({
+                    restaurantId,
+                    'items.menuItemId': item._id,
+                    status: 'served' // Chỉ đếm order đã served
+                });
+
+                return {
+                    ...item.toObject(),
+                    orderCount
+                };
+            }));
+
+            res.status(200).json({ items: itemsWithOrderCount });
         } catch (err) {
             res.status(500).json({ message: "Error fetching public menu", error: err.message });
         }

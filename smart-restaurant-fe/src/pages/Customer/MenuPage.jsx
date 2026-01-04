@@ -10,6 +10,23 @@ import ProductModal from "../../components/Modal/ProductModal"; // Import Modal 
 import { useNavigate } from "react-router-dom";
 import Fuse from "fuse.js";
 
+// Component hiển thị sao
+const StarRating = ({ rating, setRating, editable = true }) => {
+    return (
+        <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+                <i 
+                    key={star}
+                    onClick={() => editable && setRating(star)}
+                    className={`fa-solid fa-star text-sm transition-colors ${editable ? 'cursor-pointer' : ''} ${
+                        star <= rating ? "text-yellow-400" : "text-gray-300"
+                    }`}
+                ></i>
+            ))}
+        </div>
+    );
+};
+
 export default function MenuPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -21,6 +38,10 @@ export default function MenuPage() {
     
     // State để quản lý món đang xem
     const [selectedItem, setSelectedItem] = useState(null);
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
 
     const handleAddItem = (e, item) => {
         e.stopPropagation();
@@ -70,6 +91,10 @@ export default function MenuPage() {
         };
     }, [sessionInfo]);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, selectedCategory, sortBy]);
+
     // Lấy ID nhà hàng từ sessionInfo
     const restaurantId = sessionInfo?.restaurant?._id;
 
@@ -106,14 +131,20 @@ export default function MenuPage() {
         .sort((a, b) => {
             if (sortBy === 'price-asc') return a.price - b.price;
             if (sortBy === 'price-desc') return b.price - a.price;
-            if (sortBy === 'popular') return (b.orderCount || 0) - (a.orderCount || 0);
+            if (sortBy === 'popular') return b.orderCount - a.orderCount;
             return 0;
         });
+
+    const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+    const paginatedItems = filteredItems.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
 
     if (menuLoading || catLoading) return <div className="p-10 text-center text-[#D4AF37] font-bold">Loading Menu...</div>;
 
     return (
-        <div className="pb-24">
+        <div className="pb-2">
             {/* Search Bar */}
             <div className="sticky top-[83px] z-20 bg-white">
 
@@ -135,7 +166,7 @@ export default function MenuPage() {
                             onChange={(e) => setSortBy(e.target.value)}
                             className="h-12 pl-4 pr-8 bg-gray-100 rounded-xl outline-none text-sm font-bold text-gray-700 appearance-none border-none focus:ring-2 focus:ring-[#D4AF37]/50 transition cursor-pointer"
                         >
-                            <option value="popular">Popular</option>
+                            <option value="popular">Most Popular</option>
                             <option value="price-asc">Price (Low)</option>
                             <option value="price-desc">Price (High)</option>
                         </select>
@@ -168,11 +199,11 @@ export default function MenuPage() {
 
             {/* Menu Grid */}
             <div className="p-6 grid grid-cols-1 gap-6">
-                {filteredItems.map((item) => (
+                {paginatedItems.map((item) => (
                     <div 
                         onClick={() => navigate(`/menu/public/${item._id}/${restaurantId}`)}
                         key={item._id} 
-                        className={`bg-white p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 flex gap-4 relative overflow-hidden group transition active:scale-[0.98] ${!item.isAvailable ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
+                        className={`bg-white p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 flex items-center gap-4 relative overflow-hidden group transition active:scale-[0.98] ${!item.isAvailable ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
                     >
                         {/* Image */}
                         <div className="w-28 h-28 bg-gray-100 rounded-xl shrink-0 overflow-hidden relative">
@@ -188,7 +219,7 @@ export default function MenuPage() {
                         
                         {/* Info */}
                         <div className="flex-1 flex flex-col justify-between py-1">
-                            <div>
+                            <div className="mb-2">
                                 <div className="flex justify-between items-start">
                                     <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1">{item.name}</h3>
                                     {item.isChefRecommended && <i className="fa-solid fa-crown text-[#D4AF37] text-xs ml-1" title="Chef Recommended"></i>}
@@ -196,11 +227,16 @@ export default function MenuPage() {
                                 <p className="text-xs text-gray-500 line-clamp-2 font-medium">{item.description}</p>
                             </div>
                             
-                            <div className="flex justify-between items-end mt-3">
-                                <span className="font-momo font-bold text-xl text-[#1a1a1a]">${item.price}</span>
+                            <div className="flex items-center gap-2">
+                                <StarRating rating={Math.round(item.averageRating || 0)} editable={false} />
+                                <div className="text-yellow-400 text-sm mb-0.5 whitespace-nowrap">({item.totalReviews} reviews)</div>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                                <span className={`mt-2 font-momo font-bold text-xl text-[#1a1a1a]`}>${item.price}</span>
                                 <button 
                                     onClick={(e) => handleAddItem(e, item)}
-                                    className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition ${item.isAvailable ? 'bg-[#D4AF37] text-white' : 'bg-gray-200 text-gray-400'}`}
+                                    className={`${item.isSoldOut && 'hidden'} w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition ${item.isAvailable ? 'bg-[#D4AF37] text-white' : 'bg-gray-200 text-gray-400'}`}
                                 >
                                     <i className="fa-solid fa-plus"></i>
                                 </button>
@@ -208,6 +244,38 @@ export default function MenuPage() {
                         </div>
                     </div>
                 ))}
+
+                {totalPages > 1 && (
+                        <div className="flex justify-center items-center gap-4 mt-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className={`w-10 h-10 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                                    currentPage === 1 
+                                        ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' 
+                                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-[#1a1a1a]'
+                                }`}
+                            >
+                                <i className="fa-solid fa-chevron-left text-xs"></i>
+                            </button>
+
+                            <span className="text-sm font-medium text-gray-600">
+                                Page <span className="text-[#1a1a1a] font-bold">{currentPage}</span> of {totalPages}
+                            </span>
+
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className={`w-10 h-10 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                                    currentPage === totalPages 
+                                        ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' 
+                                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-[#1a1a1a]'
+                                }`}
+                            >
+                                <i className="fa-solid fa-chevron-right text-xs"></i>
+                            </button>
+                        </div>
+                    )}           
             </div>
 
             {/* Product Modal */}

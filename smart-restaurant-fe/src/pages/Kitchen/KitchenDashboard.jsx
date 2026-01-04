@@ -26,19 +26,17 @@ import RecycleBinModal from "./Components/RecycleBinModal";
 import { useRef } from "react";
 
 export default function KitchenDashboard() {
-  const { user, logout } = useAuth();
-  console.log("🍳 KitchenDashboard rendered for user:", user);
-  const queryClient = useQueryClient();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [showHistory, setShowHistory] = useState(false);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
-  const audioRef = useRef(
-    new Audio("/cheerful-trombone-and-trumpet-march-432177.mp3")
-  );
-  const soundRef = useRef(true);
-  const stopTimerRef = useRef(null);
+    const { user, logout } = useAuth();
+    console.log("🍳 KitchenDashboard rendered for user:", user);
+    const queryClient = useQueryClient();
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [showHistory, setShowHistory] = useState(false);
+    const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+    const audioRef = useRef(new Audio('/cheerful-trombone-and-trumpet-march-432177.mp3'));
+    const soundRef = useRef(true);
+    const stopTimerRef = useRef(null);
 
-  const [expand, setExpand] = useState(false);
+    const [expand, setExpand] = useState(false);
 
   useEffect(() => {
     soundRef.current = isSoundEnabled;
@@ -219,15 +217,6 @@ export default function KitchenDashboard() {
         return oldData;
       });
     };
-
-    socket.on("kitchen:order_update", handleOrderUpdate);
-    socket.on("order_served", handleOrderServed);
-
-    return () => {
-      socket.off("kitchen:order_update", handleOrderUpdate);
-      socket.off("order_served", handleOrderServed);
-      socket.disconnect();
-    };
   }, [user?.restaurantId, queryClient, playNotificationSound]);
 
   const toggleSound = () => {
@@ -278,6 +267,78 @@ export default function KitchenDashboard() {
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
         ></div>
+
+        {/* LEFT: Logo */}
+        <div className="flex items-center gap-2 md:gap-4 relative z-10">
+          <div className="relative">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/30 ring-2 ring-white/10">
+              <i className="fa-solid fa-fire-burner text-white text-lg md:text-2xl drop-shadow-lg"></i>
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-3 h-3 md:w-4 md:h-4 bg-emerald-500 rounded-full border-2 border-[#12151c] animate-pulse"></div>
+          </div>
+          <div className="">
+            <h1 className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 leading-none font-momo tracking-tight">
+              KDS
+            </h1>
+            <span className="text-gray-500 font-bold font-quicksand">
+              Kitchen Display System
+            </span>
+          </div>
+        </div>
+
+    socket.on("kitchen:order_update", handleOrderUpdate);
+    socket.on("order_served", handleOrderServed);
+
+    return () => {
+      socket.off("kitchen:order_update", handleOrderUpdate);
+      socket.off("order_served", handleOrderServed);
+      socket.disconnect();
+    };
+  }, [user?.restaurantId, queryClient, playNotificationSound]);
+
+  const toggleSound = () => {
+    const newStatus = !isSoundEnabled;
+    setIsSoundEnabled(newStatus);
+
+    if (!newStatus) {
+      if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString("en-US", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  const stats = {
+    pending: orders.filter((o) => o.status === "accepted").length,
+    preparing: orders.filter((o) => o.status === "preparing").length,
+    ready: orders.filter((o) => o.status === "ready").length,
+    overdue: orders.filter((o) => {
+      if (o.status !== "preparing" || !o.preparingAt) return false;
+      const maxPrepTime = Math.max(...o.items.map((i) => i.prepTime || 15));
+      const elapsedMinutes =
+        (currentTime - new Date(o.preparingAt)) / 1000 / 60;
+      return elapsedMinutes > maxPrepTime;
+    }).length,
+  };
+
+    return (
+        <div className={`${expand && 'fixed inset-0 z-100'} flex flex-col h-screen bg-[#0a0c10] text-gray-100 font-sans overflow-hidden selection:bg-amber-500 selection:text-black`}>
+            
+            {/* === HEADER BAR === */}
+            <header className="h-[70px] md:h-[80px] bg-gradient-to-r from-[#12151c] via-[#1a1e28] to-[#12151c] border-b border-gray-800/50 flex items-center justify-between px-3 md:px-4 lg:px-8 shadow-2xl z-20 shrink-0 relative overflow-hidden">
+                
+                {/* Background Pattern */}
+                <div className="absolute inset-0 opacity-5" style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+                }}></div>
 
         {/* LEFT: Logo */}
         <div className="flex items-center gap-2 md:gap-4 relative z-10">
@@ -367,35 +428,31 @@ export default function KitchenDashboard() {
               ></i>
             </button>
 
-            <button
-              onClick={() => setShowHistory(true)}
-              className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
-              title="View History"
-            >
-              <i className="fa-solid fa-clock-rotate-left text-sm md:text-lg"></i>
-            </button>
+                        <button 
+                            onClick={() => setShowHistory(true)}
+                            className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
+                            title="View History"
+                        >
+                            <i className="fa-solid fa-clock-rotate-left text-sm md:text-lg"></i>
+                        </button>
 
-            {user.role !== "admin" && (
-              <button
-                onClick={logout}
-                className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-500/20 text-red-500 hover:from-red-500/20 hover:to-rose-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
-                title="Logout"
-              >
-                <i className="fa-solid fa-power-off text-sm md:text-lg"></i>
-              </button>
-            )}
-            {user.role === "admin" && (
-              <button
-                onClick={() => setExpand(!expand)}
-                className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-blue-500/20 text-blue-500 hover:from-blue-500/20 hover:to-blue-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
-                title="Expand"
-              >
-                <i className="fa-solid fa-up-right-and-down-left-from-center text-sm md:text-lg"></i>
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+                        {user.role !== 'admin' && (<button 
+                            onClick={logout}
+                            className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-500/20 text-red-500 hover:from-red-500/20 hover:to-rose-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
+                            title="Logout"
+                        >
+                            <i className="fa-solid fa-power-off text-sm md:text-lg"></i>
+                        </button>)}
+                        {user.role === 'admin' && (<button 
+                            onClick={() => setExpand(!expand)}
+                            className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-blue-500/20 text-blue-500 hover:from-blue-500/20 hover:to-blue-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
+                            title="Expand"
+                        >
+                            <i className="fa-solid fa-up-right-and-down-left-from-center text-sm md:text-lg"></i>
+                        </button>)}
+                    </div>
+                </div>
+            </header>
 
       {/* === TABLET STATS BAR (MD only) === */}
       <div className="flex lg:hidden bg-gradient-to-r from-[#12151c] to-[#1a1e28] border-b border-gray-800/50 justify-center z-10 shadow-lg">

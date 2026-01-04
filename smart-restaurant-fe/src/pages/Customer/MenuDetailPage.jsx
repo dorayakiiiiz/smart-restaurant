@@ -9,18 +9,34 @@ import ProductModal from "../../components/Modal/ProductModal";
 import { useAuth } from "../../context/AuthContext";
 
 // Component hiển thị sao
-const StarRating = ({ rating, setRating, editable = true }) => {
+const StarRating = ({ rating, setRating, editable = true, size = "text-sm" }) => {
     return (
         <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map((star) => (
-                <i 
-                    key={star}
-                    onClick={() => editable && setRating(star)}
-                    className={`fa-solid fa-star text-sm transition-colors ${editable ? 'cursor-pointer' : ''} ${
-                        star <= rating ? "text-yellow-400" : "text-gray-300"
-                    }`}
-                ></i>
-            ))}
+            {[1, 2, 3, 4, 5].map((star) => {
+                let fillPercentage = 0;
+                if (rating >= star) {
+                    fillPercentage = 100;
+                } else if (rating > star - 1) {
+                    fillPercentage = (rating - (star - 1)) * 100;
+                }
+
+                return (
+                    <div 
+                        key={star}
+                        className={`relative ${editable ? 'cursor-pointer' : ''}`}
+                        onClick={() => editable && setRating(star)}
+                    >
+                        <i className={`fa-solid fa-star ${size} text-gray-300`}></i>
+
+                        <div 
+                            className="absolute top-0 left-0 overflow-hidden h-full" 
+                            style={{ width: `${fillPercentage}%` }}
+                        >
+                            <i className={`fa-solid fa-star ${size} text-yellow-400 whitespace-nowrap`}></i>
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 };
@@ -60,6 +76,18 @@ export default function MenuDetailPage() {
 
     const item = data?.item;
 
+    // --- Lấy món cùng danh mục ---
+    const { data: menuData } = useQuery({
+        queryKey: ['customer-menu', restaurantId],
+        queryFn: () => menuService.getMenu(restaurantId),
+        enabled: !!restaurantId && !!item
+    });
+
+    // Lọc ra các món cùng categoryId nhưng khác ID món hiện tại
+    const relatedItems = menuData?.items?.filter(
+        i => i.categoryId?._id === item?.categoryId?._id && i._id !== item?._id
+    ) || [];
+
     // Mutations
     const addReviewMutation = useMutation({
         mutationFn: (newReview) => reviewService.addReview(newReview),
@@ -68,7 +96,6 @@ export default function MenuDetailPage() {
             queryClient.invalidateQueries(['menuItem', id]);
             setComment("");
             setRating(5);
-            alert("Review submitted!");
         },
         onError: (err) => alert(err.response?.data?.message || "Failed to submit review")
     });
@@ -161,125 +188,148 @@ export default function MenuDetailPage() {
     if (error || !item) return <div className="p-10 text-center text-red-500">Item not found</div>;
 
     return (
-        <div className="font-quicksand max-w-6xl mx-auto pb-10 px-4 overflow-x-hidden">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-6 mt-4">
-                <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
-                    <i className="fa-solid fa-arrow-left"></i>
+        <div className="font-quicksand max-w-6xl mx-auto px-4 overflow-x-hidden">
+
+            {/* 1. Navigation */}
+            <div className="absolute z-10 mb-6 mt-4" title="Return">
+                <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full text-xs bg-white/80 border border-gray-100 flex items-center justify-center hover:bg-white hover:shadow-md transition-all">
+                    <i className="fa-solid fa-arrow-left text-gray-900"></i>
                 </button>
-                <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-[#1a1a1a]">{item.name}</h1>
-                    <div className="">
-                        <p className="text-gray-500 text-sm md:texxt-lg flex items-center gap-2">
-                            <span className="text-sm md:text-xl">{item.categoryId?.name}</span>
-                            {item.isChefRecommended && (
-                                <span className="bg-[#D4AF37] text-white px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
-                                    Chef's Choice
-                                </span>
-                            )}
-                        </p>
-
-                    </div>
-                </div>
-                <div className="">
-                     <span className={`px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wide ${
-                        item.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                        {item.isAvailable ? 'Available' : 'Unavailable'}
-                    </span>
-                </div>
-            </div>  
-
-            {/* Image Slider */}
-            <div className="mb-8">
-                <div className="flex justify-between items-end mb-4">
-                    <h3 className="font-bold text-xl text-gray-800">Photo</h3>
-                </div>
                 
-                <div className={`flex ${item.images.length === 1 && 'justify-center'} gap-4 overflow-x-auto snap-x snap-mandatory pb-6 scrollbar-hide`}>
+            </div>
+
+            {/* 2. Image Slider */}
+            <div className="mb-10 relative">
+                <div className={`flex ${item.images.length === 1 && 'justify-center'} gap-4 -mx-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide`}>
                     {item.images?.map((img) => (
-                        <div key={img._id} className="relative w-[85vw] md:w-[500px] aspect-[4/3] flex-shrink-0 snap-center rounded-3xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] bg-white">
+                        <div key={img._id} className="relative w-full aspect-[4/3] flex-shrink-0 snap-center overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.15)] bg-white">
                             <img src={img.url} alt="Menu" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none"></div>
                         </div>
                     ))}
 
                     {(!item.images || item.images.length === 0) && (
-                        <div className="w-full md:w-[500px] aspect-[4/3] flex-shrink-0 snap-center rounded-[2rem] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 bg-gray-50/50">
-                            <i className="fa-regular fa-images text-4xl mb-3 opacity-50"></i>
-                            <p className="text-xs font-bold uppercase tracking-widest">No photos</p>
+                        <div className="w-full md:w-[500px] aspect-[4/3] flex-shrink-0 snap-center rounded-[2.5rem] border border-gray-100 bg-gray-50 flex flex-col items-center justify-center text-gray-300">
+                            <i className="fa-thin fa-plate-wheat text-5xl mb-4 opacity-50"></i>
+                            <p className="text-xs font-bold uppercase tracking-widest">No visual preview</p>
                         </div>
                     )}
                 </div>
+                
             </div>
 
-            {/* 4. Nút Add to Cart */}
-            <div className="flex justify-center mb-10 px-4">
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    disabled={!item.isAvailable}
-                    className={`
-                        group relative w-full md:w-[400px] h-16 rounded-2xl 
-                        flex items-center overflow-hidden transition-all duration-300
-                        ${item.isAvailable 
-                            ? 'bg-[#1a1a1a] hover:bg-[#D4AF37] shadow-lg active:scale-[0.98]' 
-                            : 'bg-gray-100 cursor-not-allowed'}
-                    `}
-                >
-                    {item.isAvailable ? (
-                        <>
-                            {/* Phần giá tiền bên trái - ngăn cách bằng vạch mờ */}
-                            <div className="flex items-center justify-center w-24 h-full border-r border-white/30 group-hover:border-black/10 transition-colors">
-                                <span className="text-yellow-300 group-hover:text-white font-bold text-lg transition-colors">
-                                    ${item.price}
-                                </span>
-                            </div>
-
-                            {/* Phần chữ chính */}
-                            <div className="flex-1 flex items-center justify-center gap-3">
-                                <span className="text-white font-black uppercase tracking-[0.2em] text-sm transition-colors">
-                                    Add to Order
-                                </span>
-                                <i className="fa-solid fa-arrow-right text-[#D4AF37] group-hover:text-black text-xs transition-colors group-hover:translate-x-1 duration-300"></i>
-                            </div>
-                        </>
-                    ) : (
-                        <span className="w-full text-center font-bold text-gray-400 uppercase tracking-widest text-xs">
-                            Currently Sold Out
-                        </span>
-                    )}
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Basic Info */}
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 sticky top-6">
-                        <h3 className="font-bold text-lg mb-4 border-b border-gray-100 pb-2">Information</h3>
-                        <div className="space-y-5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                
+                {/* LEFT COLUMN: Thông tin chi tiết */}
+                <div className="lg:col-span-2 space-y-8">
+                    
+                    {/* Title & Category */}
+                    <div>
+                        <div className="flex items-center justify-between">
                             <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Price</label>
-                                <p className="text-3xl font-bold text-[#D4AF37] mt-1">${item.price.toFixed(2)}</p>
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Preparation Time</label>
-                                <div className="flex items-center gap-2 mt-1 text-gray-700 font-medium">
-                                    <i className="fa-regular fa-clock text-gray-400"></i> 
-                                    <span>{item.prepTime} minutes</span>
+                                <div className="flex items-center gap-3 mb-1">
+                                    <span className="text-[#D4AF37] text-xs font-black uppercase tracking-[0.2em]">
+                                        {item.categoryId?.name || "Signature Dish"}
+                                    </span>
+                                    {item.isChefRecommended && (
+                                        <span className="bg-gradient-to-r from-[#D4AF37] to-[#F5E0A3] text-[#1a1a1a] px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                                            <i className="fa-solid fa-crown text-[8px]"></i> Chef's Choice
+                                        </span>
+                                    )}
                                 </div>
+                                <h1 className="text-3xl md:text-4xl font-black text-[#1a1a1a] leading-tight mb-4">
+                                    {item.name}
+                                </h1>
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Description</label>
-                                <p className="text-gray-600 text-sm leading-relaxed mt-1 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                    {item.description || "No description provided."}
-                                </p>
+
+                            <div className="">
+                                <span className={`px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wide ${
+                                    !item.isSoldOut ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-500'
+                                }`}>
+                                    {!item.isSoldOut ? 'Available' : 'Sold Out'}
+                                </span>
                             </div>
                         </div>
+
+                        <div className="flex items-center gap-2 mb-4 -mt-2">
+                            <StarRating rating={item.averageRating || 0} editable={false} />
+                            <div className="text-yellow-400 text-sm mb-0.5 whitespace-nowrap">({item.totalReviews} reviews)</div>
+                        </div>
+                        
+                        {/* Quick Stats Row */}
+                        <div className="flex items-center justify-around gap-6 py-3 border-y border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl shadow-sm bg-green-100 text-green-500 flex items-center justify-center">
+                                    <i className="fa-solid fa-dollar-sign text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-gray-800 font-bold">Price</p>
+                                    <p className="text-2xl font-bold text-red-500/90">${item.price.toFixed(2)}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="w-px h-8 bg-gray-200"></div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-blue-100 shadow-sm text-blue-500 flex items-center justify-center">
+                                    <i className="fa-solid fa-clock text-sm"></i>
+                                </div>
+                                <div>
+                                    <p className="text-gray-800 font-bold">Prep Time</p>
+                                    <p className="text-2xl font-bold text-blue-500">{item.prepTime} mins</p>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+
+                    {/* Description as "Chef's Note" */}
+                    <div className="py-6 px-10 rounded-2xl bg-white border border-gray-100 relative shadow">
+                        <i className="fa-solid fa-quote-left text-2xl text-gray-800 absolute -top-3 left-6 px-2"></i>
+                        <h3 className="font-bold text-lg text-gray-900 mb-2">Chef's Description</h3>
+                        <p className="text-gray-600 leading-relaxed text-sm md:text-base italic">
+                            {item.description || "A culinary masterpiece prepared with the finest ingredients. Please ask our staff for more details about the taste profile."}
+                        </p>
+                    </div>
+
+                    {/* 4. Nút Add to Order */}
+                    <div className={`${item.isSoldOut && 'hidden'} flex justify-center`}>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            disabled={item.isSoldOut}
+                            className={`
+                                group relative w-full md:w-[400px] h-16 rounded-2xl 
+                                flex items-center overflow-hidden transition-all duration-300
+                                ${item.isAvailable 
+                                    ? 'bg-[#1a1a1a] hover:bg-[#D4AF37] shadow-lg active:scale-[0.98]' 
+                                    : 'bg-gray-100 cursor-not-allowed'}
+                            `}
+                        >
+                            {item.isAvailable ? (
+                                <>
+                                    <div className="flex items-center justify-center w-24 h-full border-r border-white/30 group-hover:border-black/10 transition-colors">
+                                        <span className="text-yellow-300 group-hover:text-white font-bold text-lg transition-colors">
+                                            ${item.price.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 flex items-center justify-center gap-3">
+                                        <span className="text-white group-hover:text-black font-black uppercase tracking-[0.2em] text-sm transition-colors">
+                                            Add to Order
+                                        </span>
+                                        <i className="fa-solid fa-arrow-right text-[#D4AF37] group-hover:text-black text-xs transition-colors group-hover:translate-x-1 duration-300"></i>
+                                    </div>
+                                </>
+                            ) : (
+                                <span className="w-full text-center font-bold text-gray-400 uppercase tracking-widest text-xs">
+                                    Currently Sold Out
+                                </span>
+                            )}
+                        </button>
                     </div>
                 </div>
 
-                {/* Right Column: Modifiers */}
-                <div className={`lg:col-span-2 ${item.modifiers && item.modifiers.length > 0 ? '' : 'hidden'}`}>
+                {/* RIGHT COLUMN: Modifiers */}
+                <div className={`lg:col-span-1 ${item.modifiers && item.modifiers.length > 0 ? '' : 'hidden'}`}>
                     <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 rounded-full bg-[#f7f8f6] flex items-center justify-center text-[#D4AF37]">
@@ -329,6 +379,36 @@ export default function MenuDetailPage() {
                         )}
                     </div>
                 </div>
+
+                {relatedItems.length > 0 && (
+                    <div className="">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4 font-quicksand">You might also like</h3>
+                        <div className="flex gap-4 overflow-x-auto pb-6 snap-x no-scrollbar">
+                            {relatedItems.map((related) => (
+                                <div 
+                                    key={related._id}
+                                    onClick={() => {
+                                        navigate(`/menu/public/${related._id}/${restaurantId}`);
+                                        window.scrollTo(0,0);
+                                    }}
+                                    className="min-w-[160px] w-[160px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-all duration-300"
+                                >
+                                    <div className="h-32 w-full bg-gray-100 relative">
+                                        <img 
+                                            src={related.images?.[0]?.url} 
+                                            alt={related.name}
+                                            className="w-full h-full object-cover" 
+                                        />
+                                    </div>
+                                    <div className="p-3">
+                                        <div className="font-bold text-gray-800 truncate text-sm mb-1">{related.name}</div>
+                                        <div className="text-[#D4AF37] font-bold text-sm">${related.price}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
     
             </div>
             {/* REVIEWS SECTION */}
@@ -344,7 +424,7 @@ export default function MenuDetailPage() {
                         </div>
                         <div className="flex flex-col justify-center">
                             <div className="mb-2">
-                                <StarRating rating={Math.round(item.averageRating || 0)} editable={false} />
+                                <StarRating rating={item.averageRating || 0} editable={false} />
                             </div>
                             <span className="text-sm text-gray-500 font-semibold">
                                 <div className="text-gray-400">Base on</div>
@@ -501,7 +581,7 @@ export default function MenuDetailPage() {
                                 <div className="text-center pt-6">
                                     <button 
                                         onClick={() => setShowAllReviews(!showAllReviews)}
-                                        className="group flex items-center gap-2 mx-auto px-8 py-4 bg-white border-2 border-gray-200 rounded-full text-xs font-black uppercase tracking-[0.2em] text-gray-600 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all shadow-sm hover:shadow-md active:scale-95"
+                                        className="group flex items-center gap-2 mx-auto px-8 py-4 mb-1 bg-white border border-gray-200 rounded-full text-xs font-black uppercase tracking-[0.2em] text-gray-600 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all shadow-xs hover:shadow-md active:scale-95"
                                     >
                                         {showAllReviews ? (
                                             <>

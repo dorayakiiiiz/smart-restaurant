@@ -89,7 +89,7 @@ export default function CustomerLayout() {
             </div>
 
             {/* Bottom Navigation Floating (4 Tabs: Menu, Cart, Orders, Profile) */}
-            <div className="fixed bottom-6 left-4 right-4 h-[70px] bg-[#1a1a1a] rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.3)] grid grid-cols-4 items-center z-40 px-2">
+            <div className={`${location.pathname.includes('public') && 'hidden'} fixed bottom-6 left-4 right-4 h-[70px] bg-[#1a1a1a] rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.3)] grid grid-cols-4 items-center z-40 px-2`}>
                 
                 <NavLink to="/menu" className={`flex flex-col items-center gap-1 p-2 transition ${isActive('/menu') ? 'text-[#D4AF37]' : 'text-gray-400'}`}>
                     <i className="fa-solid fa-utensils text-lg"></i>
