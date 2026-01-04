@@ -36,8 +36,6 @@ export default function KitchenDashboard() {
     const soundRef = useRef(true);
     const stopTimerRef = useRef(null);
 
-    const [expand, setExpand] = useState(false);
-
     useEffect(() => {
         soundRef.current = isSoundEnabled;
     }, [isSoundEnabled]);
@@ -244,7 +242,7 @@ export default function KitchenDashboard() {
     };
 
     return (
-        <div className={`${expand && 'fixed inset-0 z-100'} flex flex-col h-screen bg-[#0a0c10] text-gray-100 font-sans overflow-hidden selection:bg-amber-500 selection:text-black`}>
+        <div className="flex flex-col h-screen bg-[#0a0c10] text-gray-100 font-sans overflow-hidden selection:bg-amber-500 selection:text-black">
             
             {/* === HEADER BAR === */}
             <header className="h-[70px] md:h-[80px] bg-gradient-to-r from-[#12151c] via-[#1a1e28] to-[#12151c] border-b border-gray-800/50 flex items-center justify-between px-3 md:px-4 lg:px-8 shadow-2xl z-20 shrink-0 relative overflow-hidden">
@@ -315,7 +313,7 @@ export default function KitchenDashboard() {
 
                         <button 
                             onClick={() => setShowHistory(true)}
-                            className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
+                            className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
                             title="View History"
                         >
                             <i className="fa-solid fa-clock-rotate-left text-sm md:text-lg"></i>
@@ -323,17 +321,10 @@ export default function KitchenDashboard() {
 
                         {user.role !== 'admin' && (<button 
                             onClick={logout}
-                            className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-500/20 text-red-500 hover:from-red-500/20 hover:to-rose-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
+                            className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-500/20 text-red-500 hover:from-red-500/20 hover:to-rose-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
                             title="Logout"
                         >
                             <i className="fa-solid fa-power-off text-sm md:text-lg"></i>
-                        </button>)}
-                        {user.role === 'admin' && (<button 
-                            onClick={() => setExpand(!expand)}
-                            className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-blue-500/20 text-blue-500 hover:from-blue-500/20 hover:to-blue-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
-                            title="Expand"
-                        >
-                            <i className="fa-solid fa-up-right-and-down-left-from-center text-sm md:text-lg"></i>
                         </button>)}
                     </div>
                 </div>
@@ -440,4 +431,3 @@ export default function KitchenDashboard() {
         </div>
     );
 }
-
