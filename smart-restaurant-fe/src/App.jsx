@@ -26,13 +26,14 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard
 // Restaurant Admin Pages
 import DashboardOverview from "./pages/AdminDashboard/DashboardOverview";
 import MenuManagement from "./pages/AdminDashboard/MenuManagement";
-import  CategoriesManagement  from "./pages/AdminDashboard/CategoriesManagement";
-import OrdersPage from "./pages/AdminDashboard/OrdersPage";
-import { KDSPage, ReportsPage } from "./pages/AdminDashboard/PlaceholderPage";
+import CategoriesManagement from "./pages/AdminDashboard/CategoriesManagement";
+import LiveOrdersPage from "./pages/AdminDashboard/LiveOrders/OrdersPage";
+import ReportsPage from "./pages/AdminDashboard/Reports/ReportsPage";
+import { KDSPage } from "./pages/AdminDashboard/PlaceholderPage";
 import StaffManagementPage from "./pages/AdminDashboard/StaffManagementPage";
 import RestaurantSetupPage from "./pages/AdminDashboard/RestaurantSetupPage";
-import SettingsPage from "./pages/AdminDashboard/SettingsPage"; 
-import TablesPage from "./pages/AdminDashboard/TablesPage"; 
+import SettingsPage from "./pages/AdminDashboard/SettingsPage";
+import TablesPage from "./pages/AdminDashboard/TablesPage";
 import Test from "./pages/AdminDashboard/Test";
 import MenuItemDetail from "./pages/AdminDashboard/MenuItemDetail";
 
@@ -57,14 +58,14 @@ import MyTables from "./pages/Waiter/MyTables";
 import KitchenDashboard from "./pages/Kitchen/KitchenDashboard";
 
 const queryClient = new QueryClient({
-    defaultOptions: {
-        queries: {
-            refetchOnWindowFocus: false,
-            retry: 1,
-            // staleTime: 0, // Bắt buộc re-render ngay khi data thay đổi
-            // cacheTime: 0  // Không cache (chỉ dùng khi cần real-time tuyệt đối)
-        },
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      // staleTime: 0, // Bắt buộc re-render ngay khi data thay đổi
+      // cacheTime: 0  // Không cache (chỉ dùng khi cần real-time tuyệt đối)
     },
+  },
 });
 
 function App() {
