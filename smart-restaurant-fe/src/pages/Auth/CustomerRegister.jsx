@@ -102,9 +102,16 @@ export default function CustomerRegister() {
             <div className="w-full lg:w-1/2 flex flex-col bg-[#f8f9fa]">
                 
                 {/* Mobile Header Section */}
-                <div className="relative bg-[#800020] pt-10 pb-20 px-8 text-center overflow-hidden shrink-0">
+                <div className="relative bg-[#800020] pt-6 pb-20 px-8 text-center overflow-hidden shrink-0">
                     <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#D4AF37 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                    <div className="relative z-10">
+                    <button 
+                        className="w-8 h-8 bg-white relative z-10 cursor-pointer rounded-full flex items-center justify-center"
+                        onClick={() => navigate(-1)}
+                    >
+                        <i className="fa-solid fa-arrow-left text-xs text-[#D4AF37]"></i>
+                    </button>
+
+                    <div className="relative z-10 pt-4">
                         <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-inner border border-white/20">
                             <i className="fa-solid fa-utensils text-2xl text-[#D4AF37]"></i>
                         </div>

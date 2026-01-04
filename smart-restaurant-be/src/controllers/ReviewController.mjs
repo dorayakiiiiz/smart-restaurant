@@ -1,12 +1,18 @@
 import Review from "../models/Review.mjs";
 import MenuItem from "../models/MenuItem.mjs";
+import Restaurant from "../models/Restaurant.mjs";
+import mongoose from 'mongoose';
 
 class ReviewController {
-    
-    // Hàm phụ: Đã là arrow function rồi nên không cần sửa
-    _updateMenuItemRating = async (menuItemId) => {
+
+    // Helper: Cập nhật rating món ăn 
+    updateMenuItemRating = async (menuItemId) => {
+        const objectId = mongoose.Types.ObjectId.isValid(menuItemId) 
+            ? new mongoose.Types.ObjectId(menuItemId) 
+            : menuItemId;
+
         const stats = await Review.aggregate([
-            { $match: { menuItemId: menuItemId } },
+            { $match: { menuItemId: objectId, reviewType: 'menu_item' } },
             { $group: { _id: "$menuItemId", avgRating: { $avg: "$rating" }, count: { $sum: 1 } } }
         ]);
 
@@ -20,76 +26,180 @@ class ReviewController {
         }
     }
 
-    //[GET] /reviews/:restaurantId/:menuItemId
+    // Helper: Cập nhật rating nhà hàng 
+    updateRestaurantRating = async (restaurantId) => {
+        const reviews = await Review.find({ restaurantId, reviewType: 'restaurant' });
+        const totalReviews = reviews.length;
+        const averageRating = totalReviews > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+            : 0;
+
+        await Restaurant.findByIdAndUpdate(restaurantId, {
+            averageRating: Math.round(averageRating * 10) / 10,
+            totalReviews
+        });
+    }
+    
+    // [GET] /api/reviews/:restaurantId/item/:itemId 
     getReviews = async (req, res) => {
         try {
-            const {restaurantId, menuItemId } = req.params;
-            const reviews = await Review.find({ restaurantId, menuItemId })
-                .populate('userId', 'fullName')
+            const { restaurantId, itemId } = req.params;
+
+            const reviews = await Review.find({ 
+                restaurantId, 
+                menuItemId: itemId,
+                reviewType: 'menu_item'
+            })
+                .populate('userId', 'fullName') // ✅ Populate fullName từ User
                 .sort({ createdAt: -1 });
-            res.status(200).json(reviews);
-        } catch (error) {
-            res.status(500).json({ message: error.message });
+
+            res.status(200).json({ reviews });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
     }
 
-    //[POST] /reviews
+    // [GET] /api/reviews/:restaurantId/restaurant
+    getRestaurantReviews = async (req, res) => {
+        try {
+            const { restaurantId } = req.params;
+
+            const reviews = await Review.find({ 
+                restaurantId,
+                reviewType: 'restaurant'
+            })
+                .populate('userId', 'fullName') // ✅ Populate fullName từ User
+                .sort({ createdAt: -1 });
+
+            res.status(200).json({ reviews });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
+    // [POST] /api/reviews
     addReview = async (req, res) => {
         try {
-            const { menuItemId, restaurantId, sessionId, rating, comment, userId, customerName } = req.body;
-            
-            const newReview = new Review({
-                menuItemId, restaurantId, sessionId, rating, comment, userId, customerName: customerName || "Guest" 
-            });
-            await newReview.save();
-            
-            // Bây giờ "this" đã xác định đúng là ReviewController
-            await this._updateMenuItemRating(newReview.menuItemId);
-            
-            res.status(201).json(newReview);
-        } catch (error) {
-            if (error.code === 11000) {
-                return res.status(400).json({ message: "You have already reviewed this item." });
+            const { restaurantId, menuItemId, reviewType, rating, comment } = req.body;
+
+            // ✅ Validate - BẮT BUỘC phải login
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({ message: "You must login to leave a review" });
             }
-            res.status(500).json({ message: error.message });
+
+            if (!restaurantId || !reviewType || !rating || !comment) {
+                return res.status(400).json({ message: "Missing required fields" });
+            }
+
+            if (reviewType === 'menu_item' && !menuItemId) {
+                return res.status(400).json({ message: "Menu item ID is required for menu item reviews" });
+            }
+
+            // Check user đã review chưa
+            const query = { restaurantId, userId: req.user.id, reviewType };
+            if (reviewType === 'menu_item') {
+                query.menuItemId = menuItemId;
+            }
+
+            const existingReview = await Review.findOne(query);
+            if (existingReview) {
+                return res.status(400).json({ message: "You have already reviewed this" });
+            }
+
+            // Tạo review - ✅ BỎ customerName
+            const reviewData = {
+                restaurantId,
+                reviewType,
+                userId: req.user.id, // ✅ BẮT BUỘC
+                rating,
+                comment
+            };
+            
+            if (reviewType === 'menu_item') {
+                reviewData.menuItemId = menuItemId;
+            }
+            
+            const review = await Review.create(reviewData);
+
+            // Update rating
+            if (reviewType === 'menu_item') { 
+                await this.updateMenuItemRating(menuItemId);
+            } else {
+                await this.updateRestaurantRating(restaurantId);
+            }
+
+            const populatedReview = await Review.findById(review._id)
+                .populate('userId', 'fullName'); // ✅ Populate fullName
+
+            res.status(201).json({ message: "Review added", review: populatedReview });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
     }
 
-    //[PUT] /reviews/:id
+    // [PATCH] /api/reviews/:id
     updateReview = async (req, res) => {
         try {
             const { id } = req.params;
             const { rating, comment } = req.body;
-            
-            const updatedReview = await Review.findByIdAndUpdate(
-                id, 
-                { rating, comment }, 
-                { new: true }
-            );
 
-            if (!updatedReview) return res.status(404).json({ message: "Review not found" });
+            const review = await Review.findById(id);
+            if (!review) return res.status(404).json({ message: "Review not found" });
 
-            await this._updateMenuItemRating(updatedReview.menuItemId);
+            // Check ownership
+            if (review.userId?.toString() !== req.user?.id) {
+                return res.status(403).json({ message: "Unauthorized" });
+            }
 
-            res.status(200).json(updatedReview);
-        } catch (error) {
-            res.status(500).json({ message: error.message });
+            review.rating = rating;
+            review.comment = comment;
+            await review.save();
+
+            // Update rating
+            if (review.reviewType === 'menu_item') {
+                await this.updateMenuItemRating(review.menuItemId);
+            } else {
+                await this.updateRestaurantRating(review.restaurantId);
+            }
+
+            const populatedReview = await Review.findById(id)
+                .populate('userId', 'fullName'); // ✅ Populate fullName
+
+            res.status(200).json({ message: "Review updated", review: populatedReview });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
     }
 
-    //[DELETE] /reviews/:id
+    // [DELETE] /api/reviews/:id
     deleteReview = async (req, res) => {
         try {
             const { id } = req.params;
-            const deletedReview = await Review.findByIdAndDelete(id);
-            
-            if (!deletedReview) return res.status(404).json({ message: "Review not found" });
 
-            await this._updateMenuItemRating(deletedReview.menuItemId);
+            const review = await Review.findById(id);
+            if (!review) return res.status(404).json({ message: "Review not found" });
+
+            // Check ownership
+            if (review.userId?.toString() !== req.user?.id) {
+                return res.status(403).json({ message: "Unauthorized" });
+            }
+
+            const menuItemId = review.menuItemId;
+            const restaurantId = review.restaurantId;
+            const reviewType = review.reviewType;
+
+            await Review.findByIdAndDelete(id);
+
+            // Update rating
+            if (reviewType === 'menu_item') {
+                await this.updateMenuItemRating(menuItemId);
+            } else {
+                await this.updateRestaurantRating(restaurantId);
+            }
 
             res.status(200).json({ message: "Review deleted" });
-        } catch (error) {
-            res.status(500).json({ message: error.message });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
     }
 }

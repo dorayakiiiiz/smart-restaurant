@@ -23,6 +23,10 @@ export default function SettingsPage() {
     const [bio, setBio] = useState("");
     const [wifi, setWifi] = useState("");
     
+    // Contact state (MỚI)
+    const [contactPhone, setContactPhone] = useState("");
+    const [contactEmail, setContactEmail] = useState("");
+    
     // Images
     const [logo, setLogo] = useState(null);
     const [cover, setCover] = useState(null);
@@ -33,6 +37,8 @@ export default function SettingsPage() {
     const [payosClientId, setPayosClientId] = useState("");
     const [payosApiKey, setPayosApiKey] = useState("");
     const [payosChecksumKey, setPayosChecksumKey] = useState("");
+
+    const [accountHolder, setAccountHolder] = useState('');
 
     // --- 1. FETCH DATA (useQuery) ---
     const { data: restaurantData, isLoading } = useQuery({
@@ -57,6 +63,7 @@ export default function SettingsPage() {
                 setPayosClientId(r.payosConfig.clientId || "");
                 setPayosApiKey(r.payosConfig.apiKey || "");
                 setPayosChecksumKey(r.payosConfig.checksumKey || "");
+                setAccountHolder(r.payosConfig.accountHolder || "");
             }
         }
     }, [restaurantData]);
@@ -103,11 +110,14 @@ export default function SettingsPage() {
         formData.append('name', name);
         formData.append('address', address);
         formData.append('bio', bio);
+        formData.append('contactPhone', contactPhone);
+        formData.append('contactEmail', contactEmail);
         formData.append('wifiPassword', wifi);
+        
         if (logo) formData.append('logo', logo);
         if (cover) formData.append('cover', cover);
 
-        // Append PayOS Data
+        // PayOS Config
         formData.append('payosClientId', payosClientId);
         formData.append('payosApiKey', payosApiKey);
         formData.append('payosChecksumKey', payosChecksumKey);
@@ -119,7 +129,7 @@ export default function SettingsPage() {
 
     return (
         <div className="w-full max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 font-momo">Restaurant Settings</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 font-momo">Settings</h2>
 
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-8">
                 
@@ -163,6 +173,14 @@ export default function SettingsPage() {
                             <label className="block text-sm font-bold text-gray-600 mb-1">Address</label>
                             <Input type="text" value={address} setState={setAddress} />
                         </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-600 mb-1">Contact Phone</label>
+                            <Input type="text" value={contactPhone} setState={setContactPhone} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-600 mb-1">Contact Email</label>
+                            <Input type="text" value={contactEmail} setState={setContactEmail} />
+                        </div>
                         <div className="md:col-span-2">
                             <label className="block text-sm font-bold text-gray-600 mb-1">Bio / Description</label>
                             <textarea 
@@ -196,8 +214,14 @@ export default function SettingsPage() {
                         <div>
                             <label className="block text-sm font-bold text-gray-600 mb-1">Checksum Key</label>
                             <Input type="text" value={payosChecksumKey} setState={setPayosChecksumKey} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
-                            
                         </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-gray-600 mb-1">Account Holder</label>
+                    <div className="h-[50px] w-full max-w-[500px] flex items-center my-[10px] rounded-xl bg-[#f7f8f6] px-[20px] cursor-not-allowed text-gray-400">
+                        {accountHolder}
                     </div>
                 </div>
 

@@ -24,10 +24,15 @@ const getDashboardStats = async () => {
     const response = await api.get('/restaurant/stats');
     return response.data;
 }
+const getPublicRestaurant = async (restaurantId) => {
+    const response = await api.get(`/restaurant/public/${restaurantId}`);
+    return response.data;
+}
 
 export const restaurantService = {
     getMyRestaurant,
     createRestaurant,
     updateRestaurant,
     getDashboardStats,
+    getPublicRestaurant
 };
