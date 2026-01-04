@@ -54,6 +54,8 @@ export default function SettingsPage() {
             setName(r.name || "");
             setAddress(r.address || "");
             setBio(r.bio || "");
+            setContactPhone(r.contact.phone || "");
+            setContactEmail(r.contact.email || "");
             setWifi(r.wifiPassword || "");
             setLogoPreview(r.logoUrl || "");
             setCoverPreview(r.coverUrl || "");

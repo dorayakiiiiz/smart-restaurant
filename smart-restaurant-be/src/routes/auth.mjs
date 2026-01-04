@@ -7,7 +7,10 @@ const router = Router();
 
 // Auth bằng pass
 router.post('/login', authController.login);
-router.post('/register', authController.register); // customer register
+// router.post('/register', authController.register); // customer register
+router.post('/register-otp', authController.sendRegisterOtp);
+router.post('/register-verify', authController.verifyRegisterAndCreate);
+
 router.post('/refresh-token', authController.refreshToken);
 
 // reset password

@@ -26,7 +26,12 @@ const StarRating = ({ rating, setRating, editable = true }) => {
 export default function RestaurantProfilePage() {
     const { sessionInfo } = useCart();
     const navigate = useNavigate();
-    const restaurantId = sessionInfo?.restaurant?._id;
+    
+    // --- LOGIC MỚI: Lấy ID từ session HOẶC từ lịch sử đã lưu ---
+    const visitedRestaurant = JSON.parse(localStorage.getItem("visited_restaurant"));
+    const restaurantId = sessionInfo?.restaurant?._id || visitedRestaurant?._id;
+    // -----------------------------------------------------------
+
     const { user } = useAuth();
     const queryClient = useQueryClient();
 
