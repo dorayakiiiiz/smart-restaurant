@@ -10,6 +10,11 @@ const createStaff = async (data) => {
     return response.data;
 }
 
+const updateStaff = async (id, data) => {
+    const response = await api.patch(`/staff/${id}`, data);
+    return response.data;
+}
+
 const toggleLockStaff = async (id) => {
     const response = await api.patch(`/staff/${id}/lock`);
     return response.data;
@@ -23,6 +28,7 @@ const deleteStaff = async (id) => {
 export const staffService = {
     getAllStaff,
     createStaff,
+    updateStaff,
     toggleLockStaff,
     deleteStaff
 };
