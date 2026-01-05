@@ -463,14 +463,16 @@ class WaiterController {
             method: session.paymentMethod
         });
 
+        // io.to(`restaurant_${restaurantId}_waiter`).emit("table_update");
+
         // 4. Thông báo tới các Waiter khác (optional)
         const table = await Table.findById(session.tableId);
         const restaurantId = session.restaurantId._id.toString();
         
         io.to(`restaurant_${restaurantId}_waiter`).emit('table_cleared', {
+            sessionId,
             tableId: session.tableId,
             tableName: table.name,
-            sessionId,
             totalAmount: session.totalAmount,
             paymentMethod: session.paymentMethod
         });
