@@ -485,7 +485,7 @@ export default function RestaurantProfilePage() {
                             <div className="flex justify-between items-start mb-3 gap-4">
                                 <div className="flex items-center gap-3 flex-1">
                                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#C4961F] text-white flex items-center justify-center font-black text-sm shadow-[0_4px_15px_rgba(212,175,55,0.3)]">
-                                        {myReview.userId.fullName[0]}
+                                        {myReview.userId.avatar?.url || myReview.userId.fullName[0]}
                                     </div>
                                     <div>
                                         <span className="font-black text-gray-900 uppercase text-sm tracking-tight block">{myReview.userId.fullName}</span>
@@ -521,7 +521,7 @@ export default function RestaurantProfilePage() {
                                         <img src={review.userId.avatar} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
                                     ) : (
                                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400 flex items-center justify-center font-black text-sm border border-gray-200">
-                                            {review.userId.fullName[0]}
+                                            {review.userId.avatar?.url || review.userId.fullName[0]}
                                         </div>
                                     )}
                                     <div>

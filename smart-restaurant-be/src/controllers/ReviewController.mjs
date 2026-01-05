@@ -50,7 +50,7 @@ class ReviewController {
                 menuItemId: itemId,
                 reviewType: 'menu_item'
             })
-                .populate('userId', 'fullName') // ✅ Populate fullName từ User
+                .populate('userId', 'fullName avatar') // ✅ Populate fullName từ User
                 .sort({ createdAt: -1 });
 
             res.status(200).json({ reviews });
@@ -68,7 +68,7 @@ class ReviewController {
                 restaurantId,
                 reviewType: 'restaurant'
             })
-                .populate('userId', 'fullName') // ✅ Populate fullName từ User
+                .populate('userId', 'fullName avatar') // ✅ Populate fullName từ User
                 .sort({ createdAt: -1 });
 
             res.status(200).json({ reviews });

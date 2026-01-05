@@ -1,4 +1,3 @@
-
 import api, {API_URL} from "./api";
 
 const getAccount = async () => {
@@ -7,7 +6,11 @@ const getAccount = async () => {
 }
 
 const updateAccountInfo = async (data) => {
-    const response = await api.patch('/user/info', data);
+    const response = await api.patch('/user/info', data, {
+        headers: {
+            "Content-Type": "multipart/form-data"
+        }
+    });
     return response.data;
 }
 

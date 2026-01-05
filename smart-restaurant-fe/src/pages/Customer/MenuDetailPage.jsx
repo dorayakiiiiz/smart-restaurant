@@ -517,11 +517,18 @@ export default function MenuDetailPage() {
                         ))}
                     </div>
                     {myReview && !editingReviewId && (
-                        <div className="bg-gradient-to-br from-[#FFFBF0] to-[#FFF8E1] py-6 px-8 rounded-3xl border-2 border-[#D4AF37]/30 shadow-sm relative overflow-hidden">
+                        <div className="bg-gradient-to-br from-[#FFFBF0] to-[#FFF8E1] py-6 px-8 rounded-3xl border-2 border-[#D4AF37]/30 shadow-sm relative mb-5">
                             <div className="flex justify-between items-start mb-3 gap-4">
                                 <div className="flex items-center gap-3 flex-1">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#C4961F] text-white flex items-center justify-center font-black text-sm shadow-lg">
-                                        {myReview.userId?.fullName?.[0] || 'U'}
+                                    <div 
+                                        className={`w-11 h-11 ${myReview.userId?.avatar && 'border-2 border-white'} bg-cover rounded-full bg-gradient-to-br from-[#D4AF37] to-[#C4961F] text-white flex items-center justify-center font-black text-sm shadow-lg`}
+                                        style={{
+                                            backgroundImage: myReview.userId?.avatar?.url
+                                            ? `url(${myReview.userId.avatar.url})`
+                                            : undefined,
+                                        }}
+                                    >
+                                        {!myReview.userId?.avatar && myReview.userId?.fullName?.[0]}
                                     </div>
                                     <div>
                                         <span className="font-black text-gray-900 uppercase text-sm tracking-tight block">
@@ -554,14 +561,14 @@ export default function MenuDetailPage() {
                     {displayedReviews.length > 0 ? (
                         <>
                             {displayedReviews.map(review => (
-                                <div key={review._id} className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+                                <div key={review._id} className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 mb-5">
                                     <div className="flex justify-between items-start mb-2 gap-4">
                                         <div className="flex items-center gap-3 flex-1">
                                             {review.userId?.avatar ? (
-                                                <img src={review.userId.avatar} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
+                                                <img src={review.userId.avatar.url} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)] border-2 border-gray-400" />
                                             ) : (
                                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400 flex items-center justify-center font-black text-sm border border-gray-200">
-                                                    {review.userId?.fullName?.[0] || 'U'}
+                                                    {(!review.userId?.avatar && review.userId?.fullName?.[0]) || 'U'}
                                                 </div>
                                             )}
                                             <div>
@@ -578,7 +585,7 @@ export default function MenuDetailPage() {
                             ))}
                             
                             {/* Show All Button */}
-                            {otherReviews.length > 3 && (
+                            {filteredReviews.length > 3 && (
                                 <div className="text-center pt-6">
                                     <button 
                                         onClick={() => setShowAllReviews(!showAllReviews)}
@@ -591,7 +598,7 @@ export default function MenuDetailPage() {
                                             </>
                                         ) : (
                                             <>
-                                                View All {otherReviews.length} Reviews 
+                                                View All {filteredReviews.length} Reviews 
                                                 <i className="fa-solid fa-chevron-down text-[10px] group-hover:translate-y-0.5 transition-transform"></i>
                                             </>
                                         )}
