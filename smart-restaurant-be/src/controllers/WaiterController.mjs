@@ -294,7 +294,6 @@ class WaiterController {
       });
 
       order.servedBy = req.user.id;
-      order.servedAt = new Date();
 
       await order.save();
 
@@ -354,6 +353,7 @@ class WaiterController {
 
       // Update order status thành 'served' (order hoàn thành)
       order.status = "served";
+      order.servedAt = new Date();
       await order.save();
 
       // Populate lại đầy đủ sau khi save

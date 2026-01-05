@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import PaymentSuccess from "../pages/Customer/PaymentSuccess"; 
 
 export default function CustomerLayout() {
     const { cartItems, sessionInfo, showThankYou, paymentMethod } = useCart();
@@ -13,37 +14,20 @@ export default function CustomerLayout() {
 
     // Hiển thị màn hình Thank You khi thanh toán thành công
     if (showThankYou) {
-        return (
-            <div className="fixed inset-0 bg-[#0a0a0a]/95 z-[9999] flex flex-col items-center justify-center p-6 backdrop-blur-sm">
-                <div className="absolute w-[500px] h-[500px] bg-[#D4AF37]/5 rounded-full blur-[120px]"></div>
-
-                <div className="relative flex flex-col items-center max-w-md w-full">
-                    <div className="relative mb-10">
-                        <div className="absolute inset-0 bg-[#D4AF37]/20 rounded-full animate-ping"></div>
-                        <div className="relative w-24 h-24 bg-gradient-to-tr from-[#D4AF37] to-[#F5E0A3] rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(212,175,55,0.3)]">
-                            <i className="fa-solid fa-check text-4xl text-[#1a1a1a]"></i>
-                        </div>
-                    </div>
-
-                    <div className="text-center space-y-4 mb-12">
-                        <h1 className="text-4xl font-black text-white uppercase tracking-[0.2em]">Thank you</h1>
-                        <div className="h-px w-12 bg-[#D4AF37] mx-auto"></div>
-                        <p className="text-[#D4AF37] font-bold text-lg tracking-wide italic">
-                            {paymentMethod === 'cash' ? 'Cash payment received' : 'Payment successfully'}
-                        </p>
-                        <p className="text-gray-400 text-sm font-medium leading-relaxed max-w-[280px] mx-auto">
-                            Thanks for dining with us. Your culinary experience continues shortly.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        );
+        return <PaymentSuccess />;
     }
 
+    const visitedRestaurant = localStorage.getItem("visited_restaurant");
 
-    // Logic chặn: Chưa có session VÀ không phải đang quét QR và không phải đang ở trang profile
-    const isProfilePage = location.pathname === '/profile';
-    const shouldBlock = !sessionInfo && !tokenParam && !isProfilePage;
+    const isAllowedPage = ['/profile', '/restaurant-profile'].includes(location.pathname);
+    const hasSession = !!sessionInfo || !!tokenParam;
+
+    // Logic chặn:
+    // 1. Nếu KHÔNG có session (và không đang scan QR)
+    // 2. VÀ (Chưa từng ghé quán HOẶC Trang hiện tại không nằm trong danh sách cho phép)
+    const shouldBlock = !hasSession && (
+        !visitedRestaurant || !isAllowedPage
+    );
 
     if (shouldBlock) {
         return (
@@ -87,9 +71,9 @@ export default function CustomerLayout() {
                     to="/restaurant-profile" 
                     className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 flex items-center justify-center hover:border-[#D4AF37] transition-all shadow-sm hover:shadow-md"
                 >
-                    {sessionInfo?.restaurant?.logoUrl ? (
+                    {(sessionInfo?.restaurant?.logoUrl || visitedRestaurant) ? (
                         <img 
-                            src={sessionInfo.restaurant.logoUrl} 
+                            src={sessionInfo?.restaurant.logoUrl || JSON.parse(visitedRestaurant).logoUrl} 
                             alt="Restaurant" 
                             className="w-full h-full object-cover"
                         />
@@ -105,7 +89,7 @@ export default function CustomerLayout() {
             </div>
 
             {/* Bottom Navigation Floating (4 Tabs: Menu, Cart, Orders, Profile) */}
-            <div className="fixed bottom-6 left-4 right-4 h-[70px] bg-[#1a1a1a] rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.3)] grid grid-cols-4 items-center z-40 px-2">
+            <div className={`${location.pathname.includes('public') && 'hidden'} fixed bottom-6 left-4 right-4 h-[70px] bg-[#1a1a1a] rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.3)] grid grid-cols-4 items-center z-40 px-2`}>
                 
                 <NavLink to="/menu" className={`flex flex-col items-center gap-1 p-2 transition ${isActive('/menu') ? 'text-[#D4AF37]' : 'text-gray-400'}`}>
                     <i className="fa-solid fa-utensils text-lg"></i>
