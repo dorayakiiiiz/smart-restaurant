@@ -330,40 +330,39 @@ export default function MenuDetailPage() {
 
                 {/* RIGHT COLUMN: Modifiers */}
                 <div className={`lg:col-span-1 ${item.modifiers && item.modifiers.length > 0 ? '' : 'hidden'}`}>
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-full bg-[#f7f8f6] flex items-center justify-center text-[#D4AF37]">
-                                <i className="fa-solid fa-layer-group text-xl"></i>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 sticky top-6">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-12 h-12 rounded-2xl bg-[#1a1a1a] flex items-center justify-center text-[#D4AF37] shadow-lg shadow-yellow-900/10">
+                                <i className="fa-solid fa-sliders text-lg"></i>
                             </div>
                             <div>
-                                <h3 className="font-bold text-xl text-gray-800">Modifiers & Options</h3>
-                                <p className="text-xs text-gray-400">Customization options for this item</p>
+                                <h3 className="font-black text-xl text-gray-900 tracking-tight">Customize</h3>
+                                <p className="text-[10px] text-[#D4AF37] font-black uppercase tracking-[0.2em]">Personalize your dish</p>
                             </div>
                         </div>
 
                         {item.modifiers && item.modifiers.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-6">
                                 {item.modifiers.map((group, idx) => (
-                                    <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden hover:border-[#D4AF37] transition-colors group">
-                                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-                                            <span className="font-bold text-gray-800">{group.name}</span>
-                                            <div className="flex gap-2">
-                                                <span className="text-[10px] font-bold uppercase px-2 py-1 bg-white border border-gray-200 rounded text-gray-500">
-                                                    {group.selectionType}
-                                                </span>
-                                                {group.isRequired && (
-                                                    <span className="text-[10px] font-bold uppercase px-2 py-1 bg-red-50 text-red-500 border border-red-100 rounded">
-                                                        Required
-                                                    </span>
-                                                )}
+                                    <div key={idx} className="group">
+                                        <div className="flex justify-between items-end mb-3 px-1">
+                                            <div>
+                                                <span className="block text-sm font-black text-gray-800 uppercase tracking-wide">{group.name}</span>
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{group.selectionType}</span>
                                             </div>
+                                            {group.isRequired && (
+                                                <span className="text-[8px] font-black uppercase px-2 py-1 bg-red-50 text-red-500 border border-red-100 rounded-md tracking-tighter">
+                                                    Required
+                                                </span>
+                                            )}
                                         </div>
-                                        <div className="p-4 space-y-2">
+                                        
+                                        <div className="space-y-2">
                                             {group.options.map((opt, oIdx) => (
-                                                <div key={oIdx} className="flex justify-between items-center text-sm">
-                                                    <span className="text-gray-600">{opt.name}</span>
-                                                    <span className={`font-medium ${opt.priceAdjustment > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                                                        {opt.priceAdjustment > 0 ? `+$${opt.priceAdjustment.toFixed(2)}` : 'Free'}
+                                                <div key={oIdx} className="flex justify-between items-center p-3 rounded-xl bg-gray-50 border border-transparent hover:border-[#D4AF37]/30 hover:bg-white hover:shadow-sm transition-all duration-300">
+                                                    <span className="text-sm font-medium text-gray-600">{opt.name}</span>
+                                                    <span className={`text-xs font-black ${opt.priceAdjustment > 0 ? 'text-[#D4AF37]' : 'text-gray-300'}`}>
+                                                        {opt.priceAdjustment > 0 ? `+$${opt.priceAdjustment.toFixed(2)}` : 'FREE'}
                                                     </span>
                                                 </div>
                                             ))}
@@ -372,9 +371,11 @@ export default function MenuDetailPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-100">
-                                <i className="fa-solid fa-ban text-gray-300 text-4xl mb-3"></i>
-                                <p className="text-gray-400 font-medium">No modifiers configured</p>
+                            <div className="text-center py-16 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                    <i className="fa-solid fa-wand-magic-sparkles text-gray-200 text-2xl"></i>
+                                </div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Standard Preparation</p>
                             </div>
                         )}
                     </div>
@@ -516,11 +517,18 @@ export default function MenuDetailPage() {
                         ))}
                     </div>
                     {myReview && !editingReviewId && (
-                        <div className="bg-gradient-to-br from-[#FFFBF0] to-[#FFF8E1] py-6 px-8 rounded-3xl border-2 border-[#D4AF37]/30 shadow-sm relative overflow-hidden">
+                        <div className="bg-gradient-to-br from-[#FFFBF0] to-[#FFF8E1] py-6 px-8 rounded-3xl border-2 border-[#D4AF37]/30 shadow-sm relative mb-5">
                             <div className="flex justify-between items-start mb-3 gap-4">
                                 <div className="flex items-center gap-3 flex-1">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#C4961F] text-white flex items-center justify-center font-black text-sm shadow-lg">
-                                        {myReview.userId?.fullName?.[0] || 'U'}
+                                    <div 
+                                        className={`w-11 h-11 ${myReview.userId?.avatar && 'border-2 border-white'} bg-cover rounded-full bg-gradient-to-br from-[#D4AF37] to-[#C4961F] text-white flex items-center justify-center font-black text-sm shadow-lg`}
+                                        style={{
+                                            backgroundImage: myReview.userId?.avatar?.url
+                                            ? `url(${myReview.userId.avatar.url})`
+                                            : undefined,
+                                        }}
+                                    >
+                                        {!myReview.userId?.avatar && myReview.userId?.fullName?.[0]}
                                     </div>
                                     <div>
                                         <span className="font-black text-gray-900 uppercase text-sm tracking-tight block">
@@ -553,14 +561,14 @@ export default function MenuDetailPage() {
                     {displayedReviews.length > 0 ? (
                         <>
                             {displayedReviews.map(review => (
-                                <div key={review._id} className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+                                <div key={review._id} className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 mb-5">
                                     <div className="flex justify-between items-start mb-2 gap-4">
                                         <div className="flex items-center gap-3 flex-1">
                                             {review.userId?.avatar ? (
-                                                <img src={review.userId.avatar} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
+                                                <img src={review.userId.avatar.url} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)] border-2 border-gray-400" />
                                             ) : (
                                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400 flex items-center justify-center font-black text-sm border border-gray-200">
-                                                    {review.userId?.fullName?.[0] || 'U'}
+                                                    {(!review.userId?.avatar && review.userId?.fullName?.[0]) || 'U'}
                                                 </div>
                                             )}
                                             <div>
@@ -577,7 +585,7 @@ export default function MenuDetailPage() {
                             ))}
                             
                             {/* Show All Button */}
-                            {otherReviews.length > 3 && (
+                            {filteredReviews.length > 3 && (
                                 <div className="text-center pt-6">
                                     <button 
                                         onClick={() => setShowAllReviews(!showAllReviews)}
@@ -590,7 +598,7 @@ export default function MenuDetailPage() {
                                             </>
                                         ) : (
                                             <>
-                                                View All {otherReviews.length} Reviews 
+                                                View All {filteredReviews.length} Reviews 
                                                 <i className="fa-solid fa-chevron-down text-[10px] group-hover:translate-y-0.5 transition-transform"></i>
                                             </>
                                         )}

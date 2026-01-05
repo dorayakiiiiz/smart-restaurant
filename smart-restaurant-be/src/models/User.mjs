@@ -31,6 +31,11 @@ const UserSchema = new Schema({
         enum: ['local', 'google', 'guest'],
         default: 'local'
     },
+    // Thêm field avatar
+    avatar: {
+        url: String,
+        publicId: String
+    },
     isLocked: {
         type: Boolean,
         default: false

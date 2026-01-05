@@ -124,6 +124,35 @@ class SuperAdminController {
         }
     }
 
+    // [PATCH] /api/super/admin/:id
+    // Cập nhật thông tin Admin
+    async updateRestaurantAdmin(req, res) {
+        try {
+            const { id } = req.params;
+            const { email, fullName, password } = req.body;
+
+            // 1. Check email duplicate (nếu đổi email, loại trừ chính user đang sửa)
+            const existingUser = await User.findOne({ email, _id: { $ne: id } });
+            if (existingUser) {
+                return res.status(400).json({ message: "Email already exists." });
+            }
+
+            const updateData = { email, fullName };
+
+            // 2. Nếu có password mới thì hash và update, ngược lại giữ nguyên
+            if (password && password.trim() !== "") {
+                const hashPassword = await bcrypt.hash(password, saltRounds);
+                updateData.password = hashPassword;
+            }
+
+            const updatedAdmin = await User.findByIdAndUpdate(id, updateData, { new: true }).select('-password');
+
+            res.status(200).json({ message: "Admin updated successfully", admin: updatedAdmin });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
 }
 
 export default new SuperAdminController();
