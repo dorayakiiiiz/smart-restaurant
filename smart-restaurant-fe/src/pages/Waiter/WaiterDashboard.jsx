@@ -207,7 +207,7 @@ export default function WaiterDashboard() {
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
                         <i className="fa-solid fa-user-gear"></i>
                       </div>
                       Account Settings
@@ -217,7 +217,7 @@ export default function WaiterDashboard() {
                       onClick={handleLogout}
                       className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
+                      <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
                         <i className="fa-solid fa-arrow-right-from-bracket"></i>
                       </div>
                       Sign Out

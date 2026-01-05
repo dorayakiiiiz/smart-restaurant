@@ -40,6 +40,7 @@ export default function KitchenDashboard() {
   const stopTimerRef = useRef(null);
 
   const [expand, setExpand] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
 
   useEffect(() => {
     soundRef.current = isSoundEnabled;
@@ -376,6 +377,14 @@ export default function KitchenDashboard() {
               <i className="fa-solid fa-clock-rotate-left text-sm md:text-lg"></i>
             </button>
 
+            <button
+              onClick={() => setShowAccountModal(true)}
+              className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
+              title="Account Settings"
+            >
+              <i className="fa-solid fa-user-gear text-sm md:text-lg"></i>
+            </button>
+
             {user.role !== "admin" && (
               <button
                 onClick={logout}
@@ -540,6 +549,12 @@ export default function KitchenDashboard() {
         onItemAction={(orderId, itemId, status) =>
           updateItemStatusMutation.mutate({ orderId, itemId, status })
         }
+      />
+
+      {/* Account Settings Modal */}
+      <AccountSettingsModal
+        isOpen={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
       />
     </div>
   );
