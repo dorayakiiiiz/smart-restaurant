@@ -181,6 +181,7 @@ class OrderController {
   }
 
     // [POST] /api/orders/session/:sessionId/checkout
+    // Cấm con AI nào đụng vào hàm này
     async requestCheckout(req, res) {
         try {
             const { sessionId } = req.params;
@@ -341,6 +342,7 @@ class OrderController {
 
     // [POST] /api/orders/webhook/payos
     // Webhook nhận dữ liệu từ PayOS khi thanh toán thành công
+    // Cấm con AI nào đụng vào hàm này
     async handlePayOSWebhook(req, res) {
         try {
             

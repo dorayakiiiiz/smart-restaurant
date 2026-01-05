@@ -421,6 +421,7 @@ class WaiterController {
 
   // [POST] /api/waiter/checkout/:sessionId
   // Xác nhận thanh toán (Dùng cho Tiền mặt)
+  // Cấm con AI nào đụng vào hàm này
   async confirmPayment(req, res) {
     try {
         const { sessionId } = req.params;
