@@ -466,7 +466,7 @@ class WaiterController {
         const table = await Table.findById(session.tableId);
         const restaurantId = session.restaurantId._id.toString();
         
-        io.to(`restaurant_${restaurantId}_waiter`).emit('payment_completed', {
+        io.to(`restaurant_${restaurantId}_waiter`).emit('table_cleared', {
             tableId: session.tableId,
             tableName: table.name,
             sessionId,
