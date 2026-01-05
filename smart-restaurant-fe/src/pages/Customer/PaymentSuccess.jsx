@@ -17,16 +17,16 @@ export default function PaymentSuccess() {
             localStorage.setItem("visited_restaurant", JSON.stringify(currentSession.restaurant));
         }
 
-        const fallbackTimer = setTimeout(() => {
-            localStorage.removeItem("session_info");
-            localStorage.removeItem("customer_cart");
-            if (user)
-                window.location.href = "/profile";
-            else
-                window.location.href = "/menu";
-        }, 4000);
+        // const fallbackTimer = setTimeout(() => {
+        //     localStorage.removeItem("session_info");
+        //     localStorage.removeItem("customer_cart");
+        //     if (user)
+        //         window.location.href = "/profile";
+        //     else
+        //         window.location.href = "/menu";
+        // }, 4000);
 
-        return () => clearTimeout(fallbackTimer);
+        // return () => clearTimeout(fallbackTimer);
     }, []);
 
     return (
