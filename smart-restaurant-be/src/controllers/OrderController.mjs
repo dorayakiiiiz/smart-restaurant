@@ -374,7 +374,7 @@ class OrderController {
 
             // 3. Verify Webhook Data
             const webhookData = await customPayOS.webhooks.verify(req.body);
-            console.log(webhookData);
+            console.log(webhookDa)
 
             // Check thanh toán thành công
             if (webhookData.code === "00" || webhookData.success === true) {
@@ -401,6 +401,7 @@ class OrderController {
                     sessionId,
                     message: 'Payment successful. Thank you!'
                 });
+                console.log('sent to customerrrrrrrrrrrrrrrrrrrr', sessionId);
 
                 // 2. Báo cho Waiter -> Cập nhật UI bàn thành "QR Paid ✓" (chỉ để biết)
                 io.to(`restaurant_${restaurantId}_waiter`).emit("payment_success", {
@@ -411,13 +412,13 @@ class OrderController {
                     amount: session.totalAmount
                 });
 
-                io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {
-                    tableId: session.tableId,
-                    tableName: table.name,
-                    sessionId,
-                    totalAmount: session.totalAmount,
-                    paymentMethod: 'payos'
-                });
+                // io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {
+                //     tableId: session.tableId,
+                //     tableName: table.name,
+                //     sessionId,
+                //     totalAmount: session.totalAmount,
+                //     paymentMethod: 'payos'
+                // });
                 console.log("✅ Payment success - Session closed - Sockets emitted");
             } else {
                 console.log(`❌ Payment failed or cancelled: code=${webhookData.code}`);
