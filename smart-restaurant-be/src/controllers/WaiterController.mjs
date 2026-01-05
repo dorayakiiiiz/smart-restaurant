@@ -470,13 +470,13 @@ class WaiterController {
             paymentMethod: 'cash'
         });
 
-        io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {
-            tableId: session.tableId,
-            tableName: table.name,
-            sessionId,
-            totalAmount: session.totalAmount,
-            paymentMethod: 'cash'
-        });
+        // io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {
+        //     tableId: session.tableId,
+        //     tableName: table.name,
+        //     sessionId,
+        //     totalAmount: session.totalAmount,
+        //     paymentMethod: 'cash'
+        // });
 
         res.status(200).json({ 
             message: "Cash payment confirmed successfully",
