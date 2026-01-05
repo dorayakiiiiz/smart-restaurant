@@ -430,16 +430,15 @@ class WaiterController {
             return res.status(404).json({ message: "Session not found" });
         }
 
-        // Cho phép confirm nếu là CASH hoặc (TRANSFER và đã PAID)
-        const isCash = session.paymentMethod === 'cash';
-        const isTransferPaid = session.paymentMethod === 'transfer' && session.paymentStatus === 'paid';
+        // Cho phép clear nếu:
+        // 1. Đã thanh toán (paymentStatus = 'paid') -> Bất kể session.status là gì
+        // 2. Hoặc đang yêu cầu thanh toán tiền mặt (paymentMethod = 'cash' && status = 'payment_requested')
+        
+        const isPaid = session.paymentStatus === 'paid';
+        const isCashRequest = session.paymentMethod === 'cash' && session.status === 'payment_requested';
 
-        if (!isCash && !isTransferPaid) {
-            return res.status(400).json({ message: "Invalid payment status for confirmation" });
-        }
-
-        if (session.status !== 'payment_requested') {
-            return res.status(400).json({ message: "Session is not awaiting payment" });
+        if (!isPaid && !isCashRequest) {
+            return res.status(400).json({ message: "Invalid payment status. Session must be PAID or requesting CASH." });
         }
 
         // 1. Cập nhật session
