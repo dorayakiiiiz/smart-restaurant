@@ -58,7 +58,14 @@ export default function MyTables() {
     // Mutation for payment
     const paymentMutation = useMutation({
         mutationFn: (sessionId) => waiterService.confirmPayment(sessionId),
-        onSuccess: () => {
+        onSuccess: (data, sessionId) => { 
+            queryClient.setQueryData(['waiter-tables'], (oldSessions = []) => {
+                return oldSessions.filter(session => session._id !== sessionId);
+            });
+            setCounts(prev => ({ 
+                ...prev, 
+                tables: Math.max(0, prev.tables - 1) 
+            }));
             queryClient.invalidateQueries({ queryKey: ['waiter-tables'] });
         }
     });
