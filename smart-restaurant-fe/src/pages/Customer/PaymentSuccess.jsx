@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 
 export default function PaymentSuccess() {
     const [searchParams] = useSearchParams();
     const { user } = useAuth();
+    const { setSessionInfo, clearCart } = useCart();
     
     useEffect(() => {
         // Trang này chỉ hiển thị tạm khi PayOS redirect về
@@ -20,6 +22,10 @@ export default function PaymentSuccess() {
         const fallbackTimer = setTimeout(() => {
             localStorage.removeItem("session_info");
             localStorage.removeItem("customer_cart");
+
+            if (setSessionInfo) setSessionInfo(null);
+            if (clearCart) clearCart();
+
             if (user)
                 window.location.href = "/profile";
             else
@@ -27,7 +33,7 @@ export default function PaymentSuccess() {
         }, 4000);
 
         return () => clearTimeout(fallbackTimer);
-    }, [user]);
+    }, [user, setSessionInfo, clearCart]);
 
     return (
         <div className="fixed inset-0 bg-[#0a0a0a]/95 z-[9999] flex flex-col items-center justify-center p-6 backdrop-blur-sm">

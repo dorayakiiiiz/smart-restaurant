@@ -459,7 +459,8 @@ class WaiterController {
         io.to(`session_${sessionId}`).emit('session_ended', {
             sessionId,
             reason: 'payment_completed',
-            message: 'Payment confirmed. Thank you!'
+            message: 'Payment confirmed. Thank you!',
+            method: session.paymentMethod
         });
 
         // 4. Thông báo tới các Waiter khác (optional)
@@ -471,7 +472,7 @@ class WaiterController {
             tableName: table.name,
             sessionId,
             totalAmount: session.totalAmount,
-            paymentMethod: 'cash'
+            paymentMethod: session.paymentMethod
         });
 
         // io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {
