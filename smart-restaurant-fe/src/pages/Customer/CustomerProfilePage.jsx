@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { orderService } from "../../services/orderService";
@@ -43,6 +43,50 @@ export default function CustomerProfilePage() {
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempName, setTempName] = useState(user?.fullName || "");
     const [updatingName, setUpdatingName] = useState(false);
+    
+    const fileInputRef = useRef(null);
+    const [updatingAvatar, setUpdatingAvatar] = useState(false);
+    
+    // Hàm kích hoạt input file khi click vào avatar (gắn vào thẻ div/img avatar hiện tại)
+    const handleAvatarClick = () => {
+        fileInputRef.current.click();
+    };
+
+    // Hàm xử lý khi chọn file
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate
+        if (!file.type.startsWith('image/')) {
+            alert("Please select an image file.");
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert("File size must be less than 5MB.");
+            return;
+        }
+
+        try {
+            setUpdatingAvatar(true);
+            
+            const formData = new FormData();
+            formData.append('avatar', file); 
+
+            const res = await userService.updateAccountInfo(formData);
+            
+            setUser(res.user);
+            
+        } catch (error) {
+            console.error("Upload failed:", error);
+            alert(error.response?.data?.message || "Failed to upload avatar.");
+        } finally {
+            setUpdatingAvatar(false);
+            // Reset input để có thể upload lại cùng file
+            e.target.value = '';
+        }
+    };
 
     const [showPassModal, setShowPassModal] = useState(false);
     const [passForm, setPassForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -125,9 +169,28 @@ export default function CustomerProfilePage() {
                 <div className="relative flex items-center justify-between">
                     <div className="flex items-center gap-5">
                         <div className="relative">
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#800020] to-[#b3002d] flex items-center justify-center text-2xl font-bold text-white shadow-lg hover:rotate-0 transition-transform duration-300">
-                                {user?.fullName?.charAt(0)}
+                            <div 
+                                className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-tr from-[#800020] to-[#b3002d] flex items-center justify-center text-2xl font-bold text-white shadow-lg transition-transform duration-300 cursor-pointer"
+                                onClick={handleAvatarClick}
+                            >
+                                {updatingAvatar ? (
+                                    <div className="flex flex-col items-center justify-center">
+                                        <div className="w-7 h-7 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    </div>
+                                ) : user?.avatar?.url ? (
+                                    <img src={user.avatar.url} className="w-full h-full object-cover" />
+                                ) : (
+                                    user?.fullName?.charAt(0)
+                                )}
                             </div>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handleFileChange} 
+                                className="hidden" 
+                                accept="image/*"
+                            />
+
                             <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-4 border-white rounded-full"></div>
                         </div>
                         

@@ -320,7 +320,7 @@ export default function MenuItemDetail() {
                                     <div className="flex justify-between items-start mb-2 gap-4">
                                         <div className="flex items-center gap-3 flex-1">
                                             {review.userId?.avatar ? (
-                                                <img src={review.userId.avatar} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
+                                                <img src={review.userId.avatar.url} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
                                             ) : (
                                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400 flex items-center justify-center font-black text-sm border border-gray-200">
                                                     {review.userId?.fullName?.[0] || 'U'}

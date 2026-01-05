@@ -1,11 +1,7 @@
 import MenuItem from "../models/MenuItem.mjs";
 import Restaurant from "../models/Restaurant.mjs";
 import Category from "../models/Category.mjs";
-<<<<<<< HEAD
 import Order from "../models/Order.mjs";
-=======
-import Order from "../models/Order.mjs"; // Import Order model
->>>>>>> f997157df9a2e9dee52e69fd7491522b93dc548a
 
 class MenuController {
     // [GET] /api/menu/public/:restaurantId
@@ -20,32 +16,23 @@ class MenuController {
             .populate('categoryId', 'name isActive')
             .sort({ createdAt: -1 });
 
+            // Tính orderCount cho từng item
+            const itemsWithOrderCount = await Promise.all(items.map(async (item) => {
+                const orderCount = await Order.countDocuments({
+                    restaurantId,
+                    'items.menuItemId': item._id,
+                    status: 'served' // Chỉ đếm order đã served
+                });
 
-            // Calculate order counts
-            const orderCounts = await Order.aggregate([
-                { $match: { restaurantId } },
-                { $unwind: "$items" },
-                { $group: {
-                    _id: "$items.menuItemId",
-                    totalOrders: { $sum: "$items.quantity" }
-                }}
-            ]);
-
-            //Map order counts to items
-            const ordersMap = {};
-            orderCounts.forEach(doc => {
-                if (doc._id) {
-                    ordersMap[doc._id.toString()] = doc.totalOrders;
-                }
-            });
-
-            const itemsWithOrders = items.map(item => ({
-                ...item.toObject(),
-                orderCount: ordersMap[item._id.toString()] || 0
+                return {
+                    ...item.toObject(),
+                    orderCount
+                };
             }));
 
-            res.status(200).json({ items: itemsWithOrders });
+            console.log(itemsWithOrderCount)
 
+            res.status(200).json({ items: itemsWithOrderCount });
         } catch (err) {
             res.status(500).json({ message: "Error fetching public menu", error: err.message });
         }

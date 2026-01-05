@@ -11,18 +11,34 @@ import { useNavigate } from "react-router-dom";
 import Fuse from "fuse.js";
 
 // Component hiển thị sao
-const StarRating = ({ rating, setRating, editable = true }) => {
+const StarRating = ({ rating, setRating, editable = true, size = "text-sm" }) => {
     return (
         <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map((star) => (
-                <i 
-                    key={star}
-                    onClick={() => editable && setRating(star)}
-                    className={`fa-solid fa-star text-sm transition-colors ${editable ? 'cursor-pointer' : ''} ${
-                        star <= rating ? "text-yellow-400" : "text-gray-300"
-                    }`}
-                ></i>
-            ))}
+            {[1, 2, 3, 4, 5].map((star) => {
+                let fillPercentage = 0;
+                if (rating >= star) {
+                    fillPercentage = 100;
+                } else if (rating > star - 1) {
+                    fillPercentage = (rating - (star - 1)) * 100;
+                }
+
+                return (
+                    <div 
+                        key={star}
+                        className={`relative ${editable ? 'cursor-pointer' : ''}`}
+                        onClick={() => editable && setRating(star)}
+                    >
+                        <i className={`fa-solid fa-star ${size} text-gray-300`}></i>
+
+                        <div 
+                            className="absolute top-0 left-0 overflow-hidden h-full" 
+                            style={{ width: `${fillPercentage}%` }}
+                        >
+                            <i className={`fa-solid fa-star ${size} text-yellow-400 whitespace-nowrap`}></i>
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 };
@@ -228,7 +244,7 @@ export default function MenuPage() {
                             </div>
                             
                             <div className="flex items-center gap-2">
-                                <StarRating rating={Math.round(item.averageRating || 0)} editable={false} />
+                                <StarRating rating={item.averageRating || 0} editable={false} />
                                 <div className="text-yellow-400 text-sm mb-0.5 whitespace-nowrap">({item.totalReviews} reviews)</div>
                             </div>
                             

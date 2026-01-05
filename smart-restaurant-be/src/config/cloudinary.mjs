@@ -28,5 +28,15 @@ const menuStorage = new CloudinaryStorage({
   },
 });
 
+const avatarStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "smart-restaurant/avatars",
+    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+    public_id: (req, file) => `avatar_${req.user.id}_${Date.now()}`,
+  },
+});
+
 export const uploadRestaurant = multer({ storage: restaurantStorage });
 export const uploadMenu = multer({ storage: menuStorage });
+export const uploadAvatar = multer({ storage: avatarStorage }); // Export middleware mới
