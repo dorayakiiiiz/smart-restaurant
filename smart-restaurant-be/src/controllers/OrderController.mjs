@@ -374,9 +374,10 @@ class OrderController {
 
             // 3. Verify Webhook Data
             const webhookData = await customPayOS.webhooks.verify(req.body);
+            console.log(webhookData);
 
             // Check thanh toán thành công
-            if (webhookData.code === "00" && webhookData.success === true) {
+            if (webhookData.code === "00" || webhookData.success === true) {
                 console.log(`Payment SUCCESS for orderCode: ${orderCode}`);
                 
                 session.paymentStatus = 'paid';
