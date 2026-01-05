@@ -10,6 +10,11 @@ const createAdmin = async (data) => {
     return response.data;
 }
 
+const updateAdmin = async (id, data) => {
+    const response = await api.patch(`/super/admin/${id}`, data);
+    return response.data;
+}
+
 const deleteAdmin = async (id) => {
     const response = await api.delete(`/super/admin/${id}`);
     return response.data;
@@ -28,6 +33,8 @@ const toggleLockAdmin = async (userId) => {
 export const superAdminService = {
     getAllAdmins,
     createAdmin,
+    updateAdmin,
+    deleteAdmin,
     getSystemStats,
     toggleLockAdmin
 };

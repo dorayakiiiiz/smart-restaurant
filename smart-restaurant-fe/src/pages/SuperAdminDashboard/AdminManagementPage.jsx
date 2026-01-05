@@ -24,6 +24,8 @@ export default function AdminManagementPage() {
     // State cho Delete Modal
     const [deleteId, setDeleteId] = useState(null);
 
+    const [editAdmin, setEditAdmin] = useState(null);
+
 
     // Fetch Admins (thay thế useContext + useEffect)
     const { data, isLoading } = useQuery({
@@ -93,6 +95,14 @@ export default function AdminManagementPage() {
     const renderActions = (item) => (
         <div className="flex gap-2">
             <button 
+                onClick={() => { setIsModalOpen(true); setEditAdmin(item); }}
+                className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition"
+                title="Edit Staff"
+            >
+                <i className="fa-solid fa-pen"></i>
+            </button>
+
+            <button 
                 onClick={() => lockMutation.mutate(item._id)}
                 className={`p-2 rounded-lg transition ${
                     item.isLocked ? 'text-green-600 hover:bg-green-50' : 'text-orange-500 hover:bg-orange-50'
@@ -140,8 +150,9 @@ export default function AdminManagementPage() {
             />
 
             {isModalOpen && (
-                <CreateAdminModal 
-                    onClose={() => setIsModalOpen(false)} 
+                <AdminModal 
+                    editAdmin={editAdmin}
+                    onClose={() => { setIsModalOpen(false); setEditAdmin(null) }} 
                     onSuccess={() => queryClient.invalidateQueries(['admins'])}
                 />
             )}
@@ -159,9 +170,9 @@ export default function AdminManagementPage() {
     );
 }
 
-function CreateAdminModal({ onClose, onSuccess }) {
-    const [email, setEmail] = useState("");
-    const [fullName, setFullName] = useState("");
+function AdminModal({ editAdmin = null, onClose, onSuccess }) {
+    const [email, setEmail] = useState(editAdmin?.email || "");
+    const [fullName, setFullName] = useState(editAdmin?.fullName || "");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [log, setLog] = useState({ type: '', content: '' });
@@ -172,7 +183,7 @@ function CreateAdminModal({ onClose, onSuccess }) {
         }
     }, [log]);
 
-    const { mutate, isPending, error } = useMutation({
+    const createMutation = useMutation({
         mutationFn: (data) => superAdminService.createAdmin(data),
         onSuccess: () => {
             onSuccess();
@@ -182,6 +193,19 @@ function CreateAdminModal({ onClose, onSuccess }) {
         },
         onError: (err) => {
             setLog({ type: 'error', content: err.response?.data?.message || "Failed to create admin." });
+        }
+    })
+
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }) => superAdminService.updateAdmin(id, data),
+        onSuccess: () => {
+            onSuccess();
+            setLog({ type: 'success', content: 'Updated admin information successfully.' });
+
+            setTimeout(onClose, 2000);
+        },
+        onError: (err) => {
+            setLog({ type: 'error', content: err.response?.data?.message || "Failed to update admin." });
         }
     })
 
@@ -202,18 +226,28 @@ function CreateAdminModal({ onClose, onSuccess }) {
             return;
         }
 
-        const passwordError = Validator.validatePassword(password);
-        if (passwordError) {
-            setLog({ type: 'error', content: passwordError });
-            return;
+        if (!editAdmin || (editAdmin && password.trim() !== "")) {
+            const passwordError = Validator.validatePassword(password);
+            if (passwordError) {
+                setLog({ type: 'error', content: passwordError });
+                return;
+            }
+    
+            if (confirmPassword !== password) {
+                setLog({ type: 'error', content: 'Passwords do not match.' });
+                return;
+            }
         }
 
-        if (confirmPassword !== password) {
-            setLog({ type: 'error', content: 'Passwords do not match.' });
-            return;
-        }
+        const data = { email, fullName };
+        if (password)
+            data.password = password;
 
-        mutate({ email, fullName, password });
+        if (editAdmin)
+            updateMutation.mutate({ id: editAdmin._id, data });
+        else
+            createMutation.mutate(data);
+
     };
 
     return (
@@ -223,7 +257,9 @@ function CreateAdminModal({ onClose, onSuccess }) {
             <div className="bg-white rounded-2xl w-full max-w-xl p-10 shadow-2xl" 
                 onClick={e => e.stopPropagation()}
             >
-                <h3 className="text-2xl font-bold font-momo text-[#800020] mb-6">Create New Owner</h3>
+                <h3 className="text-2xl font-bold font-momo text-[#800020] mb-6">
+                    {editAdmin ? 'Update Owner Information' : 'Create New Owner'}
+                </h3>
                 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-1">
                     <label className="text-sm font-semibold text-gray-700">Email</label>
@@ -232,7 +268,7 @@ function CreateAdminModal({ onClose, onSuccess }) {
                     <label className="text-sm font-semibold text-gray-700 mt-2">Full Name</label>
                     <Input type="text" value={fullName} placeholder="John Doe" setState={setFullName} />
                     
-                    <label className="text-sm font-semibold text-gray-700 mt-2">Password</label>
+                    <label className="text-sm font-semibold text-gray-700 mt-2">Password <span className="text-gray-400 ml-1">(leave blank to keep current)</span></label>
                     <Input type="password" value={password} placeholder="Secure password" setState={setPassword} />
 
                     <label className="text-sm font-semibold text-gray-700 mt-2">Confirm Password</label>
@@ -253,10 +289,10 @@ function CreateAdminModal({ onClose, onSuccess }) {
 
                         <button 
                             type="submit"
-                            disabled={isPending}
+                            disabled={createMutation.isPending || updateMutation.isPending}
                             className="flex-1 py-3 rounded-xl bg-[#1a1a1a] text-white font-semibold hover:bg-[#333] transition disabled:opacity-70"
                         >
-                            {isPending ? "Creating..." : "Create Account"}
+                            {editAdmin ? (updateMutation.isPending ? 'Updating...' : 'Update Account') : (createMutation.isPending ? 'Creating...' : 'Create Account')}
                         </button>
                     </div>
                 </form>

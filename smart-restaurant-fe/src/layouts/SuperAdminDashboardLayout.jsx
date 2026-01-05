@@ -18,7 +18,7 @@ export default function SuperAdminDashboardLayout() {
                     <i className="fa-solid fa-utensils text-yellow-700"></i>
                     Smart Restaurant <span className="text-xs text-gray-400 font-normal border border-gray-600 px-2 py-0.5 rounded ml-2">SUPER ADMIN</span>
                 </Link>
-                <div className="text-white text-xl opacity-70 font-bold">
+                <div className="text-gray-300 uppercase text-xl font-bold">
                     System Management Portal
                 </div>
             </div>

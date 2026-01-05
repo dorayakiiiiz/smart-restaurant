@@ -181,6 +181,7 @@ class OrderController {
   }
 
     // [POST] /api/orders/session/:sessionId/checkout
+    // Cấm con AI nào đụng vào hàm này
     async requestCheckout(req, res) {
         try {
             const { sessionId } = req.params;
@@ -202,6 +203,22 @@ class OrderController {
                 }, 0);
             }, 0);
 
+            // luồng: khách bấm request bill -> gọi lên backend
+            // hàm request checkout update status thành payment_request rồi bắn socket về waiter để
+            // waiter hiển thị nút confirm cash hoặc qr paying...
+            // cash: waiter bấm confirm -> gọi lên backend xác nhận
+            // -> backend bắn socket về phía customer và session_end, xóa bàn
+            // (so sánh: cash thì khách request thì tới backend xong backend bắn socket waiter, waiter confirm bắn socket tới khách)
+            // (còn payment thì khách request tới backend, backend sẽ request bill gọi payos ngoài, đồng thời bắn socket waiter)
+            // payment: khi khách bấm request bill thì sẽ gọi đến payos ngoài
+            // sau đó trả url về, frontend khách redirect tới url đó, đồng thời bắn socket tới waiter để update trạng thái
+            // khi thanh toán trên url payos thành công sẽ được return về trang payment success cảm ơn khách (hình thức),
+            // sau đó vào webhook check các thứ rồi mới bắn session end về khách và bắn socket về waiter để confirm đã
+            // thanh toán, sau đó waiter bấm xác nhận (gọi hàm confirm payment ở waiter, hàm này
+            // cũng được gọi khi waiter bấm confirm cash có chức năng free bàn và bắn session end)
+            // (chỗ kì kì: hiện tại payment transfer có 2 chỗ session end: 1 là trong webhook 2 là
+            // waiter bấm confirm payment, sửa pick 1 thôi)
+
             session.totalAmount = totalAmount;
             session.paymentMethod = paymentMethod;
             session.status = 'payment_requested';
@@ -211,7 +228,7 @@ class OrderController {
             const restaurantId = session.restaurantId._id.toString();
 
             if (paymentMethod === 'cash') {
-                // ...existing code...
+                session.paymentMethod = 'cash';
                 await session.save();
                 io.to(`restaurant_${restaurantId}_waiter`).emit("payment_requested", {
                     sessionId,
@@ -219,6 +236,13 @@ class OrderController {
                     method: 'cash',
                     amount: totalAmount
                 });
+                // io.to(`restaurant_${restaurantId}_admin`).emit('payment_requested', {
+                //     sessionId,
+                //     tableId: session.tableId,
+                //     tableName: table.name,
+                //     totalAmount: session.totalAmount,
+                //     paymentMethod: 'cash'
+                // });
                 return res.json({ message: "Cash payment requested", method: 'cash' });
             } 
             else if (paymentMethod === 'transfer') {
@@ -240,9 +264,10 @@ class OrderController {
                 const orderCode = Number(String(Date.now()).slice(-9));
                 session.orderCode = orderCode;
                 await session.save();
+                // console.log('session: ', session)
 
                 const tableName = session.tableId?.name || `Table-${session.tableId}`;
-                const description = `Ban ${tableName}`.substring(0, 25);
+                const description = `${tableName}`.substring(0, 25);
 
                 // Tạo link thanh toán PayOS
 
@@ -256,11 +281,11 @@ class OrderController {
                     returnUrl: `${process.env.CLIENT_URL}/payment/success?session_id=${sessionId}`,
                 };
 
-                console.log("Creating PayOS link with data:", paymentData);
+                // console.log("Creating PayOS link with data:", paymentData);
 
                 const paymentLinkRes = await customPayOS.paymentRequests.create(paymentData);
 
-                console.log("PayOS response:", paymentLinkRes);
+                // console.log("PayOS response:", paymentLinkRes);
 
                 const checkoutUrl = paymentLinkRes.checkoutUrl;
 
@@ -315,11 +340,11 @@ class OrderController {
     }
   }
 
-  // [POST] /api/orders/webhook/payos
+    // [POST] /api/orders/webhook/payos
     // Webhook nhận dữ liệu từ PayOS khi thanh toán thành công
+    // Cấm con AI nào đụng vào hàm này
     async handlePayOSWebhook(req, res) {
         try {
-            console.log("📩 PayOS Webhook received:", req.body);
             
             // Dữ liệu webhook chưa verify
             const webhookDataRaw = req.body.data;
@@ -330,8 +355,9 @@ class OrderController {
                 .populate('restaurantId')
                 .populate('tableId', 'name');
             
+            
             if (!session) {
-                console.log(`⚠️ Session not found for orderCode: ${orderCode}`);
+                console.log(`Session not found for orderCode: ${orderCode}`);
                 return res.json({ success: false, message: "Session not found" });
             }
 
@@ -349,29 +375,38 @@ class OrderController {
             const customPayOS = new PayOS({ clientId, apiKey, checksumKey });
 
             // 3. Verify Webhook Data
-            const webhookData = customPayOS.webhooks.verify(req.body);
-
-            console.log("✅ Webhook verified:", webhookData);
+            const webhookData = await customPayOS.webhooks.verify(req.body);
+            // console.log(webhookData)
 
             // Check thanh toán thành công
-            if (webhookData.code === "00" && webhookData.success === true) {
-                console.log(`💰 Payment SUCCESS for orderCode: ${orderCode}`);
+            if (webhookData.code === "00" || webhookData.success === true) {
+                console.log(`Payment SUCCESS for orderCode: ${orderCode}`);
                 
-                // ⭐ CHỈ CẬP NHẬT paymentStatus, KHÔNG đổi status session
                 session.paymentStatus = 'paid';
+                session.status = 'completed';
+                session.endTime = new Date();
                 await session.save();
+
+                // đóng table lun khỏi chờ
+                await Table.findByIdAndUpdate(session.tableId, {
+                    status: 'free',
+                    currentSessionId: null
+                });
 
                 const io = req.app.get("socketio");
                 const restaurantId = restaurant._id.toString();
                 const sessionId = session._id.toString();
+                
 
-                // 1. Báo cho Customer → Hiển thị Thank You screen NGAY
+                // 1. Báo cho Customer - Xóa cart, Hiển thị Thank You screen NGAY
                 io.to(`session_${sessionId}`).emit("session_ended", {
-                    reason: 'payment_completed',
-                    method: 'transfer'
+                    sessionId,
+                    message: 'Payment successful. Thank you!',
+                    reason: 'payment_completed', 
+                    method: 'transfer' 
                 });
 
-                // 2. Báo cho Waiter → Cập nhật UI bàn thành "QR Paid ✓"
+                // 2. Báo cho Waiter -> Cập nhật UI bàn thành "QR Paid ✓" (chỉ để biết)
                 io.to(`restaurant_${restaurantId}_waiter`).emit("payment_success", {
                     sessionId,
                     tableId: session.tableId._id,
@@ -379,6 +414,15 @@ class OrderController {
                     method: 'transfer',
                     amount: session.totalAmount
                 });
+
+                // io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {
+                //     tableId: session.tableId,
+                //     tableName: table.name,
+                //     sessionId,
+                //     totalAmount: session.totalAmount,
+                //     paymentMethod: 'payos'
+                // });
+                console.log("✅ Payment success - Session closed - Sockets emitted");
             } else {
                 console.log(`❌ Payment failed or cancelled: code=${webhookData.code}`);
             }

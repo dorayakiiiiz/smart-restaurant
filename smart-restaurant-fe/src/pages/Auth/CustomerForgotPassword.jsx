@@ -14,6 +14,17 @@ export default function CustomerForgotPassword() {
     const otpInputRefs = useRef([]);
     const [log, setLog] = useState({ type: '', content: '' });
     const [loading, setLoading] = useState(false);
+    // State timer
+    const [resendTimer, setResendTimer] = useState(0);
+    useEffect(() => {
+        let interval;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer]);
 
     const navigate = useNavigate();
     const { isLogin } = useAuth();
@@ -58,11 +69,29 @@ export default function CustomerForgotPassword() {
             await authService.forgotPassword(email);
             setLog({ type: 'success', content: 'OTP sent to your email.' });
             setTimeout(() => {
+                setResendTimer(60);
                 setStep(2);
                 setLog({ type: '', content: '' });
-            }, 2600);
+            }, 2000);
         } catch (err) {
             setLog({ type: 'error', content: err.response?.data?.message || 'Failed to send OTP' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (resendTimer > 0) return;
+        
+        setLoading(true);
+        setLog({ type: '', content: '' });
+        
+        try {
+            await authService.forgotPassword(email);
+            setLog({ type: 'success', content: 'New OTP sent to your email.'});
+            setResendTimer(60); // Reset timer
+        } catch (err) {
+            setLog({ type: 'error', content: err.response?.data?.message || 'Failed to resend OTP.' });
         } finally {
             setLoading(false);
         }
@@ -87,7 +116,7 @@ export default function CustomerForgotPassword() {
             setLoading(true);
             await authService.resetPassword({ email, otp: otpValue, newPassword });
             setLog({ type: 'success', content: 'Password reset successfully!' });
-            setTimeout(() => navigate('/auth/login'), 2000);
+            setTimeout(() => navigate('/auth/login'), 2500);
         } catch (err) {
             setLog({ type: 'error', content: err.response?.data?.message || 'Reset failed' });
         } finally {
@@ -100,7 +129,7 @@ export default function CustomerForgotPassword() {
         <div className="min-h-screen w-full flex font-quicksand bg-white">
             {/* Left Side - Image (Desktop Only) */}
             <div className="hidden lg:flex lg:w-1/2 relative bg-[#800020] items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550966871-3ed3c47e2ce2?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-40"></div>
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1578474846511-04ba529f0b88?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-40"></div>
                 <div className="relative z-10 p-12 text-white max-w-lg text-center">
                     <h1 className="text-4xl font-bold font-momo mb-4">Forgot Password?</h1>
                     <p className="text-lg text-red-100">
@@ -128,9 +157,15 @@ export default function CustomerForgotPassword() {
                 <div className="flex-1 px-6 -mt-10 relative z-20">
                     <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100 h-full md:h-auto">
                         <div className="mb-4">
-                            <Link to="/auth/login" className="inline-flex items-center text-gray-500 hover:text-[#800020] transition-colors font-bold text-sm">
-                                <i className="fa-solid fa-arrow-left mr-2"></i> Back to Login
-                            </Link>
+                            {step === 1 ? (
+                                <Link to="/auth/login" className="inline-flex items-center text-gray-500 hover:text-[#800020] transition-colors font-bold text-sm">
+                                    <i className="fa-solid fa-arrow-left mr-2"></i> Back to Login
+                                </Link>
+                            ) : (
+                                <div className="inline-flex items-center text-gray-500 hover:text-[#800020] transition-colors font-bold text-sm" onClick={() => setStep(1)}>
+                                    <i className="fa-solid fa-arrow-left mr-2"></i> Back to Email
+                                </div>
+                            )}
                         </div>
 
                         {/* Log */}
@@ -180,7 +215,7 @@ export default function CustomerForgotPassword() {
                                                 key={index}
                                                 type="text"
                                                 maxLength="1"
-                                                className="w-12 h-14 border border-gray-300 rounded-lg text-center text-xl font-bold focus:border-[#800020] focus:ring-1 focus:ring-[#800020] outline-none transition bg-gray-50"
+                                                className="w-10 h-12 md:w-12 md:h-14 border border-gray-300 rounded-lg text-center text-xl font-bold focus:border-[#800020] focus:ring-1 focus:ring-[#800020] outline-none transition bg-gray-50"
                                                 value={data}
                                                 ref={el => otpInputRefs.current[index] = el}
                                                 onChange={e => handleOtpChange(e.target, index)}
@@ -208,9 +243,25 @@ export default function CustomerForgotPassword() {
                                         onClick={handleSubmitStep2}
                                         className={`w-full mt-2 py-4 ${loading ? 'bg-[#600018]' : 'bg-[#800020] hover:bg-[#600018]'} text-white font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all transform active:scale-[0.98] text-lg`}
                                     >
-                                        {loading ? "Verifying..." : "Reset Password"}
+                                        {loading ? "Processing..." : "Reset Password"}
                                     </button>
-                                    <div className="text-center text-sm text-gray-500 hover:text-black cursor-pointer" onClick={() => setStep(1)}>Back to Email</div>
+
+                                    <div className="text-center">
+                                        <div className="text-gray-400 mb-1">Didn't receive code?</div>
+                                        <div 
+                                            type="button"
+                                            onClick={handleResendOtp}
+                                            disabled={resendTimer > 0 || loading}
+                                            className={`text-sm font-bold transition-colors ${
+                                                resendTimer > 0 
+                                                    ? 'text-gray-400 cursor-not-allowed' 
+                                                    : 'text-[#800020] hover:underline'
+                                            }`}
+                                        >
+                                            {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
+                                        </div>
+                                    </div>
+
                                 </form>
                             </>
                         )}
@@ -220,44 +271,6 @@ export default function CustomerForgotPassword() {
                             <Link to="/auth/system/login" className="ml-1 font-bold text-[#800020] hover:underline">Log in</Link>
                         </div>
 
-                        {/* {message ? (
-                            <div className="p-6 bg-green-50 border border-green-100 rounded-2xl text-center animate-fade-in">
-                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3 text-green-600 text-xl">
-                                    <i className="fa-solid fa-check"></i>
-                                </div>
-                                <h3 className="text-green-800 font-bold text-lg mb-1">Check your email</h3>
-                                <p className="text-green-700 text-sm">{message}</p>
-                            </div>
-                        ) : (
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                {error && (
-                                    <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg flex items-center gap-3">
-                                        <i className="fa-solid fa-circle-exclamation"></i>
-                                        {error}
-                                    </div>
-                                )}
-
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
-                                    <input 
-                                        type="email" 
-                                        required
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#800020] focus:ring-2 focus:ring-red-100 transition-all font-medium"
-                                        placeholder="name@example.com"
-                                    />
-                                </div>
-
-                                <button 
-                                    type="submit" 
-                                    disabled={loading}
-                                    className="w-full py-4 bg-[#800020] hover:bg-[#600018] text-white font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all transform active:scale-[0.98] text-lg"
-                                >
-                                    {loading ? "Sending..." : "Send Reset Link"}
-                                </button>
-                            </form>
-                        )} */}
                     </div>
                 </div>
             </div>

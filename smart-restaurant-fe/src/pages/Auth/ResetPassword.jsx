@@ -14,6 +14,17 @@ export default function ResetPassword() {
     const otpInputRefs = useRef([]);
     const [log, setLog] = useState({ type: '', content: '' });
     const [loading, setLoading] = useState(false);
+    // State timer
+    const [resendTimer, setResendTimer] = useState(0);
+    useEffect(() => {
+        let interval;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer]);
 
     const navigate = useNavigate();
     const { isLogin } = useAuth();
@@ -58,11 +69,29 @@ export default function ResetPassword() {
             await authService.forgotPassword(email);
             setLog({ type: 'success', content: 'OTP sent to your email.' });
             setTimeout(() => {
+                setResendTimer(60);
                 setStep(2);
                 setLog({ type: '', content: '' });
             }, 2600);
         } catch (err) {
             setLog({ type: 'error', content: err.response?.data?.message || 'Failed to send OTP' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        if (resendTimer > 0) return;
+        
+        setLoading(true);
+        setLog({ type: '', content: '' });
+        
+        try {
+            await authService.forgotPassword(email);
+            setLog({ type: 'success', content: 'New OTP sent to your email.'});
+            setResendTimer(60); // Reset timer
+        } catch (err) {
+            setLog({ type: 'error', content: err.response?.data?.message || 'Failed to resend OTP.' });
         } finally {
             setLoading(false);
         }
@@ -99,7 +128,7 @@ export default function ResetPassword() {
         <div className="flex w-full h-screen bg-white overflow-hidden">
             {/* Left Side */}
             <div className="hidden lg:flex w-1/2 bg-black relative items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550966871-3ed3c47e2ce2?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-60"></div>
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1579027989536-b7b1f875659b?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-60"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black opacity-80"></div>
                 <div className="relative z-10 text-center px-10">
                     <h1 className="font-momo text-6xl text-[#D4AF37] mb-4 drop-shadow-lg">Security</h1>
@@ -155,17 +184,33 @@ export default function ResetPassword() {
 
                                 <Input type="password" value={newPassword} placeholder="New password" setState={setNewPassword} />
                                
-                                <div className={`min-h-[24px] mb-2 flex justify-center items-center text-center font-semibold ${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-green-600 success-glow' : ''}`}>
+                                <div className={`min-h-[24px] -mt-4 flex justify-center items-center text-center font-semibold ${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-green-600 success-glow' : ''}`}>
                                     {log.content}
                                 </div>
                                 
-                                <Button backgrond={{ normal: "#1a1a1a", hover: "#800020" }} color="#fff" text={loading ? "Verifying..." : "Reset Password"} onClick={handleSubmitStep2} disabled={loading} />
-                                <div className="text-center text-sm text-gray-500 hover:text-black cursor-pointer mt-2" onClick={() => setStep(1)}>Back to Email</div>
+                                <Button backgrond={{ normal: "#1a1a1a", hover: "#800020" }} color="#fff" text={loading ? "Processing..." : "Reset Password"} onClick={handleSubmitStep2} disabled={loading} />
+
+                                <div className="text-center">
+                                    <div className="text-gray-400 mb-1">Didn't receive code?</div>
+                                    <div 
+                                        type="button"
+                                        onClick={handleResendOtp}
+                                        disabled={resendTimer > 0 || loading}
+                                        className={`text-sm font-bold transition-colors ${
+                                            resendTimer > 0 
+                                                ? 'text-gray-400 cursor-not-allowed' 
+                                                : 'text-[#800020] hover:underline'
+                                        }`}
+                                    >
+                                        {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
+                                    </div>
+                                </div>
+                                <div className="text-center text-sm text-gray-500 hover:text-black cursor-pointer -mt-2" onClick={() => setStep(1)}>Back to Email</div>
                             </form>
                         </>
                     )}
 
-                    <div className="mt-8 text-center text-sm text-gray-500">
+                    <div className="mt-6 text-center text-sm text-gray-500">
                         Remember your password? 
                         <Link to="/auth/system/login" className="ml-1 font-bold text-[#800020] hover:underline">Log in</Link>
                     </div>
