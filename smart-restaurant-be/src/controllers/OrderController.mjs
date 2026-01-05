@@ -235,13 +235,13 @@ class OrderController {
                     method: 'cash',
                     amount: totalAmount
                 });
-                io.to(`restaurant_${restaurantId}_admin`).emit('payment_requested', {
-                    sessionId,
-                    tableId: session.tableId,
-                    tableName: table.name,
-                    totalAmount: session.totalAmount,
-                    paymentMethod: 'cash'
-                });
+                // io.to(`restaurant_${restaurantId}_admin`).emit('payment_requested', {
+                //     sessionId,
+                //     tableId: session.tableId,
+                //     tableName: table.name,
+                //     totalAmount: session.totalAmount,
+                //     paymentMethod: 'cash'
+                // });
                 return res.json({ message: "Cash payment requested", method: 'cash' });
             } 
             else if (paymentMethod === 'transfer') {
