@@ -202,6 +202,22 @@ class OrderController {
                 }, 0);
             }, 0);
 
+            // luồng: khách bấm request bill -> gọi lên backend
+            // hàm request checkout update status thành payment_request rồi bắn socket về waiter để
+            // waiter hiển thị nút confirm cash hoặc qr paying...
+            // cash: waiter bấm confirm -> gọi lên backend xác nhận
+            // -> backend bắn socket về phía customer và session_end, xóa bàn
+            // (so sánh: cash thì khách request thì tới backend xong backend bắn socket waiter, waiter confirm bắn socket tới khách)
+            // (còn payment thì khách request tới backend, backend sẽ request bill gọi payos ngoài, đồng thời bắn socket waiter)
+            // payment: khi khách bấm request bill thì sẽ gọi đến payos ngoài
+            // sau đó trả url về, frontend khách redirect tới url đó, đồng thời bắn socket tới waiter để update trạng thái
+            // khi thanh toán trên url payos thành công sẽ được return về trang payment success cảm ơn khách (hình thức),
+            // sau đó vào webhook check các thứ rồi mới bắn session end về khách và bắn socket về waiter để confirm đã
+            // thanh toán, sau đó waiter bấm xác nhận (gọi hàm confirm payment ở waiter, hàm này
+            // cũng được gọi khi waiter bấm confirm cash có chức năng free bàn và bắn session end)
+            // (chỗ kì kì: hiện tại payment transfer có 2 chỗ session end: 1 là trong webhook 2 là
+            // waiter bấm confirm payment, sửa pick 1 thôi)
+
             session.totalAmount = totalAmount;
             session.paymentMethod = paymentMethod;
             session.status = 'payment_requested';
@@ -240,9 +256,10 @@ class OrderController {
                 const orderCode = Number(String(Date.now()).slice(-9));
                 session.orderCode = orderCode;
                 await session.save();
+                // console.log('session: ', session)
 
                 const tableName = session.tableId?.name || `Table-${session.tableId}`;
-                const description = `Ban ${tableName}`.substring(0, 25);
+                const description = `${tableName}`.substring(0, 25);
 
                 // Tạo link thanh toán PayOS
 
@@ -256,11 +273,11 @@ class OrderController {
                     returnUrl: `${process.env.CLIENT_URL}/payment/success?session_id=${sessionId}`,
                 };
 
-                console.log("Creating PayOS link with data:", paymentData);
+                // console.log("Creating PayOS link with data:", paymentData);
 
                 const paymentLinkRes = await customPayOS.paymentRequests.create(paymentData);
 
-                console.log("PayOS response:", paymentLinkRes);
+                // console.log("PayOS response:", paymentLinkRes);
 
                 const checkoutUrl = paymentLinkRes.checkoutUrl;
 
@@ -315,7 +332,7 @@ class OrderController {
     }
   }
 
-  // [POST] /api/orders/webhook/payos
+    // [POST] /api/orders/webhook/payos
     // Webhook nhận dữ liệu từ PayOS khi thanh toán thành công
     async handlePayOSWebhook(req, res) {
         try {
@@ -329,6 +346,9 @@ class OrderController {
             const session = await OrderSession.findOne({ orderCode })
                 .populate('restaurantId')
                 .populate('tableId', 'name');
+            
+            console.log('ordercode: ', orderCode)
+            console.log('session hook: ', session)
             
             if (!session) {
                 console.log(`⚠️ Session not found for orderCode: ${orderCode}`);

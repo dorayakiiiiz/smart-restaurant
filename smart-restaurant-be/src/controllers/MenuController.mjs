@@ -30,7 +30,7 @@ class MenuController {
                 };
             }));
 
-            console.log(itemsWithOrderCount)
+            // console.log(itemsWithOrderCount)
 
             res.status(200).json({ items: itemsWithOrderCount });
         } catch (err) {
