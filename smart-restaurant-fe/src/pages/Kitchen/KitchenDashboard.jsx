@@ -24,6 +24,7 @@ import Column from "./Components/Column";
 import StatItem from "./Components/StatItem";
 import RecycleBinModal from "./Components/RecycleBinModal";
 import { useRef } from "react";
+import AccountSettingsModal from "../../components/Shared/AccountSettings/AccountSettingsModal";
 
 export default function KitchenDashboard() {
   const { user, logout } = useAuth();

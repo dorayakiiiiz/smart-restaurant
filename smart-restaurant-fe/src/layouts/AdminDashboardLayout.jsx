@@ -1,12 +1,16 @@
-import { useEffect } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "../components/AdminDashboard/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { socket } from "../services/socket";
+import AccountSettingsModal from "../components/Shared/AccountSettings/AccountSettingsModal";
 
 export default function AdminDashboardLayout() {
     const location = useLocation();
-    const { user } = useAuth();
+    const navigate = useNavigate();
+    const { user, logout } = useAuth();
+    const [showAccountModal, setShowAccountModal] = useState(false);
+    const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
 
     useEffect(() => {
         if (!user?.restaurantId) return;
@@ -32,6 +36,11 @@ export default function AdminDashboardLayout() {
         return 'Dashboard Overview';
     };
 
+    const handleLogout = () => {
+        logout();
+        navigate('/auth/system/login');
+    };
+
     return (
         <div className="w-full h-screen flex flex-col font-quicksand font-medium bg-[#f8f9fa]">
             {/* Header */}
@@ -47,8 +56,65 @@ export default function AdminDashboardLayout() {
                     <div className="text-gray-400 text-sm hidden md:block">
                         {user?.restaurant?.name || "My Restaurant"}
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-[#D4AF37] text-[#1a1a1a] flex items-center justify-center font-bold">
-                        {user?.fullName?.charAt(0)}
+                    
+                    {/* User Profile Dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowAvatarDropdown(!showAvatarDropdown)}
+                            className="flex items-center gap-3 focus:outline-none group"
+                        >
+                            <div className="text-right hidden sm:block">
+                                <div className="text-sm font-bold text-gray-200 group-hover:text-white transition">{user?.fullName || "Admin"}</div>
+                                <div className="text-[10px] text-gray-500 uppercase font-bold">Admin ID: #{user?._id?.slice(-4)}</div>
+                            </div>
+                            <div className="w-10 h-10 rounded-full bg-gray-800 border-2 border-[#D4AF37] text-[#D4AF37] flex items-center justify-center font-bold text-sm shadow-lg group-hover:bg-gray-700 transition overflow-hidden">
+                                {user?.avatar?.url ? (
+                                    <img src={user.avatar.url} className="w-full h-full object-cover" alt="Avatar" />
+                                ) : (
+                                    user?.fullName?.charAt(0) || "A"
+                                )}
+                            </div>
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {showAvatarDropdown && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setShowAvatarDropdown(false)}></div>
+                                <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-20 transform origin-top-right transition-all animate-fade-in-down">
+                                    <div className="p-5 bg-[#1a1a1a] text-white">
+                                        <div className="font-bold text-lg">{user?.fullName}</div>
+                                        <div className="text-xs text-gray-400 mt-1">{user?.email}</div>
+                                    </div>
+                                    <div className="p-2">
+                                        <button
+                                            onClick={() => {
+                                                setShowAvatarDropdown(false);
+                                                setShowAccountModal(true);
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
+                                                <i className="fa-solid fa-user-gear"></i>
+                                            </div>
+                                            Account Settings
+                                        </button>
+                                        <div className="border-t border-gray-100 my-1"></div>
+                                        <button
+                                            onClick={() => {
+                                                setShowAvatarDropdown(false);
+                                                handleLogout();
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
+                                                <i className="fa-solid fa-arrow-right-from-bracket"></i>
+                                            </div>
+                                            Sign Out
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -75,6 +141,12 @@ export default function AdminDashboardLayout() {
                     </div>
                 </div>
             </div>
+
+            {/* Account Settings Modal */}
+            <AccountSettingsModal 
+                isOpen={showAccountModal}
+                onClose={() => setShowAccountModal(false)}
+            />
         </div>
     );
 }
