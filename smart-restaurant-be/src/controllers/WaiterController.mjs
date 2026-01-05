@@ -430,9 +430,12 @@ class WaiterController {
             return res.status(404).json({ message: "Session not found" });
         }
 
-        // CHỈ CHO PHÉP CONFIRM KHI PAYMENT METHOD LÀ CASH
-        if (session.paymentMethod !== 'cash') {
-            return res.status(400).json({ message: "This session is not cash payment" });
+        // Cho phép confirm nếu là CASH hoặc (TRANSFER và đã PAID)
+        const isCash = session.paymentMethod === 'cash';
+        const isTransferPaid = session.paymentMethod === 'transfer' && session.paymentStatus === 'paid';
+
+        if (!isCash && !isTransferPaid) {
+            return res.status(400).json({ message: "Invalid payment status for confirmation" });
         }
 
         if (session.status !== 'payment_requested') {
@@ -455,6 +458,7 @@ class WaiterController {
         const io = req.app.get('socketio');
         io.to(`session_${sessionId}`).emit('session_ended', {
             sessionId,
+            reason: 'payment_completed',
             message: 'Payment confirmed. Thank you!'
         });
 
