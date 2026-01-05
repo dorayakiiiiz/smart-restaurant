@@ -17,17 +17,17 @@ export default function PaymentSuccess() {
             localStorage.setItem("visited_restaurant", JSON.stringify(currentSession.restaurant));
         }
 
-        // const fallbackTimer = setTimeout(() => {
-        //     localStorage.removeItem("session_info");
-        //     localStorage.removeItem("customer_cart");
-        //     if (user)
-        //         window.location.href = "/profile";
-        //     else
-        //         window.location.href = "/menu";
-        // }, 4000);
+        const fallbackTimer = setTimeout(() => {
+            localStorage.removeItem("session_info");
+            localStorage.removeItem("customer_cart");
+            if (user)
+                window.location.href = "/profile";
+            else
+                window.location.href = "/menu";
+        }, 4000);
 
-        // return () => clearTimeout(fallbackTimer);
-    }, []);
+        return () => clearTimeout(fallbackTimer);
+    }, [user]);
 
     return (
         <div className="fixed inset-0 bg-[#0a0a0a]/95 z-[9999] flex flex-col items-center justify-center p-6 backdrop-blur-sm">
