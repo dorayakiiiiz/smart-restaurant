@@ -20,8 +20,8 @@ const updateRestaurant = async (formData) => {
     return response.data;
 }
 
-const getDashboardStats = async () => {
-    const response = await api.get('/restaurant/stats');
+const getDashboardStats = async (filter = 'week') => {
+    const response = await api.get(`/restaurant/stats?filter=${filter}`);
     return response.data;
 }
 const getPublicRestaurant = async (restaurantId) => {

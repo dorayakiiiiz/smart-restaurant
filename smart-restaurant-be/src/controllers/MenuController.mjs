@@ -1,7 +1,11 @@
 import MenuItem from "../models/MenuItem.mjs";
 import Restaurant from "../models/Restaurant.mjs";
 import Category from "../models/Category.mjs";
+<<<<<<< HEAD
+import Order from "../models/Order.mjs";
+=======
 import Order from "../models/Order.mjs"; // Import Order model
+>>>>>>> f997157df9a2e9dee52e69fd7491522b93dc548a
 
 class MenuController {
     // [GET] /api/menu/public/:restaurantId
@@ -16,21 +20,32 @@ class MenuController {
             .populate('categoryId', 'name isActive')
             .sort({ createdAt: -1 });
 
-            // Tính orderCount cho từng item
-            const itemsWithOrderCount = await Promise.all(items.map(async (item) => {
-                const orderCount = await Order.countDocuments({
-                    restaurantId,
-                    'items.menuItemId': item._id,
-                    status: 'served' // Chỉ đếm order đã served
-                });
 
-                return {
-                    ...item.toObject(),
-                    orderCount
-                };
+            // Calculate order counts
+            const orderCounts = await Order.aggregate([
+                { $match: { restaurantId } },
+                { $unwind: "$items" },
+                { $group: {
+                    _id: "$items.menuItemId",
+                    totalOrders: { $sum: "$items.quantity" }
+                }}
+            ]);
+
+            //Map order counts to items
+            const ordersMap = {};
+            orderCounts.forEach(doc => {
+                if (doc._id) {
+                    ordersMap[doc._id.toString()] = doc.totalOrders;
+                }
+            });
+
+            const itemsWithOrders = items.map(item => ({
+                ...item.toObject(),
+                orderCount: ordersMap[item._id.toString()] || 0
             }));
 
-            res.status(200).json({ items: itemsWithOrderCount });
+            res.status(200).json({ items: itemsWithOrders });
+
         } catch (err) {
             res.status(500).json({ message: "Error fetching public menu", error: err.message });
         }
@@ -52,7 +67,31 @@ class MenuController {
                 .populate('categoryId', 'name isActive') // Chỉ lấy tên category
                 .sort({ createdAt: -1 }); // Mới nhất lên đầu
 
-            res.status(200).json({ items });
+            // Calculate order counts
+            const orderCounts = await Order.aggregate([
+                { $match: { restaurantId: restaurant._id } },
+                { $unwind: "$items" },
+                { $group: {
+                    _id: "$items.menuItemId",
+                    totalOrders: { $sum: "$items.quantity" }
+                }}
+            ]);
+
+            //Map order counts to items
+            const ordersMap = {};
+            orderCounts.forEach(doc => {
+                if (doc._id) {
+                    ordersMap[doc._id.toString()] = doc.totalOrders;
+                }
+            });
+
+            const itemsWithOrders = items.map(item => ({
+                ...item.toObject(),
+                orderCount: ordersMap[item._id.toString()] || 0
+            }));
+
+            res.status(200).json({ items: itemsWithOrders });
+
         } catch (err) {
             console.error("Get Menu Error:", err);
             res.status(500).json({ message: "Internal Server Error", error: err.message });
@@ -69,7 +108,21 @@ class MenuController {
             
             if (!item) return res.status(404).json({ message: "Item not found" });
 
-            res.status(200).json({ item });
+            // Calculate order count for this specific item
+            const orderCountResult = await Order.aggregate([
+                { $match: { restaurantId } },
+                { $unwind: "$items" },
+                { $match: { "items.menuItemId": item._id } },
+                { $group: {
+                    _id: "$items.menuItemId",
+                    totalOrders: { $sum: "$items.quantity" }
+                }}
+            ]);
+
+            const orderCount = orderCountResult.length > 0 ? orderCountResult[0].totalOrders : 0;
+
+            res.status(200).json({ item: { ...item.toObject(), orderCount } });
+
         } catch (err) {
             res.status(500).json({ message: "Error fetching item", error: err.message });
         }
@@ -87,7 +140,20 @@ class MenuController {
             
             if (!item) return res.status(404).json({ message: "Item not found" });
 
-            res.status(200).json({ item });
+            // Calculate order count for this specific item
+            const orderCountResult = await Order.aggregate([
+                { $match: { restaurantId: restaurant._id } },
+                { $unwind: "$items" },
+                { $match: { "items.menuItemId": item._id } },
+                { $group: {
+                    _id: "$items.menuItemId",
+                    totalOrders: { $sum: "$items.quantity" }
+                }}
+            ]);
+
+            const orderCount = orderCountResult.length > 0 ? orderCountResult[0].totalOrders : 0;
+
+            res.status(200).json({ item: { ...item.toObject(), orderCount } });
         } catch (err) {
             res.status(500).json({ message: "Error fetching item", error: err.message });
         }
