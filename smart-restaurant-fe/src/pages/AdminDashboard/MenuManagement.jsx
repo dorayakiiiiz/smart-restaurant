@@ -31,6 +31,8 @@ export default function MenuManagement() {
         queryFn: menuService.getMenu
     });
 
+    console.log("Menu Data:", menuData);
+
     const { data: categoryData, isLoading: isCategoryLoading } = useQuery({
         queryKey: ['categories'],
         queryFn: categoryService.getCategories
@@ -112,7 +114,7 @@ export default function MenuManagement() {
         }
         //TO DO: Cần có trường orders trong menuItem để sắp xếp đúng
         else if (sortBy === 'popular') {
-            return b.price - a.price; // Assuming 'orders' field indicates popularity
+            return (b.orderCount || 0) - (a.orderCount || 0); // Assuming 'orders' field indicates popularity
         }
         return 0;
     });
@@ -207,7 +209,7 @@ export default function MenuManagement() {
                     <option value="newest">Sort by: Newest</option>
                     <option  value='low'>Sort by: Price (Low)</option>
                     <option  value='high'>Sort by: Price (High)</option>
-                    <option  value='popolar'>Sort by: Popular</option>
+                    <option  value='popular'>Sort by: Popular</option>
                 </select>
             </div>
 
@@ -298,9 +300,8 @@ export default function MenuManagement() {
                                         {/* Rating and Orders */}
                                         <div className="flex items-center text-sm text-gray-500 mb-4">
                                             <i className="fa-solid fa-star text-yellow-400 mr-1"></i>
-                                            <span className="font-bold text-gray-700 mr-1">4.5</span>
-                                            <span className="text-gray-400 mr-3">(32)</span>
-                                            <span>76 orders</span>
+                                            <span className="font-bold text-gray-700 mr-2">{item.averageRating}</span>
+                                            <span>{item.orderCount || 0} orders</span>
                                         </div>
                                     </div>
                                 </div>
