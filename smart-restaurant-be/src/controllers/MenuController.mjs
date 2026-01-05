@@ -1,11 +1,7 @@
 import MenuItem from "../models/MenuItem.mjs";
 import Restaurant from "../models/Restaurant.mjs";
 import Category from "../models/Category.mjs";
-<<<<<<< HEAD
 import Order from "../models/Order.mjs";
-=======
-import Order from "../models/Order.mjs"; // Import Order model
->>>>>>> f997157df9a2e9dee52e69fd7491522b93dc548a
 
 class MenuController {
     // [GET] /api/menu/public/:restaurantId
