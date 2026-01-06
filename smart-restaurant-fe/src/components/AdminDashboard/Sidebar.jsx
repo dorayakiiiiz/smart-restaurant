@@ -1,11 +1,15 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useState } from "react";
+import AccountSettingsModal from "../Shared/AccountSettings/AccountSettingsModal";
 
 export default function Sidebar() {
     const { user, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    
+    const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
+    const [showAccountModal, setShowAccountModal] = useState(false);
+
     // Menu cho Restaurant Admin (Chủ quán)
     const menuItems = [
         { label: 'Dashboard', icon: 'fa-chart-pie', path: '/system/admin/dashboard' },
@@ -27,19 +31,65 @@ export default function Sidebar() {
     };
 
     return (
-        <div className="w-[260px] bg-white border-r border-gray-200 flex flex-col h-full shrink-0 font-quicksand">
+        <div 
+            className="w-[260px] bg-white border-r border-gray-200 flex flex-col h-full shrink-0 font-quicksand"
+            onClick={() => setShowAvatarDropdown(false)}
+        >
             {/* Restaurant Info Snippet */}
             <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-[#1a1a1a] text-[#D4AF37] flex items-center justify-center font-bold text-xl shadow-md">
+                <div className="relative w-12 h-12 rounded-xl bg-[#1a1a1a] text-[#D4AF37] flex items-center justify-center font-bold text-xl shadow-md">
                     <i className="fa-solid fa-store"></i>
                 </div>
-                <div className="overflow-hidden">
+                <div className="relative">
                     <div className="font-bold text-gray-800 truncate text-sm">
                         {user?.restaurant?.name || "My Restaurant"}
                     </div>
-                    <div className="text-xs text-gray-500 truncate">
-                        {user?.fullName} (Owner)
+                    <div 
+                        className="text-sm text-gray-500 hover:text-gray-800 hover:font-bold cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); setShowAvatarDropdown(!showAvatarDropdown) }}
+                    >
+                        {user?.fullName} 
                     </div>
+                    {showAvatarDropdown && (
+                        <>
+                            <div 
+                                className="absolute -left-6 top-12 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-20 transform origin-top-right transition-all animate-fade-in-down"
+                                onClick={e => e.stopPropagation()}    
+                            >
+                                <div className="p-5 bg-[#1a1a1a] text-white">
+                                    <div className="font-bold text-lg">{user?.fullName}</div>
+                                    <div className="text-xs text-gray-400 mt-1">{user?.email}</div>
+                                </div>
+                                <div className="">
+                                    <button
+                                        onClick={() => {
+                                            setShowAvatarDropdown(false);
+                                            setShowAccountModal(true);
+                                        }}
+                                        className="w-full flex items-center gap-3 px-6 py-5 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                                            <i className="fa-solid fa-user-gear"></i>
+                                        </div>
+                                        Account Settings
+                                    </button>
+                                    <div className="border-t border-gray-100"></div>
+                                    <button
+                                        onClick={() => {
+                                            setShowAvatarDropdown(false);
+                                            handleLogout();
+                                        }}
+                                        className="w-full flex items-center gap-3 px-6 py-5 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
+                                            <i className="fa-solid fa-arrow-right-from-bracket"></i>
+                                        </div>
+                                        Sign Out
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -71,6 +121,12 @@ export default function Sidebar() {
                     Logout
                 </button>
             </div>
+
+            {/* Account Settings Modal */}
+            <AccountSettingsModal 
+                isOpen={showAccountModal}
+                onClose={() => setShowAccountModal(false)}
+            />
         </div>
     );
 }

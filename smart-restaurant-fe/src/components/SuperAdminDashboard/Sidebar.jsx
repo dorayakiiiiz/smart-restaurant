@@ -1,16 +1,19 @@
-import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useState } from "react";
+import AccountSettingsModal from "../Shared/AccountSettings/AccountSettingsModal";
 
 export default function Sidebar() {
     const { user, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
+    const [showAvatarDropdown, setShowAvatarDropdown] = useState(false);
+    const [showAccountModal, setShowAccountModal] = useState(false);
     
     const menuItems = [
         { label: 'Dashboard', icon: 'fa-chart-line', path: '/system/super/admin/dashboard' },
         { label: 'Restaurants', icon: 'fa-store', path: '/system/super/admin/admins' },
-        { label: 'Settings', icon: 'fa-gear', path: '/system/super/admin/settings' },
+        // { label: 'Settings', icon: 'fa-gear', path: '/system/super/admin/settings' },
     ];
 
     const isActive = (path) => location.pathname.includes(path);
@@ -21,20 +24,70 @@ export default function Sidebar() {
     };
 
     return (
-        <div className="w-[260px] bg-white border-r border-gray-200 flex flex-col h-full shrink-0">
+        <div 
+            className="w-[260px] bg-white border-r border-gray-200 flex flex-col h-full shrink-0 font-quicksand"
+            onClick={() => setShowAvatarDropdown(false)}
+        >
             {/* User Profile Snippet */}
             <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#800020] text-white flex items-center justify-center font-bold text-lg">
-                    {user?.fullName?.charAt(0) || 'A'}
+                <div className="relative w-12 h-12 rounded-xl bg-[#800020] text-white flex items-center justify-center font-bold text-xl shadow-md">
+                    <i className="fa-solid fa-shield-cat"></i>
                 </div>
-                <div className="overflow-hidden">
-                    <div className="font-bold text-gray-800 truncate">{user?.fullName}</div>
-                    <div className="text-xs text-gray-500 truncate">{user?.email}</div>
+                <div className="relative">
+                    <div className="font-bold text-gray-800 truncate uppercase">
+                        System Admin
+                    </div>
+                    <div 
+                        className="text-sm text-gray-500 hover:text-gray-800 hover:font-bold cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); setShowAvatarDropdown(!showAvatarDropdown) }}
+                    >
+                        {user?.fullName} 
+                    </div>
+                    {showAvatarDropdown && (
+                        <>
+                            <div 
+                                className="absolute -left-6 top-12 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-20 transform origin-top-right transition-all animate-fade-in-down"
+                                onClick={e => e.stopPropagation()}    
+                            >
+                                <div className="p-5 bg-[#1a1a1a] text-white">
+                                    <div className="font-bold text-lg">{user?.fullName}</div>
+                                    <div className="text-xs text-gray-200 mt-1">{user?.email}</div>
+                                </div>
+                                <div className="">
+                                    <button
+                                        onClick={() => {
+                                            setShowAvatarDropdown(false);
+                                            setShowAccountModal(true);
+                                        }}
+                                        className="w-full flex items-center gap-3 px-6 py-5 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                                            <i className="fa-solid fa-user-gear"></i>
+                                        </div>
+                                        Account Settings
+                                    </button>
+                                    <div className="border-t border-gray-100"></div>
+                                    <button
+                                        onClick={() => {
+                                            setShowAvatarDropdown(false);
+                                            handleLogout();
+                                        }}
+                                        className="w-full flex items-center gap-3 px-6 py-5 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
+                                            <i className="fa-solid fa-arrow-right-from-bracket"></i>
+                                        </div>
+                                        Sign Out
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
             {/* Menu */}
-            <div className="flex-1 py-6 px-3 space-y-1">
+            <div className="flex-1 py-2 px-3 space-y-1 overflow-y-auto no-scrollbar">
                 {menuItems.map((item, index) => (
                     <Link 
                         key={index}
@@ -61,6 +114,12 @@ export default function Sidebar() {
                     Logout
                 </button>
             </div>
+
+            {/* Account Settings Modal */}
+            <AccountSettingsModal 
+                isOpen={showAccountModal}
+                onClose={() => setShowAccountModal(false)}
+            />
         </div>
     );
 }

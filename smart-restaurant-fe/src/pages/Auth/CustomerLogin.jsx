@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { authService } from "../../services/authService";
@@ -8,10 +8,42 @@ export default function CustomerLogin() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [successMsg, setSuccessMsg] = useState(""); // State mới
+    const [successMsg, setSuccessMsg] = useState(""); 
     
     const { login } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const receiveMessageFromPopUp = async(e) => {
+            const { type, payload } = e.data;
+            if (type === 'login_success') {
+                const { refreshToken, accessToken } = payload;
+                
+                setSuccessMsg("Login successful! Redirecting...");
+
+                setTimeout(async () => {
+                    await login(refreshToken, accessToken);
+                    navigate('/profile'); 
+                }, 1500);
+            }
+            else if (type === 'login_failed' || type === 'error') {
+                setError(payload?.message || 'Login failed');
+            }
+        }
+        window.addEventListener('message', receiveMessageFromPopUp);
+        return () => window.removeEventListener('message', receiveMessageFromPopUp);
+    }, [login, navigate]);
+
+    const handleGoogleLogin = () => {
+        const width = 500, height = 600;
+        const left = (window.innerWidth - width) / 2;
+        const top = (window.innerHeight - height) / 2;
+        window.open(
+            authService.getGoogleAuthUrl(), 
+            "Google Login", 
+            `width=${width},height=${height},top=${top},left=${left}`
+        );
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -22,11 +54,9 @@ export default function CustomerLogin() {
         try {
             const res = await authService.login({ email, password });
             
-            // Hiện thông báo thành công
             setSuccessMsg("Login successful! Redirecting...");
             setLoading(false);
 
-            // Chờ 1.5s rồi mới gọi login (login sẽ reload trang hoặc redirect)
             setTimeout(async () => {
                 await login(res.refreshToken, res.accessToken);
                 navigate('/profile'); 
@@ -34,13 +64,12 @@ export default function CustomerLogin() {
 
         } catch (err) {
             setError(err.response?.data?.message || "Login failed. Please try again.");
-            setLoading(false); // Chỉ tắt loading khi lỗi
+            setLoading(false); 
         }
     };
 
     return (
         <div className="min-h-screen w-full flex font-quicksand bg-white">
-            {/* Left Side - Image (Desktop Only) */}
             <div className="hidden lg:flex lg:w-1/2 relative bg-[#1a1a1a] items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=1974&auto=format&fit=crop')] bg-cover bg-center opacity-60"></div>
                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-transparent"></div>
@@ -52,12 +81,9 @@ export default function CustomerLogin() {
                 </div>
             </div>
 
-            {/* Right Side - Form (Mobile Optimized) */}
             <div className="w-full lg:w-1/2 flex flex-col bg-[#f8f9fa]">
                 
-                {/* Mobile Header Section - Tạo điểm nhấn cho Mobile */}
                 <div className="relative bg-[#800020] pt-8 pb-24 px-8 text-center overflow-hidden shrink-0">
-                    {/* Pattern Background */}
                     <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#D4AF37 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                     
                     <button 
@@ -76,12 +102,10 @@ export default function CustomerLogin() {
                     </div>
                 </div>
 
-                {/* Form Container - Trượt lên trên Header */}
                 <div className="flex-1 px-6 -mt-10 mb-10 relative z-20">
                     <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100 h-full md:h-auto">
                         <form onSubmit={handleSubmit} className="space-y-5">
                             
-                            {/* Success Message */}
                             {successMsg && (
                                 <div className="p-3 bg-green-50 border border-green-100 text-green-600 text-sm rounded-xl flex items-center gap-2 animate-pulse">
                                     <i className="fa-solid fa-circle-check"></i>
@@ -89,7 +113,6 @@ export default function CustomerLogin() {
                                 </div>
                             )}
 
-                            {/* Error Message */}
                             {error && (
                                 <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl flex items-center gap-2 animate-fade-in">
                                     <i className="fa-solid fa-circle-exclamation"></i>
@@ -162,10 +185,14 @@ export default function CustomerLogin() {
                             </div>
 
                             <div className="mt-6">
-                                <a href={authService.getGoogleAuthUrl()} className="flex items-center justify-center gap-3 w-full px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-bold text-gray-700">
+                                <button 
+                                    type="button"
+                                    onClick={handleGoogleLogin} 
+                                    className="flex items-center justify-center gap-3 w-full px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-bold text-gray-700"
+                                >
                                     <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
                                     Google
-                                </a>
+                                </button>
                             </div>
                         </div>
 

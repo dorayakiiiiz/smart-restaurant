@@ -315,22 +315,23 @@ export default function KitchenDashboard() {
                             <i className={`fa-solid text-sm md:text-lg ${isSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}`}></i>
                         </button>
 
-            <button
-              onClick={() => setShowHistory(true)}
-              className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
-              title="View History"
-            >
-              <i className="fa-solid fa-clock-rotate-left text-sm md:text-lg"></i>
-            </button>
+                        <button
+                            onClick={() => setShowHistory(true)}
+                            className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
+                            title="View History"
+                            >
+                            <i className="fa-solid fa-clock-rotate-left text-sm md:text-lg"></i>
+                        </button>
 
-            <button
-              onClick={() => setShowAccountModal(true)}
-              className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
-              title="Account Settings"
-            >
-              <i className="fa-solid fa-user-gear text-sm md:text-lg"></i>
-            </button>
+                        {user.role !== 'admin' && (<button 
+                            onClick={() => setShowAccountModal(true)}
+                            className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
+                            title="Account Settings"
+                        >
+                            <i className="fa-solid fa-user-gear text-sm md:text-lg"></i>
+                        </button>)}
 
+                            
                         {user.role !== 'admin' && (<button 
                             onClick={logout}
                             className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-500/20 text-red-500 hover:from-red-500/20 hover:to-rose-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
