@@ -271,8 +271,8 @@ export default function CustomerProfilePage() {
                         ) : (
                             sessions.map((session) => (
                                     <div key={session.sessionId} className="group border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 bg-white">
-                                        {/* Session Header - Tone màu sang trọng với Gradient nhẹ */}
-                                        <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-5 flex justify-between items-center">
+                                        {/* Session Header */}
+                                        <div className="bg-gradient-to-r from-slate-800 to-slate-900 py-3 px-5 flex justify-between items-center">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-11 h-11 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center text-white border border-white/20">
                                                     <i className="fa-regular fa-calendar-check text-lg"></i>
@@ -287,7 +287,7 @@ export default function CustomerProfilePage() {
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="font-black text-white text-2xl tracking-tight">
+                                                <div className="font-black text-white text-xl tracking-tight">
                                                     ${(session.totalAmount || 0).toLocaleString()}
                                                 </div>
                                                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase mt-2 shadow-sm ${
@@ -302,7 +302,7 @@ export default function CustomerProfilePage() {
                                         </div>
 
                                         {/* Orders List */}
-                                        <div className="p-6 space-y-8">
+                                        <div className="pt-4 pb-6 px-6 space-y-8">
                                             {session.ordersList && session.ordersList.length > 0 ? (
                                                 session.ordersList.map((order, idx) => (
                                                     <div key={order._id || idx} className="relative pl-8 border-l-2 border-slate-100 last:mb-0">
