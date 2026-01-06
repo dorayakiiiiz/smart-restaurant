@@ -3,12 +3,14 @@ import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { socket } from "../../services/socket";
 import { useQueryClient } from "@tanstack/react-query";
+import AccountSettingsModal from "../../components/Shared/AccountSettings/AccountSettingsModal";
 
 export default function WaiterDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
   const [counts, setCounts] = useState({
     pending: 0,
     accepted: 0,
@@ -199,10 +201,23 @@ export default function WaiterDashboard() {
                   </div>
                   <div className="p-2">
                     <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl font-bold transition-colors"
+                      onClick={() => {
+                        setShowDropdown(false);
+                        setShowAccountModal(true);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                        <i className="fa-solid fa-user-gear"></i>
+                      </div>
+                      Account Settings
+                    </button>
+                    <div className="border-t border-gray-100 my-1"></div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl font-bold transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
                         <i className="fa-solid fa-arrow-right-from-bracket"></i>
                       </div>
                       Sign Out
@@ -256,6 +271,12 @@ export default function WaiterDashboard() {
       <div className="flex-1 w-full p-3 sm:p-4 md:p-6 overflow-y-auto">
         <Outlet context={{ setCounts }} />
       </div>
+
+      {/* Account Settings Modal */}
+      <AccountSettingsModal 
+        isOpen={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
+      />
     </div>
   );
 }

@@ -39,10 +39,10 @@ export default passport.use(
                 const newUser = new User ({
                     // Không cần pass
                     email: userEmail,
-                    displayName: profile.displayName,
+                    fullName: profile.displayName,
                     googleId: googleId,
                     loginMethod: 'google',
-                    role: 'creator', 
+                    role: 'customer', 
                     isLocked: false,
                 })
                 await newUser.save()

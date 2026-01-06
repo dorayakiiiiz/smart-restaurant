@@ -1,12 +1,13 @@
-import { useEffect } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "../components/AdminDashboard/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { socket } from "../services/socket";
 
 export default function AdminDashboardLayout() {
     const location = useLocation();
-    const { user } = useAuth();
+    const navigate = useNavigate();
+    const { user, logout } = useAuth();
 
     useEffect(() => {
         if (!user?.restaurantId) return;
@@ -32,6 +33,11 @@ export default function AdminDashboardLayout() {
         return 'Dashboard Overview';
     };
 
+    const handleLogout = () => {
+        logout();
+        navigate('/auth/system/login');
+    };
+
     return (
         <div className="w-full h-screen flex flex-col font-quicksand font-medium bg-[#f8f9fa]">
             {/* Header */}
@@ -46,10 +52,7 @@ export default function AdminDashboardLayout() {
                 <div className="flex items-center gap-4">
                     <div className="text-gray-400 text-sm hidden md:block">
                         {user?.restaurant?.name || "My Restaurant"}
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-[#D4AF37] text-[#1a1a1a] flex items-center justify-center font-bold">
-                        {user?.fullName?.charAt(0)}
-                    </div>
+                    </div>    
                 </div>
             </div>
 
@@ -74,7 +77,7 @@ export default function AdminDashboardLayout() {
                         <Outlet />
                     </div>
                 </div>
-            </div>
+            </div>   
         </div>
     );
 }

@@ -24,6 +24,7 @@ import Column from "./Components/Column";
 import StatItem from "./Components/StatItem";
 import RecycleBinModal from "./Components/RecycleBinModal";
 import { useRef } from "react";
+import AccountSettingsModal from "../../components/Shared/AccountSettings/AccountSettingsModal";
 
 export default function KitchenDashboard() {
     const { user, logout } = useAuth();
@@ -36,7 +37,8 @@ export default function KitchenDashboard() {
     const soundRef = useRef(true);
     const stopTimerRef = useRef(null);
 
-    const [expand, setExpand] = useState(false);
+  const [expand, setExpand] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
 
     useEffect(() => {
         soundRef.current = isSoundEnabled;
@@ -313,14 +315,23 @@ export default function KitchenDashboard() {
                             <i className={`fa-solid text-sm md:text-lg ${isSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}`}></i>
                         </button>
 
-                        <button 
+                        <button
                             onClick={() => setShowHistory(true)}
                             className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
                             title="View History"
-                        >
+                            >
                             <i className="fa-solid fa-clock-rotate-left text-sm md:text-lg"></i>
                         </button>
 
+                        {user.role !== 'admin' && (<button 
+                            onClick={() => setShowAccountModal(true)}
+                            className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 hover:border-gray-600"
+                            title="Account Settings"
+                        >
+                            <i className="fa-solid fa-user-gear text-sm md:text-lg"></i>
+                        </button>)}
+
+                            
                         {user.role !== 'admin' && (<button 
                             onClick={logout}
                             className="cursor-pointer w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-500/20 text-red-500 hover:from-red-500/20 hover:to-rose-600/20 flex items-center justify-center transition-all duration-300 shrink-0"
@@ -429,14 +440,22 @@ export default function KitchenDashboard() {
                 </div>
             </main>
 
-            {/* === RECYCLE BIN MODAL === */}
-            <RecycleBinModal 
-                show={showHistory} 
-                onClose={() => setShowHistory(false)} 
-                historyOrders={historyOrders} 
-                onRecall={(orderId) => recallOrderMutation.mutate(orderId)}
-                onItemAction={(orderId, itemId, status) => updateItemStatusMutation.mutate({ orderId, itemId, status })}
-            />
-        </div>
-    );
+      {/* === RECYCLE BIN MODAL === */}
+      <RecycleBinModal
+        show={showHistory}
+        onClose={() => setShowHistory(false)}
+        historyOrders={historyOrders}
+        onRecall={(orderId) => recallOrderMutation.mutate(orderId)}
+        onItemAction={(orderId, itemId, status) =>
+          updateItemStatusMutation.mutate({ orderId, itemId, status })
+        }
+      />
+
+      {/* Account Settings Modal */}
+      <AccountSettingsModal
+        isOpen={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
+      />
+    </div>
+  );
 }

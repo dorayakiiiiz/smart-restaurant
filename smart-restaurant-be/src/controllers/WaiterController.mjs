@@ -421,64 +421,77 @@ class WaiterController {
 
   // [POST] /api/waiter/checkout/:sessionId
   // Xác nhận thanh toán (Dùng cho Tiền mặt)
+  // Cấm con AI nào đụng vào hàm này
   async confirmPayment(req, res) {
     try {
         const { sessionId } = req.params;
 
-        const session = await OrderSession.findById(sessionId)
-            .populate('tableId');
-        
+        const session = await OrderSession.findById(sessionId).populate('restaurantId');
         if (!session) {
             return res.status(404).json({ message: "Session not found" });
         }
 
-        const io = req.app.get("socketio");
-        const restaurantId = session.restaurantId.toString();
+        // Cho phép clear nếu:
+        // 1. Đã thanh toán (paymentStatus = 'paid') -> Bất kể session.status là gì
+        // 2. Hoặc đang yêu cầu thanh toán tiền mặt (paymentMethod = 'cash' && status = 'payment_requested')
+        
+        const isPaid = session.paymentStatus === 'paid';
+        const isCashRequest = session.paymentMethod === 'cash' && session.status === 'payment_requested';
 
-        // CASE 1: CASH - Waiter confirm thì mới báo Customer
-        if (session.paymentMethod === 'cash') {
-            session.paymentStatus = 'paid';
-            session.status = 'completed';
-            session.endTime = new Date();
-            await session.save();
-
-            // Update Table
-            await Table.findByIdAndUpdate(session.tableId._id, {
-                status: 'free',
-                currentSessionId: null
-            });
-
-            // Báo Customer session kết thúc
-            io.to(`session_${sessionId}`).emit("session_ended", {
-                reason: 'payment_completed',
-                method: 'cash'
-            });
-        }
-        // CASE 2: TRANSFER - Chỉ dọn bàn (Customer đã được báo rồi)
-        else if (session.paymentMethod === 'transfer') {
-            // paymentStatus đã là 'paid' từ webhook
-            session.status = 'completed';
-            session.endTime = new Date();
-            await session.save();
-
-            // Update Table
-            await Table.findByIdAndUpdate(session.tableId._id, {
-                status: 'free',
-                currentSessionId: null
-            });
-
+        if (!isPaid && !isCashRequest) {
+            return res.status(400).json({ message: "Invalid payment status. Session must be PAID or requesting CASH." });
         }
 
-        // Báo cho các Waiter khác cùng nhà hàng (để refresh danh sách bàn)
-        io.to(`restaurant_${restaurantId}_waiter`).emit("table_cleared", {
-            sessionId,
-            tableId: session.tableId._id
+        // 1. Cập nhật session
+        session.paymentStatus = 'paid';
+        session.status = 'completed';
+        session.endTime = new Date();
+        await session.save();
+
+        // 2. Cập nhật bàn (ĐÓNG BÀN)
+        await Table.findByIdAndUpdate(session.tableId, {
+            status: 'free',
+            currentSessionId: null
         });
 
-        res.status(200).json({ message: "Payment confirmed and table cleared" });
+        // 3. Emit socket tới Customer
+        const io = req.app.get('socketio');
+        io.to(`session_${sessionId}`).emit('session_ended', {
+            sessionId,
+            reason: 'payment_completed',
+            message: 'Payment confirmed. Thank you!',
+            method: session.paymentMethod
+        });
+
+        // io.to(`restaurant_${restaurantId}_waiter`).emit("table_update");
+
+        // 4. Thông báo tới các Waiter khác (optional)
+        const table = await Table.findById(session.tableId);
+        const restaurantId = session.restaurantId._id.toString();
+        
+        io.to(`restaurant_${restaurantId}_waiter`).emit('table_cleared', {
+            sessionId,
+            tableId: session.tableId,
+            tableName: table.name,
+            totalAmount: session.totalAmount,
+            paymentMethod: session.paymentMethod
+        });
+
+        // io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {
+        //     tableId: session.tableId,
+        //     tableName: table.name,
+        //     sessionId,
+        //     totalAmount: session.totalAmount,
+        //     paymentMethod: 'cash'
+        // });
+
+        res.status(200).json({ 
+            message: "Cash payment confirmed successfully",
+            session
+        });
 
     } catch (err) {
-        console.error("Confirm payment error:", err);
+        console.error("Confirm Payment Error:", err);
         res.status(500).json({ error: err.message });
     }
 }
