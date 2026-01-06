@@ -7,6 +7,8 @@ export default function QRModal({ table, onClose, onRegenerate }) {
     
     // URL mà khách sẽ quét
     const qrValue = `${import.meta.env.VITE_CLIENT_URL}/menu?table=${table._id}&token=${table.token}`;
+    console.log(import.meta.env.VITE_CLIENT_URL)
+    console.log(qrValue)
 
     const handleDownloadPDF = async () => {
         setLoading(true);
