@@ -252,42 +252,36 @@ SmartRestaurant Team`
         }
     }
 
-    // [GET] auth/google/redirect (hoặc /auth/google/callback)
+    // [GET] auth/google/redirect
     async google(req, res, next) {
         try { 
             const userInfo = req.user; 
-            console.log(userInfo)
             
             if (!userInfo) {
-                console.log('Lỗi không có userInfo')
-                // Nếu có lỗi, chuyển hướng về trang đăng nhập của FE
                 return res.send(generateAuthScript('login_failed', { message: 'User info not found' }));
             }
 
-            if (userInfo.isLocked)
-                return res.send(generateAuthScript('login_failed', { message: 'Your account has been locked due to violation.' }))
+            if (userInfo.isLocked) {
+                return res.send(generateAuthScript('login_failed', { message: 'Your account has been locked.' }));
+            }
 
-            // 2. Tạo JWT (dùng ID hoặc _id của Mongoose)
-            const token = jwt.sign(
-                { id: userInfo._id },
-                process.env.JWT_SECRET,
-                { expiresIn: "7d" }
-            );
+            // --- SỬA ĐOẠN NÀY ---
+            // Tạo cả 2 loại token giống hệt logic hàm login()
+            const access_token_secret = process.env.ACCESS_TOKEN_SECRET;
+            const refresh_token_secret = process.env.REFRESH_TOKEN_SECRET;
 
-            // 3. Đặt JWT vào HTTP-only Cookie
+            const accessToken = jwt.sign({ id: userInfo._id }, access_token_secret, { expiresIn: '15m' });
+            const refreshToken = jwt.sign({ id: userInfo._id }, refresh_token_secret, { expiresIn: '7d' });
 
-            // res.cookie('jwt', token, {
-            //     httpOnly: true, // Rất quan trọng: không thể truy cập từ JavaScript client-side
-            //     secure: process.env.NODE_ENV === 'production', // Dùng HTTPS trong production
-            //     maxAge: 7 * 24 * 60 * 60 * 1000 // Hết hạn sau 7 ngày
-            // });
-
-            console.log('[THÀNH CÔNG!!!]')
-            return res.send(generateAuthScript('login_success', { token })); 
+            // Trả về payload có đủ accessToken và refreshToken
+            return res.send(generateAuthScript('login_success', { 
+                accessToken, 
+                refreshToken 
+            })); 
+            // --------------------
             
         } catch (err) {
             console.log("Google Auth Callback Error:", err);
-            // Chuyển hướng về trang báo lỗi của Front-end
             return res.send(generateAuthScript('login_failed', { message: 'Authentication failed' }));
         }
     }
