@@ -327,7 +327,7 @@ export default function CustomerProfilePage() {
                                                         </div>
 
                                                         {/* Items Card - Background màu trắng xanh rất nhẹ */}
-                                                        <div className="space-y-2 bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50 hover:bg-white hover:border-indigo-100 hover:shadow-md transition-all duration-300">
+                                                        <div className="space-y-2 bg-slate-50/50 p-4 rounded-2xl border hover:bg-white border-indigo-100 shadow transition-all duration-300">
                                                             {order.items && order.items.map((item, itemIdx) => (
                                                                 <div key={itemIdx} className="flex justify-between items-center group/item text-sm">
                                                                     <div className="flex gap-4 items-center">
