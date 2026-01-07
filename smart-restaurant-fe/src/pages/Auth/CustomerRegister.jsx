@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../../services/authService";
+import { useAuth } from "../../context/AuthContext";
 
 export default function CustomerRegister() {
     const [step, setStep] = useState(1);
@@ -76,6 +77,40 @@ export default function CustomerRegister() {
         if (e.key === "Backspace" && !otp[index] && index > 0) {
             otpInputRefs.current[index - 1].focus();
         }
+    };
+
+    const { login } = useAuth();
+
+    useEffect(() => {
+        const receiveMessageFromPopUp = async(e) => {
+            const { type, payload } = e.data;
+            if (type === 'login_success') {
+                const { refreshToken, accessToken } = payload;
+                
+                setSuccessMsg("Login successful! Redirecting...");
+
+                setTimeout(async () => {
+                    await login(refreshToken, accessToken);
+                    navigate('/profile'); 
+                }, 1500);
+            }
+            else if (type === 'login_failed' || type === 'error') {
+                setError(payload?.message || 'Login failed');
+            }
+        }
+        window.addEventListener('message', receiveMessageFromPopUp);
+        return () => window.removeEventListener('message', receiveMessageFromPopUp);
+    }, [login, navigate]);
+
+    const handleGoogleLogin = () => {
+        const width = 500, height = 600;
+        const left = (window.innerWidth - width) / 2;
+        const top = (window.innerHeight - height) / 2;
+        window.open(
+            authService.getGoogleAuthUrl(), 
+            "Google Login", 
+            `width=${width},height=${height},top=${top},left=${left}`
+        );
     };
 
     const handleSubmitStep1 = async (e) => {
@@ -376,13 +411,14 @@ export default function CustomerRegister() {
                                 </div>
 
                                 {/* Google Button */}
-                                <a 
-                                    href={authService.getGoogleAuthUrl()} 
+                                <button
+                                    type="button" 
+                                    onClick={handleGoogleLogin} 
                                     className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-bold text-gray-700"
                                 >
                                     <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
                                     Sign up with Google
-                                </a>
+                                </button>
 
                                 <div className="mt-6 text-center text-sm text-gray-600">
                                     Already have an account? 
