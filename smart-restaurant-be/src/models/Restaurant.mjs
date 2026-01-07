@@ -53,6 +53,10 @@ const RestaurantSchema = new Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    totalRevenue: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 
