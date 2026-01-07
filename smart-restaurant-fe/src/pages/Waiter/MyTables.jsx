@@ -9,6 +9,7 @@ export default function MyTables() {
     
     const [expandedSession, setExpandedSession] = useState(null);
     const [sessionOrders, setSessionOrders] = useState({});
+    const [confirmedSessions, setConfirmedSessions] = useState(new Set());
 
     // Fetch tables using React Query
     const { data: sessions = [], isLoading: loading } = useQuery({
@@ -63,8 +64,34 @@ export default function MyTables() {
         }
     });
 
-    const handleConfirmPayment = (sessionId) => {
-        if (window.confirm("Confirm payment received and clear table?")) {
+    const handleConfirmCashPayment = (sessionId) => {
+        if (window.confirm("Confirm payment received?")) {
+            setConfirmedSessions(prev => new Set([...prev, sessionId]));
+        }
+    };
+
+    const handlePrintBill = async (sessionId, session) => {
+        try {
+            const response = await waiterService.downloadBill(sessionId);
+            const blob = response.data;
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const restaurantName = session.tableId?.name?.replace(/\s+/g, '_') || 'Table';
+            const date = new Date().toISOString().split('T')[0];
+            a.download = `Bill_${restaurantName}_${date}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Error downloading bill:", error);
+            alert("Failed to download bill");
+        }
+    };
+
+    const handleClearTable = (sessionId) => {
+        if (window.confirm("Clear table and remove from list?")) {
             paymentMutation.mutate(sessionId);
         }
     };
@@ -134,15 +161,45 @@ export default function MyTables() {
 
     // Render Status Badge & Action Button
     const renderTableAction = (session) => {
+        const isConfirmed = confirmedSessions.has(session._id);
+        const isPaid = session.paymentStatus === 'paid';
+        
+        if (isConfirmed || (session.status === 'payment_requested' && session.paymentMethod === 'transfer' && isPaid)) {
+            return (
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handlePrintBill(session._id, session);
+                        }}
+                        className="bg-blue-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                    >
+                        <i className="fa-solid fa-file-pdf"></i>
+                        Print Bill
+                    </button>
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleClearTable(session._id);
+                        }}
+                        disabled={paymentMutation.isPending}
+                        className="bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 shadow-sm flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <i className="fa-solid fa-check"></i>
+                        Clear Table
+                    </button>
+                </div>
+            );
+        }
+        
         if (session.status === 'payment_requested') {
             
-            // CASE 1: Tiền mặt (Giữ nguyên)
             if (session.paymentMethod === 'cash') {
                 return (
                     <button 
                         onClick={(e) => {
                             e.stopPropagation(); 
-                            handleConfirmPayment(session._id);
+                            handleConfirmCashPayment(session._id);
                         }}
                         disabled={paymentMutation.isPending}
                         className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 shadow-sm flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
@@ -153,27 +210,8 @@ export default function MyTables() {
                 );
             } 
             
-            // CASE 2: Chuyển khoản (PayOS)
             else if (session.paymentMethod === 'transfer') {
                 
-                // 👇 SỬA Ở ĐÂY: Check thêm paymentStatus xem đã Paid chưa
-                if (session.paymentStatus === 'paid') {
-                    return (
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleConfirmPayment(session._id);
-                            }}
-                            disabled={paymentMutation.isPending}
-                            className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 animate-bounce-in"
-                        >
-                            <i className="fa-solid fa-check-double"></i>
-                            Paid! Clear Table
-                        </button>
-                    );
-                }
-
-                // Nếu chưa Paid thì mới hiện "QR Paying..."
                 return (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-lg">
                         <i className="fa-solid fa-qrcode text-blue-600 animate-pulse text-xs"></i>
@@ -248,7 +286,7 @@ export default function MyTables() {
                             className="p-4 cursor-pointer hover:bg-gray-50 transition"
                             onClick={() => toggleExpand(session._id)}
                         >
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold ${
                                         isPaymentRequested ? 'bg-orange-100 text-orange-600' : 'bg-gray-800 text-[#D4AF37]'
@@ -256,11 +294,11 @@ export default function MyTables() {
                                         {session.tableId?.name?.replace('Table ', '') || '?'}
                                     </div>
                                     <div>
-                                        <div className="font-bold text-gray-800 flex items-center gap-2">
+                                        <div className="font-bold text-gray-800 flex items-center gap-2 mb-2">
                                             {session.tableId?.name}
                                             {renderTableAction(session)}
                                         </div>
-                                        <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                                        <div className="text-xs text-gray-500 flex items-center gap-2">
                                             <i className="fa-regular fa-clock"></i> {getDuration(session.startTime)}
                                             <span className="w-1 h-1 rounded-full bg-gray-300"></span>
                                             <span className={hasActivity ? "text-blue-600 font-semibold" : ""}>
@@ -270,7 +308,7 @@ export default function MyTables() {
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="font-bold text-lg text-gray-800">${session.totalAmount?.toLocaleString()}</div>
+                                    <div className="font-bold text-lg text-gray-800 mb-2">${session.totalAmount?.toLocaleString()}</div>
                                     <div className="text-xs text-gray-400">Total</div>
                                 </div>
                             </div>

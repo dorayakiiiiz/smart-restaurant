@@ -1,20 +1,20 @@
 import api from "./api";
 
 const getPendingOrders = async () => {
-    return api.get('/waiter/orders?status=pending');
+  return api.get("/waiter/orders?status=pending");
 };
 
 const getAcceptedOrders = async () => {
-    return api.get('/waiter/orders?status=accepted');
+  return api.get("/waiter/orders?status=accepted");
 };
 
 const getReadyOrders = async () => {
-    return api.get('/waiter/orders?status=ready');
+  return api.get("/waiter/orders?status=ready");
 };
 
 // Admin: Get ALL orders (including completed)
 const getAllOrders = async () => {
-    return api.get('/waiter/orders/all');
+  return api.get("/waiter/orders/all");
 };
 
 // Example: Get multiple statuses at once
@@ -23,46 +23,53 @@ const getAllOrders = async () => {
 // };
 
 const acceptOrder = async (orderId) => {
-    return api.patch(`/waiter/orders/${orderId}/status`, { status: 'accepted' });
+  return api.patch(`/waiter/orders/${orderId}/status`, { status: "accepted" });
 };
 
 const rejectOrder = async (orderId, rejectionReason) => {
-    return api.patch(`/waiter/orders/${orderId}/status`, { 
-        status: 'rejected',
-        rejectionReason 
-    });
+  return api.patch(`/waiter/orders/${orderId}/status`, {
+    status: "rejected",
+    rejectionReason,
+  });
 };
 
 const markAsServed = async (orderId) => {
-    return api.patch(`/waiter/orders/${orderId}/serve`);
+  return api.patch(`/waiter/orders/${orderId}/serve`);
 };
 
 const markOrderComplete = async (orderId) => {
-    return api.patch(`/waiter/orders/${orderId}/complete`);
+  return api.patch(`/waiter/orders/${orderId}/complete`);
 };
 
 const getTables = async () => {
-    return api.get('/waiter/tables');
+  return api.get("/waiter/tables");
 };
 
 const getSessionOrders = async (sessionId) => {
-    return api.get(`/orders/session/${sessionId}`);
+  return api.get(`/orders/session/${sessionId}`);
 };
 
 const confirmPayment = async (sessionId) => {
-    return api.post(`/waiter/checkout/${sessionId}`);
+  return api.post(`/waiter/checkout/${sessionId}`);
+};
+
+const downloadBill = async (sessionId) => {
+  return api.get(`/waiter/session/${sessionId}/bill`, {
+    responseType: "blob",
+  });
 };
 
 export const waiterService = {
-    getPendingOrders,
-    getAcceptedOrders,
-    getReadyOrders,
-    getAllOrders, // Admin dùng
-    acceptOrder,
-    rejectOrder,
-    markAsServed,
-    markOrderComplete,
-    getTables,
-    getSessionOrders,
-    confirmPayment
+  getPendingOrders,
+  getAcceptedOrders,
+  getReadyOrders,
+  getAllOrders, // Admin dùng
+  acceptOrder,
+  rejectOrder,
+  markAsServed,
+  markOrderComplete,
+  getTables,
+  getSessionOrders,
+  confirmPayment,
+  downloadBill,
 };
