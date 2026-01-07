@@ -1,3 +1,4 @@
+import OrderSession from "../models/OrderSession.mjs";
 import User from "../models/User.mjs";
 import Restaurant from "../models/Restaurant.mjs";
 import bcrypt from 'bcrypt';
@@ -107,16 +108,127 @@ class SuperAdminController {
     // API lấy số liệu thống kê cho Dashboard
     async getSystemStats(req, res) {
         try {
+            const { filter } = req.query; // 'week', 'month', 'year'
+
             const totalRestaurants = await Restaurant.countDocuments();
             const totalAdmins = await User.countDocuments({ role: 'admin' });
             const totalUsers = await User.countDocuments(); // Tổng user toàn hệ thống
+
+            // Tính tổng doanh thu từ tất cả các nhà hàng
+            const revenueAgg = await Restaurant.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalSystemRevenue: { $sum: "$totalRevenue" }
+                    }
+                }
+            ]);
+            const revenue = revenueAgg.length > 0 ? revenueAgg[0].totalSystemRevenue : 0;
+
+            // --- CHART LOGIC START (Copy from RestaurantController but global) ---
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            let chartData = [];
+            let matchStage = {
+                paymentStatus: 'paid' // Chỉ tính đơn đã thanh toán
+            };
+
+            if (filter === 'year') {
+                const startOfYear = new Date(today.getFullYear(), 0, 1);
+                const endOfYear = new Date(today.getFullYear(), 11, 31, 23, 59, 59);
+                matchStage.updatedAt = { $gte: startOfYear, $lte: endOfYear };
+
+                const stats = await OrderSession.aggregate([
+                    { $match: matchStage },
+                    {
+                        $group: {
+                            _id: { $month: "$updatedAt" }, // 1-12
+                            total: { $sum: "$totalAmount" }
+                        }
+                    }
+                ]);
+
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                chartData = months.map((name, index) => {
+                    const found = stats.find(s => s._id === (index + 1));
+                    return { name, value: found ? found.total : 0 };
+                });
+
+            } else if (filter === 'month') {
+                const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+                matchStage.updatedAt = { $gte: startOfMonth, $lte: endOfMonth };
+
+                const stats = await OrderSession.aggregate([
+                    { $match: matchStage },
+                    {
+                        $project: {
+                            day: { $dayOfMonth: "$updatedAt" },
+                            totalAmount: 1
+                        }
+                    },
+                    {
+                        $bucket: {
+                            groupBy: "$day",
+                            boundaries: [1, 8, 15, 22, 32],
+                            default: "Other",
+                            output: {
+                                total: { $sum: "$totalAmount" }
+                            }
+                        }
+                    }
+                ]);
+                
+                const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+                const bucketMap = { 1: 0, 8: 1, 15: 2, 22: 3 };
+                
+                chartData = weeks.map((name, index) => ({ name, value: 0 }));
+                stats.forEach(s => {
+                    const idx = bucketMap[s._id];
+                    if (idx !== undefined) chartData[idx].value = s.total;
+                });
+
+            } else { // 'week' (default)
+                const currentDay = today.getDay(); // 0-6
+                const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1;
+                const startOfWeek = new Date(today);
+                startOfWeek.setDate(today.getDate() - distanceToMonday);
+                startOfWeek.setHours(0, 0, 0, 0);
+                
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                endOfWeek.setHours(23, 59, 59, 999);
+
+                matchStage.updatedAt = { $gte: startOfWeek, $lte: endOfWeek };
+
+                const stats = await OrderSession.aggregate([
+                    { $match: matchStage },
+                    {
+                        $group: {
+                            _id: { $dayOfWeek: "$updatedAt" }, 
+                            total: { $sum: "$totalAmount" }
+                        }
+                    }
+                ]);
+
+                const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                const dayMap = { 2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 1: 6 };
+
+                chartData = days.map((name, index) => ({ name, value: 0 }));
+                stats.forEach(s => {
+                    const idx = dayMap[s._id];
+                    if (idx !== undefined) chartData[idx].value = s.total;
+                });
+            }
 
             res.status(200).json({
                 stats: {
                     totalRestaurants,
                     totalAdmins,
                     totalUsers,
-                    revenue: 0 // Fake số liệu doanh thu hệ thống nếu chưa có logic tính tiền
+                    revenue,
+                    revenueChart: chartData 
                 }
             });
         } catch (err) {
