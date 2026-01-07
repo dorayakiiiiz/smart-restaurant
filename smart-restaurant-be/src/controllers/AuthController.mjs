@@ -278,7 +278,6 @@ SmartRestaurant Team`
                 accessToken, 
                 refreshToken 
             })); 
-            // --------------------
             
         } catch (err) {
             console.log("Google Auth Callback Error:", err);
