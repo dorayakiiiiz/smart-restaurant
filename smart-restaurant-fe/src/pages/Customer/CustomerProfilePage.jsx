@@ -178,7 +178,15 @@ export default function CustomerProfilePage() {
                                         <div className="w-7 h-7 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
                                     </div>
                                 ) : user?.avatar?.url ? (
-                                    <img src={user.avatar.url} className="w-full h-full object-cover" />
+                                    <div className="relative w-20 h-20 overflow-hidden group cursor-pointer">
+                                        <img 
+                                            src={user.avatar.url} 
+                                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" 
+                                        />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                            <i className="fa-solid fa-camera text-white/70 text-sm"></i>
+                                        </div>
+                                    </div>
                                 ) : (
                                     user?.fullName?.charAt(0)
                                 )}
@@ -197,11 +205,11 @@ export default function CustomerProfilePage() {
                         <div>
                             <h2 className="text-xl font-extrabold tracking-tight text-gray-900">{user?.fullName}</h2>
                             <p className="text-gray-400 text-sm font-medium">{user?.email}</p>
-                            <div className="flex gap-2 mt-2">
+                            {/* <div className="flex gap-2 mt-2">
                                 <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[11px] font-bold uppercase tracking-wider rounded-full border border-amber-100 flex items-center gap-1.5">
                                     <i className="fa-solid fa-crown text-[9px]"></i> Elite Member
                                 </span>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                     
@@ -234,93 +242,120 @@ export default function CustomerProfilePage() {
             {/* 3. Dynamic Content Area */}
             <div className="space-y-6">
                 {activeTab === 'history' ? (
-                    <div className="space-y-5">
+                    <div className="space-y-6 max-w-2xl mx-auto">
                         {isLoading ? (
-                            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                                <div className="w-10 h-10 border-4 border-gray-100 border-t-[#800020] rounded-full animate-spin"></div>
-                                <p className="text-gray-400 font-medium animate-pulse">Fetching your orders...</p>
+                            <div className="flex flex-col items-center justify-center py-24 space-y-6">
+                                <div className="relative">
+                                    <div className="w-12 h-12 border-4 border-gray-100 border-t-[#800020] rounded-full animate-spin"></div>
+                                    <div className="absolute inset-0 w-12 h-12 border-4 border-transparent border-b-[#800020]/30 rounded-full animate-reverse-spin"></div>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-gray-500 font-semibold tracking-wide animate-pulse">Fetching your orders...</p>
+                                    <p className="text-gray-400 text-xs mt-1">Just a moment while we prepare your history</p>
+                                </div>
                             </div>
                         ) : sessions.length === 0 ? (
-                            <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-gray-100">
-                                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-200">
-                                    <i className="fa-solid fa-receipt text-3xl"></i>
+                            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-gray-100 shadow-sm">
+                                <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-200 ring-8 ring-gray-50/50">
+                                    <i className="fa-solid fa-receipt text-4xl"></i>
                                 </div>
-                                <h3 className="text-gray-900 font-bold">No orders yet</h3>
-                                <p className="text-gray-400 text-sm mt-1">When you order, they'll appear here.</p>
-                                <button onClick={() => refetch()} className="mt-6 px-6 py-2 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-black transition-colors">
+                                <h3 className="text-gray-900 text-xl font-bold">No orders yet</h3>
+                                <p className="text-gray-400 text-sm mt-2 max-w-[200px] mx-auto">When you start ordering, your delicious history will appear here.</p>
+                                <button 
+                                    onClick={() => refetch()} 
+                                    className="mt-8 px-8 py-3 bg-gray-900 text-white text-sm font-bold rounded-2xl hover:bg-black hover:shadow-lg active:scale-95 transition-all"
+                                >
                                     Refresh List
                                 </button>
                             </div>
                         ) : (
                             sessions.map((session) => (
-                                <div key={session.sessionId} className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-white">
-                                    {/* Session Header (Tổng hóa đơn) */}
-                                    <div className="bg-gray-50 p-4 flex justify-between items-center border-b border-gray-100">
-                                        <div>
-                                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Session Date</div>
-                                            <div className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                                                <i className="fa-regular fa-calendar"></i> {formatDate(session.date)}
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="font-bold text-[#800020] text-lg">
-                                                ${(session.totalAmount || 0).toLocaleString()}
-                                            </div>
-                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase mt-1 ${
-                                                session.paymentStatus === 'paid' 
-                                                    ? 'bg-green-100 text-green-700' 
-                                                    : 'bg-yellow-100 text-yellow-700'
-                                            }`}>
-                                                {session.paymentStatus || 'Unpaid'}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Orders List (Chi tiết từng lần gọi) */}
-                                    <div className="p-4 space-y-5">
-                                        {/* Kiểm tra an toàn trước khi map */}
-                                        {session.ordersList && session.ordersList.length > 0 ? (
-                                            session.ordersList.map((order, idx) => (
-                                                <div key={order._id || idx} className="relative pl-4 border-l-2 border-gray-200">
-                                                    {/* Timeline Dot */}
-                                                    <div className="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-gray-300 border-2 border-white"></div>
-                                                    
-                                                    {/* Order Header */}
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <span className="text-xs font-bold text-gray-600">
-                                                            Round {idx + 1} <span className="font-normal text-gray-400 ml-1">• {formatTime(order.createdAt)}</span>
-                                                        </span>
-                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase border ${
-                                                            order.status === 'served' ? 'border-green-200 text-green-600 bg-green-50' : 'border-gray-200 text-gray-500'
-                                                        }`}>
-                                                            {order.status}
-                                                        </span>
+                                    <div key={session.sessionId} className="group border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 bg-white">
+                                        {/* Session Header */}
+                                        <div className="bg-gradient-to-r from-slate-800 to-slate-900 py-3 px-5 flex justify-between items-center">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-11 h-11 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center text-white border border-white/20">
+                                                    <i className="fa-regular fa-calendar-check text-lg"></i>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[11px] text-slate-400 uppercase tracking-widest font-bold">
+                                                        Session Date
                                                     </div>
-
-                                                    {/* Items in this order */}
-                                                    <div className="space-y-2 bg-gray-50/50 p-2 rounded-lg">
-                                                        {order.items && order.items.map((item, itemIdx) => (
-                                                            <div key={itemIdx} className="flex justify-between text-sm">
-                                                                <div className="flex gap-2 items-start">
-                                                                    <span className="font-bold text-gray-800 w-5 shrink-0 text-right">{item.quantity}x</span>
-                                                                    <span className="text-gray-700">{item.name}</span>
-                                                                </div>
-                                                                <span className="text-gray-500 font-medium text-xs shrink-0 ml-2">
-                                                                    ${((item.price || 0) * (item.quantity || 1)).toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                        ))}
+                                                    <div className="font-semibold text-white text-base">
+                                                        {formatDate(session.date)}
                                                     </div>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center text-xs text-gray-400 italic">No items details available</div>
-                                        )}
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-black text-white text-xl tracking-tight">
+                                                    ${(session.totalAmount || 0).toLocaleString()}
+                                                </div>
+                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase mt-2 shadow-sm ${
+                                                    session.paymentStatus === 'paid' 
+                                                        ? 'bg-emerald-500 text-white' 
+                                                        : 'bg-amber-500 text-white'
+                                                }`}>
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                                                    {session.paymentStatus || 'Unpaid'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Orders List */}
+                                        <div className="pt-4 pb-6 px-6 space-y-8">
+                                            {session.ordersList && session.ordersList.length > 0 ? (
+                                                session.ordersList.map((order, idx) => (
+                                                    <div key={order._id || idx} className="relative pl-8 border-l-2 border-slate-100 last:mb-0">
+                                                        {/* Timeline Dot - Điểm nhấn xanh Indigo */}
+                                                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-4 border-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.4)]"></div>
+                                                        
+                                                        {/* Order Header */}
+                                                        <div className="flex justify-between items-center mb-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-sm font-bold text-slate-800">Round {idx + 1}</span>
+                                                                <span className="text-[11px] font-semibold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                                                                    {formatTime(order.createdAt)}
+                                                                </span>
+                                                            </div>
+                                                            <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-lg ${
+                                                                order.status === 'served' 
+                                                                    ? 'text-emerald-600 bg-emerald-50 border border-emerald-100' 
+                                                                    : 'text-slate-500 bg-slate-50 border border-slate-200'
+                                                            }`}>
+                                                                {order.status}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Items Card - Background màu trắng xanh rất nhẹ */}
+                                                        <div className="space-y-2 bg-slate-50/50 p-4 rounded-2xl border hover:bg-white border-indigo-100 shadow transition-all duration-300">
+                                                            {order.items && order.items.map((item, itemIdx) => (
+                                                                <div key={itemIdx} className="flex justify-between items-center group/item text-sm">
+                                                                    <div className="flex gap-4 items-center">
+                                                                        <span className="font-bold text-indigo-600 bg-indigo-50 w-8 h-8 flex items-center justify-center rounded-lg text-xs border border-indigo-100">
+                                                                            {item.quantity}x
+                                                                        </span>
+                                                                        <span className="text-slate-700 font-medium group-hover/item:text-indigo-900 transition-colors">
+                                                                            {item.name}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="text-slate-500 font-bold text-xs tabular-nums group-hover/item:text-slate-800">
+                                                                        ${((item.price || 0) * (item.quantity || 1)).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-8 bg-slate-50/30 rounded-2xl border-2 border-dashed border-slate-100">
+                                                    <p className="text-sm text-slate-400 font-medium italic">No items details available</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                                ))
+                            )}
+                        </div>
                 ) : (
                     <div className="space-y-5 animate-fade-in-up">
                         {/* PERSONAL INFORMATION */}

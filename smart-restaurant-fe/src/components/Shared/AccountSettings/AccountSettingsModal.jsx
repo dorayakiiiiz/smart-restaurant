@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import { userService } from "../../../services/userService";
-import InfoField from "./InfoField";
 import ChangePasswordModal from "./ChangePasswordModal";
 
 export default function AccountSettingsModal({ isOpen, onClose }) {
@@ -27,21 +26,14 @@ export default function AccountSettingsModal({ isOpen, onClose }) {
 
     if (!isOpen) return null;
 
-    // ============ Utility Functions ============
-    const formatDate = (dateString) => {
-        if (!dateString) return "N/A";
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return "N/A";
-        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    };
-
     const getRoleBadge = () => {
         const roleMap = {
-            admin: { label: "Restaurant Admin", color: "bg-red-100 text-red-700 border-red-200" },
-            waiter: { label: "Waiter", color: "bg-blue-100 text-blue-700 border-blue-200" },
-            kitchen: { label: "Kitchen Staff", color: "bg-orange-100 text-orange-700 border-orange-200" }
+            super_admin: { label: "Super Admin", color: "bg-red-100 text-red-800 ring-1 ring-red-200/70" },
+            admin: { label: "Restaurant Admin", color: "bg-rose-50 text-rose-700 ring-1 ring-rose-100" },
+            waiter: { label: "Waiter", color: "bg-blue-50 text-blue-700 ring-1 ring-blue-100" },
+            kitchen: { label: "Kitchen Staff", color: "bg-orange-50 text-orange-700 ring-1 ring-orange-100" }
         };
-        return roleMap[user?.role] || { label: user?.role, color: "bg-gray-100 text-gray-700 border-gray-200" };
+        return roleMap[user?.role] || { label: user?.role, color: "bg-gray-50 text-gray-700 ring-1 ring-gray-200" };
     };
 
     // ============ Modal Handlers ============
@@ -131,158 +123,158 @@ export default function AccountSettingsModal({ isOpen, onClose }) {
     return (
         <>
             {/* Main Modal */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-                <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4 animate-fade-in transition-all">
+                <div className="bg-white w-full max-w-[500px] rounded-xl shadow-2xl shadow-slate-200/50 max-h-[85vh] flex flex-col overflow-hidden ring-1 ring-slate-100">
                     
                     {/* Header */}
-                    <div className="bg-white px-6 pt-6 pb-4 border-b border-gray-200">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-14 h-14 rounded-xl overflow-hidden bg-gradient-to-tr from-[#800020] to-[#b3002d] flex items-center justify-center text-xl font-bold text-white shadow-md">
+                    <div className="bg-white px-8 pt-8 pb-4">
+                        <div className="flex items-start justify-between mb-6">
+                            <div className="flex items-center gap-5">
+                                {/* Avatar - Compact & Symbolic */}
+                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#800020] to-[#b3002d] flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-rose-900/20 ring-4 ring-slate-50">
                                     {user?.avatar?.url ? (
-                                        <img src={user.avatar.url} className="w-full h-full object-cover" alt="Avatar" />
+                                        <img src={user.avatar.url} className="w-full h-full object-cover rounded-2xl" alt="Avatar" />
                                     ) : (
                                         user?.fullName?.charAt(0)
                                     )}
                                 </div>
                                 
+                                {/* User Info - Horizontal Layout */}
                                 <div>
-                                    <h2 className="text-2xl font-bold font-momo text-[#1a1a1a]">{user?.fullName}</h2>
-                                    <p className="text-gray-500 text-base mt-0.5">{user?.email}</p>
-                                    <span className={`inline-block mt-1.5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full border ${roleBadge.color}`}>
-                                        {roleBadge.label}
-                                    </span>
+                                    <h2 className="text-2xl font-bold tracking-tight text-slate-800 leading-tight">{user?.fullName}</h2>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                                        <p className="text-slate-500 font-medium text-sm">{user?.email}</p>
+                                        <span className={`hidden sm:inline-block w-1 h-1 rounded-full bg-slate-300`}></span>
+                                        <span className={`self-start sm:self-auto px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-md ${roleBadge.color}`}>
+                                            {roleBadge.label}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                            
+
+                            {/* Close Button */}
                             <button 
                                 onClick={handleClose}
-                                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                                className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200 -mt-2 -mr-2"
                             >
-                                <i className="fa-solid fa-xmark text-gray-400 hover:text-gray-600"></i>
+                                <i className="fa-solid fa-xmark text-lg"></i>
                             </button>
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+                        <div className="flex p-1.5 bg-slate-100/70 rounded-2xl">
                             {['info', 'security'].map((tab) => (
                                 <button 
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`flex-1 py-2.5 text-sm font-bold capitalize rounded-md transition-all ${
+                                    className={`flex-1 py-2.5 text-sm font-semibold capitalize rounded-xl transition-all duration-300 ${
                                         activeTab === tab 
-                                        ? 'bg-white text-[#800020] shadow-sm' 
-                                        : 'text-gray-600 hover:text-gray-900'
+                                        ? 'bg-white text-[#800020] shadow-sm shadow-slate-200 ring-1 ring-black/5' 
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                                     }`}
                                 >
-                                    {tab === 'info' ? 'Personal Information' : 'Security'}
+                                    {tab === 'info' ? 'Profile Details' : 'Security'}
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
+                    <div className="flex-1 overflow-y-auto bg-white px-8 pb-8 pt-4 custom-scrollbar">
                         {activeTab === 'info' ? (
-                            <div className="space-y-4">
+                            <div className="space-y-6 animate-slide-up">
                                 {/* Full Name Section */}
-                                <div className="bg-white rounded-xl p-4 border border-gray-200">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
+                                <div className="group">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
+                                    </div>
+                                    
                                     {isEditingName ? (
-                                        <div className="flex items-center gap-2">
+                                        <div className="relative flex items-center gap-2">
                                             <input 
                                                 type="text" 
                                                 value={tempName}
                                                 onChange={(e) => handleNameChange(e.target.value)}
-                                                className="flex-1 px-4 py-3 text-base font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#800020] focus:ring-1 focus:ring-[#800020] transition-all"
+                                                className="w-full pl-4 pr-24 py-3.5 text-slate-800 bg-slate-50 border-0 ring-1 ring-slate-200 rounded-2xl focus:ring-2 focus:ring-[#800020]/20 focus:bg-white transition-all font-medium"
                                                 autoFocus
                                                 placeholder="Enter your name"
                                             />
-                                            <button 
-                                                onClick={handleSaveName}
-                                                disabled={updatingName}
-                                                className="w-10 h-10 flex items-center justify-center bg-[#800020] text-white rounded-xl hover:bg-[#600018] transition-all disabled:opacity-50"
-                                            >
-                                                {updatingName ? <i className="fa-solid fa-circle-notch fa-spin text-sm"></i> : <i className="fa-solid fa-check text-sm"></i>}
-                                            </button>
-                                            <button 
-                                                onClick={handleCancelEdit}
-                                                className="w-10 h-10 flex items-center justify-center border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-all"
-                                            >
-                                                <i className="fa-solid fa-xmark text-sm"></i>
-                                            </button>
+                                            <div className="absolute right-2 flex gap-1">
+                                                <button 
+                                                    onClick={handleSaveName}
+                                                    disabled={updatingName}
+                                                    className="w-8 h-8 flex items-center justify-center bg-[#800020] text-white rounded-xl hover:bg-[#600018] shadow-md hover:shadow-lg transition-all disabled:opacity-70 active:scale-95"
+                                                >
+                                                    {updatingName ? <i className="fa-solid fa-circle-notch fa-spin text-xs"></i> : <i className="fa-solid fa-check text-xs"></i>}
+                                                </button>
+                                                <button 
+                                                    onClick={handleCancelEdit}
+                                                    className="w-8 h-8 flex items-center justify-center bg-white text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 ring-1 ring-slate-200 transition-all active:scale-95"
+                                                >
+                                                    <i className="fa-solid fa-xmark text-xs"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
-                                                    <i className="fa-regular fa-user"></i>
-                                                </div>
-                                                <span className="text-base font-bold text-gray-900">{user?.fullName}</span>
+                                        <div 
+                                            onClick={handleEditName}
+                                            className="w-full flex items-center gap-4 px-5 py-4 bg-slate-50/50 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-2xl transition-all cursor-pointer group/item"
+                                        >
+                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#800020] shadow-sm ring-1 ring-slate-100 group-hover/item:scale-110 transition-transform">
+                                                <i className="fa-regular fa-user"></i>
                                             </div>
-                                            <button 
-                                                onClick={handleEditName}
-                                                className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                            >
-                                                <i className="fa-solid fa-pen-to-square text-sm"></i>
-                                            </button>
+                                            <span className="text-base font-semibold text-slate-700 flex-1">{user?.fullName}</span>
+                                            <i className="fa-solid fa-pen text-slate-300 group-hover/item:text-[#800020] transition-colors text-sm"></i>
                                         </div>
                                     )}
                                 </div>
 
-                                <InfoField
-                                    label="Email Address"
-                                    value={user?.email}
-                                    icon="fa-regular fa-envelope"
-                                    iconBg="bg-purple-100"
-                                    iconColor="text-purple-600"
-                                    locked
-                                    verified
-                                />
-
-                                <InfoField
-                                    label="Role"
-                                    icon="fa-solid fa-user-tie"
-                                    iconBg="bg-amber-100"
-                                    iconColor="text-amber-600"
-                                    locked
-                                    badge={
-                                        <span className={`px-3 py-1 text-xs font-bold rounded-full border ${roleBadge.color}`}>
-                                            {roleBadge.label}
-                                        </span>
-                                    }
-                                />
-
-                                {user?.restaurant && (
-                                    <InfoField
-                                        label="Restaurant"
-                                        value={user.restaurant.name}
-                                        icon="fa-solid fa-utensils"
-                                        iconBg="bg-rose-100"
-                                        iconColor="text-rose-600"
-                                        locked
-                                    />
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <button 
-                                    onClick={() => setShowPassModal(true)}
-                                    className="w-full bg-white rounded-xl p-5 border border-gray-200 hover:border-[#800020] hover:shadow-sm transition-all group"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-105 transition-transform">
-                                                <i className="fa-solid fa-key"></i>
+                                <div className="space-y-4">
+            
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email</label>
+                                    <div className="rounded-xl px-5 py-4 bg-slate-50/50 hover:bg-slate-50">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600`}>
+                                                    <i className="fa-regular fa-envelope"></i>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-base font-bold text-gray-900">{user.email}</span>
+                                                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center" title="Verified">
+                                                        <i className="fa-solid fa-check text-green-600 text-xs"></i>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="text-left">
-                                                <h4 className="text-base font-bold text-gray-900">Change Password</h4>
-                                                <p className="text-sm text-gray-500 mt-0.5">Update your password regularly</p>
+                                            <div className="w-8 h-8 flex items-center justify-center text-gray-400">
+                                                <i className="fa-solid fa-lock text-sm"></i>
                                             </div>
                                         </div>
-                                        <i className="fa-solid fa-chevron-right text-gray-400 text-sm group-hover:text-[#800020] group-hover:translate-x-1 transition-all"></i>
+                                    </div>
+                                    
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 pt-2 animate-slide-up">
+                                <button 
+                                    onClick={() => setShowPassModal(true)}
+                                    className="w-full bg-slate-50 hover:bg-white rounded-2xl p-5 border border-transparent hover:border-slate-100 hover:shadow-lg hover:shadow-slate-100/50 transition-all duration-300 group text-left"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-[#800020] shadow-sm group-hover:scale-110 transition-transform duration-300">
+                                                <i className="fa-solid fa-lock-open"></i>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-base font-bold text-slate-800 group-hover:text-[#800020] transition-colors">Change Password</h4>
+                                                <p className="text-sm text-slate-500 mt-0.5">Secure your account with a new password</p>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-white text-slate-300 group-hover:text-[#800020] group-hover:translate-x-1 transition-all shadow-sm">
+                                            <i className="fa-solid fa-arrow-right text-sm"></i>
+                                        </div>
                                     </div>
                                 </button>
+                            
                             </div>
                         )}
                     </div>
@@ -302,34 +294,33 @@ export default function AccountSettingsModal({ isOpen, onClose }) {
 
             {/* Close Confirmation Modal */}
             {showCloseConfirm && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 animate-fade-in">
-                        <div className="mb-6">
-                            <div className="flex items-center gap-3 mb-3">
-                                <i className="fa-solid fa-triangle-exclamation text-amber-500 text-2xl"></i>
-                                <h3 className="text-xl font-bold text-gray-900">Unsaved Changes</h3>
-                            </div>
-                            <p className="text-gray-600 text-sm">You have unsaved changes. Are you sure you want to close?</p>
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center animate-scale-up">
+                        <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-4 text-amber-500 shadow-sm">
+                            <i className="fa-solid fa-triangle-exclamation text-2xl"></i>
                         </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Unsaved Changes</h3>
+                        <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                            You have modified your profile information. <br/>Closing now will discard these changes.
+                        </p>
 
                         <div className="flex gap-3">
                             <button 
                                 onClick={() => setShowCloseConfirm(false)}
-                                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-bold"
+                                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all font-bold text-sm"
                             >
-                                Cancel
+                                Keep Editing
                             </button>
                             <button 
                                 onClick={confirmClose}
-                                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-bold"
+                                className="flex-1 px-4 py-3 bg-rose-500 text-white rounded-xl hover:bg-rose-600 shadow-lg shadow-rose-200 transition-all font-bold text-sm"
                             >
-                                Close Anyway
+                                Discard
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-
         </>
     );
 }

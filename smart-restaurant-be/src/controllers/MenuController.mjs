@@ -58,6 +58,7 @@ class MenuController {
             const orderCounts = await Order.aggregate([
                 { $match: { restaurantId: restaurant._id } },
                 { $unwind: "$items" },
+                { $match: { "items.status": "served" } }, // Chỉ tính các món đã served
                 { $group: {
                     _id: "$items.menuItemId",
                     totalOrders: { $sum: "$items.quantity" }

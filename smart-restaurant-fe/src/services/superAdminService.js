@@ -20,8 +20,8 @@ const deleteAdmin = async (id) => {
     return response.data;
 }
 
-const getSystemStats = async () => {
-    const response = await api.get('/super/admin/stats');
+const getSystemStats = async (filter = 'week') => {
+    const response = await api.get(`/super/admin/stats?filter=${filter}`);
     return response.data;
 }
 

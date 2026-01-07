@@ -6,7 +6,7 @@ export default function QRModal({ table, onClose, onRegenerate }) {
     const [loading, setLoading] = useState(false);
     
     // URL mà khách sẽ quét
-    const qrValue = `${import.meta.env.VITE_CLIENT_URL || 'http://localhost:5173'}/menu?table=${table._id}&token=${table.token}`;
+    const qrValue = `${import.meta.env.VITE_CLIENT_URL}/menu?table=${table._id}&token=${table.token}`;
 
     const handleDownloadPDF = async () => {
         setLoading(true);

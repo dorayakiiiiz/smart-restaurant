@@ -86,20 +86,77 @@ export default function OrderTrackingPage() {
     }, 0);
 
     // UI khi đang chờ Waiter thu tiền mặt
+    // if (waitingForWaiter) {
+    //     return (
+    //         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6">
+    //             <div className="bg-[#1a1a1a] border border-amber-900/30 rounded-none shadow-[0_0_50px_rgba(0,0,0,0.5)] p-10 max-w-sm w-full text-center relative">
+    //                 <div className="absolute top-2 left-2 w-8 h-8 border-t border-l border-amber-600/50"></div>
+    //                 <div className="absolute bottom-2 right-2 w-8 h-8 border-b border-r border-amber-600/50"></div>
+    //                 <div className="mb-8">
+    //                     <div className="w-20 h-20 mx-auto border border-amber-600/30 rounded-full flex items-center justify-center bg-gradient-to-b from-amber-500/10 to-transparent">
+    //                         <i className="fa-solid fa-bell-concierge text-3xl text-amber-500"></i>
+    //                     </div>
+    //                 </div>
+    //                 <h2 className="text-xl font-serif text-amber-500 uppercase tracking-[0.2em] mb-4">
+    //                     Please Wait
+    //                 </h2>
+    //                 <div className="h-[1px] w-12 bg-amber-600/30 mx-auto mb-6"></div>
+    //                 <p className="text-gray-400 font-light leading-relaxed mb-8">
+    //                     Our staff has been notified. 
+    //                     <br />
+    //                     Total amount due: 
+    //                     <span className="block text-2xl font-serif text-white mt-2">
+    //                         ${sessionTotal.toLocaleString()}
+    //                     </span>
+    //                 </p>
+    //                 <div className="flex flex-col items-center gap-4">
+    //                     <div className="flex gap-2">
+    //                         <span className="w-1 h-1 bg-amber-600 rounded-full animate-pulse"></span>
+    //                         <span className="w-1 h-1 bg-amber-600 rounded-full animate-pulse delay-75"></span>
+    //                         <span className="w-1 h-1 bg-amber-600 rounded-full animate-pulse delay-150"></span>
+    //                     </div>
+    //                     <span className="text-[10px] uppercase tracking-[0.3em] text-amber-600/80 font-medium">
+    //                         Staff Attending
+    //                     </span>
+    //                 </div>
+    //             </div>
+    //         </div>
+    //     );
+    // }
     if (waitingForWaiter) {
         return (
-            <div className="fixed inset-0 bg-gradient-to-br from-amber-50 to-orange-100 z-50 flex flex-col items-center justify-center p-6">
-                <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center">
-                    <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-                        <i className="fa-solid fa-hand-holding-dollar text-4xl text-amber-600"></i>
+            <div className="fixed inset-0 bg-[#0a0a0a] z-50 flex flex-col items-center justify-center p-6">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-900/20 rounded-full blur-[120px]"></div>
+                
+                <div className="relative bg-zinc-900/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-10 max-w-sm w-full text-center">
+                    <div className="relative w-24 h-24 mx-auto mb-8">
+                        <div className="absolute inset-0 bg-amber-500/20 rounded-full animate-ping"></div>
+                        <div className="relative w-full h-full bg-gradient-to-tr from-amber-600 to-yellow-400 rounded-full flex items-center justify-center shadow-lg shadow-amber-900/40">
+                            <i className="fa-solid fa-hand-holding-dollar text-4xl text-black/80"></i>
+                        </div>
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Waiting for Waiter</h2>
-                    <p className="text-gray-500 mb-6">Please prepare <span className="font-bold text-[#800020]">${sessionTotal.toFixed(2)}</span> in cash</p>
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
-                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        <span className="ml-2">Waiter is on the way</span>
+
+                    <h2 className="text-3xl font-light tracking-tight text-white mb-3">
+                        Waiting for <span className="font-semibold text-amber-500">Waiter</span>
+                    </h2>
+                    
+                    <p className="text-zinc-400 mb-8 leading-relaxed">
+                        Please prepare <br />
+                        <span className="text-2xl font-mono font-bold text-white tracking-wider">
+                            ${sessionTotal.toFixed(2)}
+                        </span> 
+                        <span className="block text-xs uppercase tracking-[0.2em] mt-1 text-amber-500/70">In Cash</span>
+                    </p>
+
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="flex gap-1.5">
+                            <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-[bounce_1s_infinite_0ms]"></div>
+                            <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-[bounce_1s_infinite_200ms]"></div>
+                            <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-[bounce_1s_infinite_400ms]"></div>
+                        </div>
+                        <span className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-medium">
+                            Staff Notified
+                        </span>
                     </div>
                 </div>
             </div>

@@ -31,8 +31,6 @@ export default function MenuManagement() {
         queryFn: menuService.getMenu
     });
 
-    console.log("Menu Data:", menuData);
-
     const { data: categoryData, isLoading: isCategoryLoading } = useQuery({
         queryKey: ['categories'],
         queryFn: categoryService.getCategories
