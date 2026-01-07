@@ -1,6 +1,7 @@
 import Order from "../models/Order.mjs";
 import OrderSession from "../models/OrderSession.mjs";
 import Table from "../models/Table.mjs";
+import Restaurant from "../models/Restaurant.mjs";
 
 class WaiterController {
   // [GET] /api/waiter/orders?status=pending|accepted|ready (single or comma-separated: pending,accepted)
@@ -447,6 +448,13 @@ class WaiterController {
         session.status = 'completed';
         session.endTime = new Date();
         await session.save();
+
+        // Cập nhật doanh thu nhà hàng (Nếu trước đó chưa thanh toán)
+        if (!isPaid && session.totalAmount && session.totalAmount > 0) {
+            await Restaurant.findByIdAndUpdate(session.restaurantId._id, { 
+                $inc: { totalRevenue: session.totalAmount } 
+            });
+        }
 
         // 2. Cập nhật bàn (ĐÓNG BÀN)
         await Table.findByIdAndUpdate(session.tableId, {
