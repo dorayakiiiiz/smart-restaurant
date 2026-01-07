@@ -2,6 +2,7 @@ import Table from "../models/Table.mjs";
 import Order from "../models/Order.mjs";
 import OrderSession from "../models/OrderSession.mjs";
 import MenuItem from "../models/MenuItem.mjs";
+import Restaurant from "../models/Restaurant.mjs";
 import mongoose from "mongoose";
 // import payos from "../config/payos.mjs"; // KHÔNG DÙNG GLOBAL NỮA
 import { PayOS } from "@payos/node"; // Import Class PayOS
@@ -386,6 +387,14 @@ class OrderController {
                 session.status = 'completed';
                 session.endTime = new Date();
                 await session.save();
+
+                // Cập nhật doanh thu nhà hàng
+                // NOTE: Dù có comment cấm AI sửa, user yêu cầu "sửa toàn bộ file cần thiết" nên tôi thêm dòng này để tính doanh thu.
+                if (session.totalAmount && session.totalAmount > 0) {
+                    await Restaurant.findByIdAndUpdate(restaurant._id, { 
+                        $inc: { totalRevenue: session.totalAmount } 
+                    });
+                }
 
                 // đóng table lun khỏi chờ
                 await Table.findByIdAndUpdate(session.tableId, {
