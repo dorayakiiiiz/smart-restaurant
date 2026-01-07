@@ -295,23 +295,8 @@ class RestaurantController {
             //     ...
             //     ]
 
-            // 1. Today's Revenue (Doanh thu hôm nay - chỉ tính đơn đã thanh toán)
-            const revenueStats = await OrderSession.aggregate([
-                {
-                    $match: {
-                        restaurantId: restaurant._id,
-                        paymentStatus: 'paid',
-                        updatedAt: { $gte: today, $lt: tomorrow }
-                    }
-                },
-                {
-                    $group: {
-                        _id: null, //Gom documents thành 1 bảng duy nhất (Giống như SQL mà k có GROUP BY)
-                        totalRevenue: { $sum: "$totalAmount" } // Field mới
-                    }
-                }
-            ]);
-            const todayRevenue = revenueStats[0]?.totalRevenue || 0;
+            // 1. Total Revenue (Lấy từ DB Restaurant)
+            const totalRevenueFromDB = restaurant.totalRevenue || 0;
 
             // 2. Active Orders (Đơn đang phục vụ - chưa hoàn thành/hủy)
             const activeOrders = await Order.countDocuments({
@@ -388,7 +373,7 @@ class RestaurantController {
 
 
             res.status(200).json({
-                revenue: todayRevenue,
+                revenue: totalRevenueFromDB,
                 activeOrders,
                 totalOrders,
                 occupiedTables,
