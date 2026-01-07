@@ -1,6 +1,8 @@
 import Order from "../models/Order.mjs";
 import OrderSession from "../models/OrderSession.mjs";
 import Table from "../models/Table.mjs";
+import Restaurant from "../models/Restaurant.mjs";
+import { generateBillPDF } from "../utils/billPdfHelper.mjs";
 
 class WaiterController {
   // [GET] /api/waiter/orders?status=pending|accepted|ready (single or comma-separated: pending,accepted)
@@ -53,9 +55,9 @@ class WaiterController {
               path: "sessionId",
               populate: { path: "tableId", select: "name" },
             })
-            .populate('acceptedBy', 'fullName email role')
-            .populate('preparedBy', 'fullName email role')
-            .populate('servedBy', 'fullName email role')
+            .populate("acceptedBy", "fullName email role")
+            .populate("preparedBy", "fullName email role")
+            .populate("servedBy", "fullName email role")
             .sort({ createdAt: -1 });
           orders.push(...pendingOrders);
         } else if (statusType === "accepted") {
@@ -68,9 +70,9 @@ class WaiterController {
               path: "sessionId",
               populate: { path: "tableId", select: "name" },
             })
-            .populate('acceptedBy', 'fullName email role')
-            .populate('preparedBy', 'fullName email role')
-            .populate('servedBy', 'fullName email role')
+            .populate("acceptedBy", "fullName email role")
+            .populate("preparedBy", "fullName email role")
+            .populate("servedBy", "fullName email role")
             .sort({ createdAt: -1 });
 
           // Filter: Loại bỏ orders có tất cả items đã ready hoặc served
@@ -92,9 +94,9 @@ class WaiterController {
               path: "sessionId",
               populate: { path: "tableId", select: "name" },
             })
-            .populate('acceptedBy', 'fullName email role')
-            .populate('preparedBy', 'fullName email role')
-            .populate('servedBy', 'fullName email role')
+            .populate("acceptedBy", "fullName email role")
+            .populate("preparedBy", "fullName email role")
+            .populate("servedBy", "fullName email role")
             .sort({ createdAt: -1 });
 
           // Filter: Lấy TẤT CẢ orders đã accepted (cooking, ready, hoặc served chưa complete)
@@ -105,7 +107,7 @@ class WaiterController {
             const allServed = order.items.every(
               (item) => item.status === "served"
             );
-            if (allServed && order.status === 'served') return false;
+            if (allServed && order.status === "served") return false;
 
             // Hiển thị tất cả orders còn lại (có món preparing, ready, hoặc served chưa complete)
             return true;
@@ -136,19 +138,18 @@ class WaiterController {
       const query = restaurantId ? { restaurantId } : {};
 
       const orders = await Order.find(query)
-      .populate({
-        path: 'sessionId',
-        populate: { path: 'tableId', select: 'name' }
-      })
-      .populate('acceptedBy', 'fullName email role')
-      .populate('preparedBy', 'fullName email role')
-      .populate('servedBy', 'fullName email role')
-      .sort({ createdAt: -1 });
+        .populate({
+          path: "sessionId",
+          populate: { path: "tableId", select: "name" },
+        })
+        .populate("acceptedBy", "fullName email role")
+        .populate("preparedBy", "fullName email role")
+        .populate("servedBy", "fullName email role")
+        .sort({ createdAt: -1 });
 
       res.status(200).json({ orders });
-      
     } catch (err) {
-      console.error('Error in getAllOrders:', err);
+      console.error("Error in getAllOrders:", err);
       res.status(500).json({ error: err.message });
     }
   }
@@ -181,63 +182,77 @@ class WaiterController {
         order.status = "accepted";
         order.acceptedAt = new Date();
         order.acceptedBy = req.user.id;
-        
+
         // Update all items status to accepted
-        order.items.forEach(item => {
-            item.status = "accepted";
+        order.items.forEach((item) => {
+          item.status = "accepted";
         });
 
         await order.save();
 
         const fullOrder = await Order.findById(order._id)
-            .populate({
-                path: "sessionId",
-                populate: { path: "tableId", select: "name" }
-            })
-            .populate("items.menuItemId", "prepTime name")
-            .populate('acceptedBy', 'fullName email role')
-            .populate('preparedBy', 'fullName email role')
-            .populate('servedBy', 'fullName email role');
+          .populate({
+            path: "sessionId",
+            populate: { path: "tableId", select: "name" },
+          })
+          .populate("items.menuItemId", "prepTime name")
+          .populate("acceptedBy", "fullName email role")
+          .populate("preparedBy", "fullName email role")
+          .populate("servedBy", "fullName email role");
 
         // 1. Format dữ liệu CHUẨN cho KITCHEN (Giống hệt API getIncomingOrders)
         const kitchenFormat = {
-            id: fullOrder._id,
-            table: fullOrder.sessionId?.tableId?.name || 'Unknown',
-            status: fullOrder.status,
-            createdAt: fullOrder.createdAt,
-            acceptedAt: fullOrder.acceptedAt,
-            items: fullOrder.items.map(item => ({
-                itemId: item._id,
-                name: item.name,
-                qty: item.quantity, // Kitchen UI dùng 'qty', DB dùng 'quantity' -> Phải map lại
-                note: item.note,
-                modifiers: item.modifiers,
-                status: item.status,
-                prepTime: item.menuItemId?.prepTime || 15
-            }))
+          id: fullOrder._id,
+          table: fullOrder.sessionId?.tableId?.name || "Unknown",
+          status: fullOrder.status,
+          createdAt: fullOrder.createdAt,
+          acceptedAt: fullOrder.acceptedAt,
+          items: fullOrder.items.map((item) => ({
+            itemId: item._id,
+            name: item.name,
+            qty: item.quantity, // Kitchen UI dùng 'qty', DB dùng 'quantity' -> Phải map lại
+            note: item.note,
+            modifiers: item.modifiers,
+            status: item.status,
+            prepTime: item.menuItemId?.prepTime || 15,
+          })),
         };
 
         // Ở đây Waiter/Customer dùng cấu trúc gốc nên gửi fullOrder
         const standardFormat = fullOrder.toObject();
 
         // Emit với data đã format
-        io.to(`restaurant_${restaurantId}_kitchen`).emit("kitchen:order_update", kitchenFormat);
-        io.to(`restaurant_${restaurantId}_waiter`).emit("order_accepted", standardFormat);
-        io.to(`restaurant_${restaurantId}_admin`).emit("order_accepted", standardFormat);
+        io.to(`restaurant_${restaurantId}_kitchen`).emit(
+          "kitchen:order_update",
+          kitchenFormat
+        );
+        io.to(`restaurant_${restaurantId}_waiter`).emit(
+          "order_accepted",
+          standardFormat
+        );
+        io.to(`restaurant_${restaurantId}_admin`).emit(
+          "order_accepted",
+          standardFormat
+        );
         io.to(`session_${sessionId}`).emit("order_update", standardFormat);
 
         // Cập nhật tổng tiền session
-        const OrderSession = (await import("../models/OrderSession.mjs")).default;
+        const OrderSession = (await import("../models/OrderSession.mjs"))
+          .default;
         const orderTotal = order.items.reduce((sum, item) => {
-            const modifiersPrice = item.modifiers?.reduce((acc, mod) => acc + (mod.price || 0), 0) || 0;
-            return sum + (item.price + modifiersPrice) * item.quantity;
+          const modifiersPrice =
+            item.modifiers?.reduce((acc, mod) => acc + (mod.price || 0), 0) ||
+            0;
+          return sum + (item.price + modifiersPrice) * item.quantity;
         }, 0);
 
         await OrderSession.findByIdAndUpdate(sessionId, {
-            $inc: { totalAmount: orderTotal }
+          $inc: { totalAmount: orderTotal },
         });
 
-        return res.status(200).json({ message: "Order accepted", order: standardFormat });
+        return res
+          .status(200)
+          .json({ message: "Order accepted", order: standardFormat });
       } else {
         // Rejected
         order.status = "rejected";
@@ -249,9 +264,9 @@ class WaiterController {
             path: "sessionId",
             populate: { path: "tableId", select: "name" },
           })
-          .populate('acceptedBy', 'fullName email role')
-          .populate('preparedBy', 'fullName email role')
-          .populate('servedBy', 'fullName email role');
+          .populate("acceptedBy", "fullName email role")
+          .populate("preparedBy", "fullName email role")
+          .populate("servedBy", "fullName email role");
 
         io.to(`restaurant_${restaurantId}_waiter`).emit(
           "order_rejected",
@@ -263,7 +278,9 @@ class WaiterController {
         );
         io.to(`session_${sessionId}`).emit("order_update", populatedOrder);
 
-        res.status(200).json({ message: "Order rejected", order: populatedOrder });
+        res
+          .status(200)
+          .json({ message: "Order rejected", order: populatedOrder });
       }
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -281,9 +298,9 @@ class WaiterController {
           path: "sessionId",
           populate: { path: "tableId", select: "name" },
         })
-        .populate('acceptedBy', 'fullName email role')
-        .populate('preparedBy', 'fullName email role')
-        .populate('servedBy', 'fullName email role');
+        .populate("acceptedBy", "fullName email role")
+        .populate("preparedBy", "fullName email role")
+        .populate("servedBy", "fullName email role");
       if (!order) return res.status(404).json({ message: "Order not found" });
 
       // Chỉ update items có status = 'ready' thành 'served'
@@ -300,12 +317,12 @@ class WaiterController {
       // Populate lại đầy đủ sau khi save
       await order.populate([
         {
-          path: 'sessionId',
-          populate: { path: 'tableId', select: 'name' }
+          path: "sessionId",
+          populate: { path: "tableId", select: "name" },
         },
-        { path: 'acceptedBy', select: 'fullName email' },
-        { path: 'preparedBy', select: 'fullName email' },
-        { path: 'servedBy', select: 'fullName email' }
+        { path: "acceptedBy", select: "fullName email" },
+        { path: "preparedBy", select: "fullName email" },
+        { path: "servedBy", select: "fullName email" },
       ]);
 
       // Emit socket tới waiter, kitchen VÀ customer
@@ -338,9 +355,9 @@ class WaiterController {
           path: "sessionId",
           populate: { path: "tableId", select: "name" },
         })
-        .populate('acceptedBy', 'fullName email role')
-        .populate('preparedBy', 'fullName email role')
-        .populate('servedBy', 'fullName email role');
+        .populate("acceptedBy", "fullName email role")
+        .populate("preparedBy", "fullName email role")
+        .populate("servedBy", "fullName email role");
       if (!order) return res.status(404).json({ message: "Order not found" });
 
       // Validate: Tất cả items phải served
@@ -359,12 +376,12 @@ class WaiterController {
       // Populate lại đầy đủ sau khi save
       await order.populate([
         {
-          path: 'sessionId',
-          populate: { path: 'tableId', select: 'name' }
+          path: "sessionId",
+          populate: { path: "tableId", select: "name" },
         },
-        { path: 'acceptedBy', select: 'fullName email' },
-        { path: 'preparedBy', select: 'fullName email' },
-        { path: 'servedBy', select: 'fullName email' }
+        { path: "acceptedBy", select: "fullName email" },
+        { path: "preparedBy", select: "fullName email" },
+        { path: "servedBy", select: "fullName email" },
       ]);
 
       // Emit socket tới waiter, kitchen VÀ customer
@@ -392,109 +409,164 @@ class WaiterController {
   // Lấy danh sách bàn đang active hoặc chờ thanh toán
   async getTableStatus(req, res) {
     try {
-        const restaurantId = req.user.restaurantId;
+      const restaurantId = req.user.restaurantId;
 
-        const sessions = await OrderSession.find({
-            restaurantId,
-            status: { $in: ['active', 'payment_requested'] }
-        })
-        .populate('tableId', 'name location')
+      const sessions = await OrderSession.find({
+        restaurantId,
+        status: { $in: ["active", "payment_requested"] },
+      })
+        .populate("tableId", "name location")
         .sort({ startTime: -1 });
 
-        // ⭐ ĐẢM BẢO TRẢ VỀ paymentStatus và paymentMethod
-        const formattedSessions = sessions.map(session => ({
-            _id: session._id,
-            tableId: session.tableId,
-            startTime: session.startTime,
-            totalAmount: session.totalAmount,
-            status: session.status,
-            paymentMethod: session.paymentMethod,
-            paymentStatus: session.paymentStatus // ⭐ QUAN TRỌNG
-        }));
+      // ⭐ ĐẢM BẢO TRẢ VỀ paymentStatus và paymentMethod
+      const formattedSessions = sessions.map((session) => ({
+        _id: session._id,
+        tableId: session.tableId,
+        startTime: session.startTime,
+        totalAmount: session.totalAmount,
+        status: session.status,
+        paymentMethod: session.paymentMethod,
+        paymentStatus: session.paymentStatus, // ⭐ QUAN TRỌNG
+      }));
 
-        res.status(200).json({ sessions: formattedSessions });
-
+      res.status(200).json({ sessions: formattedSessions });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     }
-}
+  }
 
   // [POST] /api/waiter/checkout/:sessionId
   // Xác nhận thanh toán (Dùng cho Tiền mặt)
   // Cấm con AI nào đụng vào hàm này
   async confirmPayment(req, res) {
     try {
-        const { sessionId } = req.params;
+      const { sessionId } = req.params;
 
-        const session = await OrderSession.findById(sessionId).populate('restaurantId');
-        if (!session) {
-            return res.status(404).json({ message: "Session not found" });
-        }
+      const session = await OrderSession.findById(sessionId).populate(
+        "restaurantId"
+      );
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
 
-        // Cho phép clear nếu:
-        // 1. Đã thanh toán (paymentStatus = 'paid') -> Bất kể session.status là gì
-        // 2. Hoặc đang yêu cầu thanh toán tiền mặt (paymentMethod = 'cash' && status = 'payment_requested')
-        
-        const isPaid = session.paymentStatus === 'paid';
-        const isCashRequest = session.paymentMethod === 'cash' && session.status === 'payment_requested';
+      // Cho phép clear nếu:
+      // 1. Đã thanh toán (paymentStatus = 'paid') -> Bất kể session.status là gì
+      // 2. Hoặc đang yêu cầu thanh toán tiền mặt (paymentMethod = 'cash' && status = 'payment_requested')
 
-        if (!isPaid && !isCashRequest) {
-            return res.status(400).json({ message: "Invalid payment status. Session must be PAID or requesting CASH." });
-        }
+      const isPaid = session.paymentStatus === "paid";
+      const isCashRequest =
+        session.paymentMethod === "cash" &&
+        session.status === "payment_requested";
 
-        // 1. Cập nhật session
-        session.paymentStatus = 'paid';
-        session.status = 'completed';
-        session.endTime = new Date();
-        await session.save();
-
-        // 2. Cập nhật bàn (ĐÓNG BÀN)
-        await Table.findByIdAndUpdate(session.tableId, {
-            status: 'free',
-            currentSessionId: null
+      if (!isPaid && !isCashRequest) {
+        return res.status(400).json({
+          message:
+            "Invalid payment status. Session must be PAID or requesting CASH.",
         });
+      }
 
-        // 3. Emit socket tới Customer
-        const io = req.app.get('socketio');
-        io.to(`session_${sessionId}`).emit('session_ended', {
-            sessionId,
-            reason: 'payment_completed',
-            message: 'Payment confirmed. Thank you!',
-            method: session.paymentMethod
+      // 1. Cập nhật session
+      session.paymentStatus = "paid";
+      session.status = "completed";
+      session.endTime = new Date();
+      await session.save();
+
+      // Cập nhật doanh thu nhà hàng (Nếu trước đó chưa thanh toán)
+      if (!isPaid && session.totalAmount && session.totalAmount > 0) {
+        await Restaurant.findByIdAndUpdate(session.restaurantId._id, {
+          $inc: { totalRevenue: session.totalAmount },
         });
+      }
 
-        // io.to(`restaurant_${restaurantId}_waiter`).emit("table_update");
+      // 2. Cập nhật bàn (ĐÓNG BÀN)
+      await Table.findByIdAndUpdate(session.tableId, {
+        status: "free",
+        currentSessionId: null,
+      });
 
-        // 4. Thông báo tới các Waiter khác (optional)
-        const table = await Table.findById(session.tableId);
-        const restaurantId = session.restaurantId._id.toString();
-        
-        io.to(`restaurant_${restaurantId}_waiter`).emit('table_cleared', {
-            sessionId,
-            tableId: session.tableId,
-            tableName: table.name,
-            totalAmount: session.totalAmount,
-            paymentMethod: session.paymentMethod
-        });
+      // 3. Emit socket tới Customer
+      const io = req.app.get("socketio");
+      io.to(`session_${sessionId}`).emit("session_ended", {
+        sessionId,
+        reason: "payment_completed",
+        message: "Payment confirmed. Thank you!",
+        method: session.paymentMethod,
+      });
 
-        // io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {
-        //     tableId: session.tableId,
-        //     tableName: table.name,
-        //     sessionId,
-        //     totalAmount: session.totalAmount,
-        //     paymentMethod: 'cash'
-        // });
+      // io.to(`restaurant_${restaurantId}_waiter`).emit("table_update");
 
-        res.status(200).json({ 
-            message: "Cash payment confirmed successfully",
-            session
-        });
+      // 4. Thông báo tới các Waiter khác (optional)
+      const table = await Table.findById(session.tableId);
+      const restaurantId = session.restaurantId._id.toString();
 
+      io.to(`restaurant_${restaurantId}_waiter`).emit("table_cleared", {
+        sessionId,
+        tableId: session.tableId,
+        tableName: table.name,
+        totalAmount: session.totalAmount,
+        paymentMethod: session.paymentMethod,
+      });
+
+      // io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {
+      //     tableId: session.tableId,
+      //     tableName: table.name,
+      //     sessionId,
+      //     totalAmount: session.totalAmount,
+      //     paymentMethod: 'cash'
+      // });
+
+      res.status(200).json({
+        message: "Cash payment confirmed successfully",
+        session,
+      });
     } catch (err) {
-        console.error("Confirm Payment Error:", err);
-        res.status(500).json({ error: err.message });
+      console.error("Confirm Payment Error:", err);
+      res.status(500).json({ error: err.message });
     }
-}
+  }
+
+  // [GET] /api/waiter/session/:sessionId/bill
+  // Download bill PDF for a session
+  async downloadBill(req, res) {
+    try {
+      const { sessionId } = req.params;
+
+      // Lấy session data với đầy đủ populate
+      const session = await OrderSession.findById(sessionId)
+        .populate("restaurantId")
+        .populate("tableId", "name location")
+        .populate("customerId", "fullName email");
+
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      // Lấy tất cả orders (loại bỏ rejected)
+      const orders = await Order.find({
+        sessionId,
+        status: { $ne: "rejected" },
+      })
+        .populate("servedBy", "fullName")
+        .sort({ createdAt: 1 });
+
+      // Add metadata to headers for frontend to use
+      res.setHeader(
+        "X-Restaurant-Name",
+        session.restaurantId?.name || "Restaurant"
+      );
+      res.setHeader("X-Table-Name", session.tableId?.name || "Table");
+      res.setHeader(
+        "X-Session-Date",
+        (session.endTime || new Date()).toISOString()
+      );
+
+      // Generate PDF
+      generateBillPDF(res, session, orders);
+    } catch (err) {
+      console.error("Download Bill Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  }
 }
 
 export default new WaiterController();
