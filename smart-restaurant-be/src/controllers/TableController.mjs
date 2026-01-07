@@ -14,7 +14,6 @@ const generateTableToken = (tableId, restaurantId) => {
 }
 
 class TableController {
-    
     // [GET] /api/tables
     async getTables(req, res) {
         try {
