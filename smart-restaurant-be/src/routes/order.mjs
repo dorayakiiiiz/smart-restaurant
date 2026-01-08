@@ -19,4 +19,7 @@ router.post('/webhook/payos', orderController.handlePayOSWebhook);
 router.post('/session/:sessionId/claim', authMiddleware, orderController.claimSession);
 router.get('/history', authMiddleware, orderController.getCustomerHistory);
 
+// Check if user has served order for item
+router.get('/check-served/:itemId', authMiddleware, orderController.checkItemServed);
+
 export default router;
