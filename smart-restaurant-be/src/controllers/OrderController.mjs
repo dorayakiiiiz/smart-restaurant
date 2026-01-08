@@ -510,6 +510,29 @@ class OrderController {
       res.status(500).json({ error: err.message });
     }
   }
+
+  // [GET] /api/orders/check-served/:itemId
+  async checkItemServed(req, res) {
+    try {
+      const userId = req.user.id;
+      const { itemId } = req.params;
+
+      // Tìm xem có order nào của user chứa món này và có status='served' (ở cấp item)
+      const order = await Order.findOne({
+        orderedBy: userId,
+        items: {
+          $elemMatch: {
+            menuItemId: itemId,
+            status: 'served'
+          }
+        }
+      });
+
+      res.json({ hasServedOrder: !!order });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
 }
 
 export default new OrderController();

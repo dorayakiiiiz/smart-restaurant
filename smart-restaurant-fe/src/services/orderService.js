@@ -31,11 +31,17 @@ const getCustomerHistory = async () => {
     return response.data;
 };
 
+const checkItemServed = async (itemId) => {
+    const response = await api.get(`/orders/check-served/${itemId}`);
+    return response.data;
+};
+
 export const orderService = {
     startSession,
     placeOrder,
     getSessionDetails,
     requestCheckout,
     claimSession,
-    getCustomerHistory
+    getCustomerHistory,
+    checkItemServed
 };

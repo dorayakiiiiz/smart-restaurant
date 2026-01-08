@@ -142,6 +142,7 @@ function App() {
                         {/* 2. Customer Flow (Mobile First) */}
                         <Route element={<CustomerLayout />}>
                             <Route path="/menu" element={<MenuPage />} />
+                            {/* <Route path="/menu/public" element={<MenuPage />} /> */}
                             <Route
                                 path="/menu/public/:id/:restaurantId"
                                 element={<MenuDetailPage />}

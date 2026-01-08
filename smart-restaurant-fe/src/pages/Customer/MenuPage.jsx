@@ -45,19 +45,44 @@ const StarRating = ({ rating, setRating, editable = true, size = "text-sm" }) =>
 
 export default function MenuPage() {
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const tableToken = searchParams.get("token");
     const { setSessionInfo, addToCart, sessionInfo } = useCart();
-    const [selectedCategory, setSelectedCategory] = useState("all");
+    
     const [searchTerm, setSearchTerm] = useState("");
-    const [sortBy, setSortBy] = useState("price-asc"); // State cho sort
+; // State cho sort
     
     // State để quản lý món đang xem
     const [selectedItem, setSelectedItem] = useState(null);
 
+
+
     // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    //Logic bấm vào detail món ăn rồi quay lại vẫn giữ page cũ
+    const [currentPage, setCurrentPage] = useState(() => {
+        //Lấy page từ url
+        const page = parseInt(searchParams.get("page"));
+        console.log("Initial URL Page:", page);
+        return !isNaN(page) && page > 0 ? page : 1;
+    });
+
+    //Category
+    const [selectedCategory, setSelectedCategory] = useState(() => {
+        const category = searchParams.get("category");
+        return category ? category : "all";
+    })
+
+    //Sort
+    const [sortBy, setSortBy] = useState(() => {
+        const sort = searchParams.get("sortBy");
+        return sort ? sort : "price-asc";
+    })
+
+    console.log("Current Page State:", currentPage);
+    // Ref để chặn reset page khi mount lại
+    const prevFiltersRef = useRef({ searchTerm, selectedCategory, sortBy });
+
+    const itemsPerPage = 3;
 
     const handleAddItem = (e, item) => {
         e.stopPropagation();
@@ -107,8 +132,33 @@ export default function MenuPage() {
         };
     }, [sessionInfo]);
 
+    // 3. Đồng bộ currentPage lên URL
     useEffect(() => {
-        setCurrentPage(1);
+        setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.set("page", currentPage);
+            newParams.set("category", selectedCategory);
+            newParams.set("sortBy", sortBy);
+            return newParams;
+        }, { replace: true });
+    }, [currentPage, setSearchParams]);
+
+    useEffect(() => {
+        const prev = prevFiltersRef.current;
+        //Mấu chốt là so sánh với giá trị trước đó (searchTerm, selectedCategory, sortBy)
+        //Nếu thay đổi thì mới reset page về 1
+        // Kiểm tra xem có filter nào thay đổi thực sự không
+        //ĐÂY LÀ CHÌA KHÓA GIỮ PAGE CŨ
+        const isFilterChanged = 
+            prev.searchTerm !== searchTerm || 
+            prev.selectedCategory !== selectedCategory || 
+            prev.sortBy !== sortBy;
+
+        if (isFilterChanged) {
+            setCurrentPage(1);
+            // Cập nhật lại giá trị ref
+            prevFiltersRef.current = { searchTerm, selectedCategory, sortBy };
+        }
     }, [searchTerm, selectedCategory, sortBy]);
 
     // Lấy ID nhà hàng từ sessionInfo
@@ -217,7 +267,7 @@ export default function MenuPage() {
             <div className="p-6 grid grid-cols-1 gap-6">
                 {paginatedItems.map((item) => (
                     <div 
-                        onClick={() => navigate(`/menu/public/${item._id}/${restaurantId}`)}
+                        onClick={() => navigate(`/menu/public/${item._id}/${restaurantId}?page=${currentPage}&category=${selectedCategory}&sortBy=${sortBy}`)}
                         key={item._id} 
                         className={`bg-white p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 flex items-center gap-4 relative overflow-hidden group transition active:scale-[0.98] ${!item.isAvailable ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
                     >

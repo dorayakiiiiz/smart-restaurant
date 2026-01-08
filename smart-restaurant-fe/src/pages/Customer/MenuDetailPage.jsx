@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { menuService } from "../../services/menuService";
 import { reviewService } from "../../services/reviewService";
+import { orderService } from "../../services/orderService";
 import { useCart } from "../../context/CartContext";
 import Button from "../../components/Shared/Button";
 import ProductModal from "../../components/Modal/ProductModal";
@@ -48,6 +49,12 @@ export default function MenuDetailPage() {
     const [uploading, setUploading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { addToCart, sessionInfo } = useCart();
+    const location = useLocation();
+
+    //Lấy page từ URL để giữ trạng thái khi điều hướng
+    const page = new URLSearchParams(location.search).get("page");
+    const category = new URLSearchParams(location.search).get("category");
+    const sortBy = new URLSearchParams(location.search).get("sortBy");
 
     // State cho Review
     const [rating, setRating] = useState(5);
@@ -73,6 +80,18 @@ export default function MenuDetailPage() {
         queryFn: () => reviewService.getReviews(restaurantId, id),
         enabled: !!id
     });
+
+    // Check if user bought and served
+    //Ở đây không tự động refetch, chỉ fetchi khi mount
+    //Nhưng do khi cus sẽ bấm vào tracking page để xem trạng thái nên khi status là served
+    //Thì quay lại revie nênw sẽ thấy luôn nút review hiện lên, không cần socket
+    const { data: purchaseStatus } = useQuery({
+        queryKey: ['checkServed', id],
+        queryFn: () => orderService.checkItemServed(id),
+        enabled: !!user && !!id // Chỉ chạy khi đã đăng nhập và có id món
+    });
+
+    const hasServedOrder = purchaseStatus?.hasServedOrder;
 
     const item = data?.item;
 
@@ -192,7 +211,7 @@ export default function MenuDetailPage() {
 
             {/* 1. Navigation */}
             <div className="absolute z-10 mb-6 mt-4" title="Return">
-                <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full text-xs bg-white/80 border border-gray-100 flex items-center justify-center hover:bg-white hover:shadow-md transition-all">
+                <button onClick={() => navigate(`/menu?${page ? `page=${page}` : ""}&${category ? `category=${category}` : ""}&${sortBy ? `sortBy=${sortBy}` : ""}`)} className="w-8 h-8 rounded-full text-xs bg-white/80 border border-gray-100 flex items-center justify-center hover:bg-white hover:shadow-md transition-all">
                     <i className="fa-solid fa-arrow-left text-gray-900"></i>
                 </button>
                 
@@ -436,8 +455,24 @@ export default function MenuDetailPage() {
                 </div>
 
                 {/* Form Review */}
-                {/* Có đăng nhập mới cho review */}
-                {user ? (
+                {/* Có đăng nhập  và đã đc served món đó mới cho review*/}
+                {!user && (
+                    <div className="mb-10 p-8 bg-gray-50 rounded-2xl border border-gray-200 text-center">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-[#D4AF37]">
+                            <i className="fa-solid fa-user-lock text-2xl"></i>
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-800 mb-2">Want to share your experience?</h4>
+                        <p className="text-gray-500 text-sm mb-6">Please sign in and taste the food to leave a review for this item.</p>
+                        <button 
+                            onClick={() => navigate('/auth/login')}
+                            className="px-6 py-2.5 bg-[#1a1a1a] text-[#D4AF37] rounded-xl font-bold text-sm hover:bg-black transition-colors"
+                        >
+                            Sign In Now
+                        </button>
+                    </div>
+                )}
+
+                {hasServedOrder ? (
                     (!myReview || editingReviewId) && (
                         <div className="bg-white p-8 rounded-[2rem] shadow-sm border-2 border-[#D4AF37]/5 mb-10">
                             <h4 className="font-black text-gray-800 mb-6 uppercase text-xs tracking-widest flex items-center gap-2">
@@ -477,13 +512,8 @@ export default function MenuDetailPage() {
                             <i className="fa-solid fa-user-lock text-2xl"></i>
                         </div>
                         <h4 className="text-lg font-bold text-gray-800 mb-2">Want to share your experience?</h4>
-                        <p className="text-gray-500 text-sm mb-6">Please sign in to leave a review for this item.</p>
-                        <button 
-                            onClick={() => navigate('/auth/login')}
-                            className="px-6 py-2.5 bg-[#1a1a1a] text-[#D4AF37] rounded-xl font-bold text-sm hover:bg-black transition-colors"
-                        >
-                            Sign In Now
-                        </button>
+                        <p className="text-gray-500 text-sm mb-6">Want to leave review? Place order now!</p>
+                        
                     </div>
                 )}
 
