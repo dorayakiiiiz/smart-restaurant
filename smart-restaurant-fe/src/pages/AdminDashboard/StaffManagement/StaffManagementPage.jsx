@@ -7,6 +7,7 @@ import DeleteModal from "../../../components/Modal/DeleteModal";
 import RoleSelectionModal from "./components/RoleSelectionModal";
 import StaffFormModal from "./components/StaffFormModal";
 import FilterModal from "./components/FilterModal";
+import { useAuth } from "../../../context/AuthContext";
 
 export default function StaffManagementPage() {
     const queryClient = useQueryClient();
@@ -91,10 +92,13 @@ export default function StaffManagementPage() {
         setSelectedStatusFilter("all");
     };
 
+    const { user } = useAuth(); // Lấy user hiện tại để check isOwner
+    const isOwner = user?.restaurant?.isOwner; // Check quyền
+
     // Table columns
     const columns = [
         {
-            header: "Staff Name",
+            header: "Employee",
             render: (item) => (
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs text-gray-600">
@@ -117,11 +121,13 @@ export default function StaffManagementPage() {
             header: "Role",
             render: (item) => (
                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                    item.role === 'waiter' 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'bg-orange-100 text-orange-700'
+                    item.role === 'admin'
+                        ? 'bg-red-100 text-red-700'
+                        : item.role === 'waiter' 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'bg-orange-100 text-orange-700'
                 }`}>
-                    {item.role === 'waiter' ? '🍽️ Waiter' : '👨‍🍳 Kitchen'}
+                    {item.role === 'admin' ? '🔑 Admin' : item.role === 'waiter' ? '🍽️ Waiter' : '👨‍🍳 Kitchen'}
                 </span>
             )
         },
@@ -159,8 +165,9 @@ export default function StaffManagementPage() {
 
             <button 
                 onClick={() => handleDelete(item._id)}
-                className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition"
+                className={`${(item.role === 'admin' && !isOwner) ? 'text-gray-300 cursor-not-allowed' : 'text-red-600 hover:bg-red-50'} p-2 rounded-lg transition`}
                 title="Delete Account"
+                disabled={item.role === 'admin' && !isOwner}
             >
                 <i className="fa-solid fa-trash"></i>
             </button>

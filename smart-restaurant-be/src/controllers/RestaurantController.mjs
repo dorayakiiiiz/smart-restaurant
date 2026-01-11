@@ -34,6 +34,8 @@ class RestaurantController {
             if (req.files?.cover?.[0]) data.coverUrl = req.files.cover[0].path;
 
             const restaurant = await Restaurant.create(data);
+            await User.findByIdAndUpdate(req.user.id, { restaurantId: restaurant._id });
+
             res.status(201).json({ message: "Restaurant created!", restaurant });
         } catch (err) {
             res.status(500).json({ error: err.message });
@@ -43,12 +45,15 @@ class RestaurantController {
     // [GET] /api/restaurant/me
     async getMyRestaurant(req, res) {
         try {
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+            const restaurant = await Restaurant.findById(req.user.restaurantId);
             
             if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
+            const isOwner = restaurant.adminId.toString() === req.user.id;
+
             // Clone object để xử lý dữ liệu trả về
             const restaurantData = restaurant.toObject();
+            restaurantData.isOwner = isOwner;
 
             // Giải mã thông tin PayOS để hiển thị lại trên form (nếu có)
             if (restaurantData.payosConfig && restaurantData.payosConfig.isConfigured) {
@@ -174,17 +179,20 @@ class RestaurantController {
     // [GET] /api/restaurant/stats/:filter
     async getDashboardStats(req, res) {
         try {
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
-            //Chart filter
-            const {filter} = req.query; //'week', 'month', 'year'
+            // Chart filter
+            const { filter } = req.query; // 'week', 'month', 'year'
+
+            let restaurant = await Restaurant.findById(req.user.restaurantId);
+            if (!restaurant) {
+                restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            }
 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
-
 
 
             // --- CHART LOGIC START ---
@@ -287,6 +295,7 @@ class RestaurantController {
                     }
                 });
             }
+
             // --- CHART LOGIC END ---
             //Kết quả cuối cùng của chartData
             // chartData = [

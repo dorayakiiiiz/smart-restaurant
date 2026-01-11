@@ -7,10 +7,23 @@ export default function RoleSelectionModal({ onClose, onSelectRole }) {
             <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl" 
                 onClick={e => e.stopPropagation()}
             >
-                <h3 className="text-2xl font-bold font-momo text-[#1a1a1a] mb-2">Create Staff</h3>
-                <p className="text-gray-500 text-sm mb-6">Select the type of staff you want to create</p>
+                <h3 className="text-2xl font-bold font-momo text-[#1a1a1a] mb-2">Create Employee</h3>
+                <p className="text-gray-500 text-sm mb-6">Select the type of employee you want to create</p>
                 
                 <div className="flex flex-col gap-3">
+                    <button
+                        onClick={() => onSelectRole('admin')}
+                        className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-red-500 hover:bg-red-50 transition-all flex items-center gap-4 group"
+                    >
+                        <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                            🔑
+                        </div>
+                        <div className="text-left">
+                            <div className="font-bold text-gray-800 group-hover:text-red-600">Restaurant Admin</div>
+                            <div className="text-xs text-gray-500">Manage menu, staff, and restaurant settings</div>
+                        </div>
+                    </button>
+                    
                     <button
                         onClick={() => onSelectRole('waiter')}
                         className="w-full p-4 rounded-xl border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-4 group"

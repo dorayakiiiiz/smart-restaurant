@@ -1,8 +1,13 @@
 
-import api, {API_URL} from "./api";
+import api, { API_URL } from "./api";
 
 const login = async (data) => {
     const response = await api.post('/auth/login', data);
+    return response.data;
+}
+
+const checkEmail = async (data) => {
+    const response = await api.post('/auth/check-email', data);
     return response.data;
 }
 
@@ -41,6 +46,7 @@ const getGoogleAuthUrl = () => {
 export const authService = {
     login, 
     // register,
+    checkEmail,
     sendRegisterOtp,     
     verifyRegisterAndCreate,
     forgotPassword,

@@ -7,16 +7,19 @@ class CategoryController {
     // [GET] /api/categories
     async getCategories(req, res) {
         try {
-            // Tìm nhà hàng của user đang đăng nhập (dùng adminId)
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
             // Aggregate to get categories with item count
             const categories = await Category.aggregate([
                 // Lấy ra các category thuộc nhà hàng và chưa bị xóa
                 { 
                     $match: { 
-                        restaurantId: restaurant._id, 
+                        restaurantId, 
                         isDeleted: false 
                     } 
                 },
@@ -60,11 +63,15 @@ class CategoryController {
                 return res.status(400).json({ message: "Display order must be a non-negative integer" });
             }
 
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
             
             const category = await Category.create({
-                restaurantId: restaurant._id,
+                restaurantId,
                 name,
                 description,
                 order: order || 0,
@@ -82,11 +89,15 @@ class CategoryController {
     async deleteCategory(req, res) {
         try {
             const { id } = req.params;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
             // Kiểm tra category có thuộc nhà hàng này không
-            const category = await Category.findOne({ _id: id, restaurantId: restaurant._id });
+            const category = await Category.findOne({ _id: id, restaurantId });
             if (!category) return res.status(404).json({ message: "Category not found or unauthorized" });
 
             // Soft delete
@@ -107,11 +118,15 @@ class CategoryController {
     // [GET] /api/categories/trash
     async getTrashCategories(req, res) {
         try {
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
             const categories = await Category.find({ 
-                restaurantId: restaurant._id, 
+                restaurantId, 
                 isDeleted: true 
             }).sort({ updatedAt: -1 });
 
@@ -131,10 +146,14 @@ class CategoryController {
 
             if (!name) return res.status(400).json({ message: "Category name is required" });
 
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+           let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
-            const category = await Category.findOne({ _id: id, restaurantId: restaurant._id });
+            const category = await Category.findOne({ _id: id, restaurantId });
             if (!category) return res.status(404).json({ message: "Category not found" });
 
             if (name) {
@@ -177,10 +196,14 @@ class CategoryController {
     async forceDeleteCategory(req, res) {
         try {
             const { id } = req.params;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
-            const category = await Category.findOneAndDelete({ _id: id, restaurantId: restaurant._id });
+            const category = await Category.findOneAndDelete({ _id: id, restaurantId });
             if (!category) return res.status(404).json({ message: "Category not found" });
 
             // Khi xóa vĩnh viễn, set categoryId của các món ăn về null
@@ -197,10 +220,14 @@ class CategoryController {
     async restoreCategory(req, res) {
         try {
             const { id } = req.params;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
-            const category = await Category.findOne({ _id: id, restaurantId: restaurant._id });
+            const category = await Category.findOne({ _id: id, restaurantId });
             if (!category) return res.status(404).json({ message: "Category not found" });
 
             category.isDeleted = false;
