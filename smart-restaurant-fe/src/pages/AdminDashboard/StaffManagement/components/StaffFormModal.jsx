@@ -100,8 +100,8 @@ export default function StaffFormModal({ staff, role, onClose, onSuccess }) {
         mutation.mutate(data);
     };
 
-    const roleTitle = (staff?.role || role) === 'waiter' ? 'Waiter' : 'Kitchen Staff';
-    const roleIcon = (staff?.role || role) === 'waiter' ? '🍽️' : '👨‍🍳';
+    const roleTitle = (staff?.role || role) === 'admin' ? 'Admin' : (staff?.role || role) === 'waiter' ? 'Waiter' : 'Kitchen Staff';
+    const roleIcon = (staff?.role || role) === 'admin' ? '👔' : (staff?.role || role) === 'waiter' ? '🍽️' : '👨‍🍳';
 
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" 

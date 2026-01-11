@@ -9,6 +9,8 @@ export default function AdminDashboardLayout() {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
 
+    const isOwner = user?.restaurant?.isOwner;
+
     useEffect(() => {
         if (!user?.restaurantId) return;
         
@@ -46,7 +48,7 @@ export default function AdminDashboardLayout() {
                     <i className="fa-solid fa-utensils text-yellow-700"></i>
                     Smart Restaurant 
                     <span className="text-[10px] tracking-wider text-white font-bold border border-gray-600 px-2 py-0.5 rounded ml-2 uppercase bg-gray-800">
-                        Restaurant Admin
+                        {isOwner ? 'Restaurant Owner' : 'Restaurant Admin'}
                     </span>
                 </Link>
                 <div className="flex items-center gap-4">

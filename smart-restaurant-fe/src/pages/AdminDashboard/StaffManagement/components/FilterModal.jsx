@@ -48,6 +48,7 @@ export default function FilterModal({
                                 className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-[#D4AF37] transition-colors cursor-pointer appearance-none bg-white"
                             >
                                 <option value="all">All Roles</option>
+                                <option value="admin">Admin</option>
                                 <option value="waiter">Waiter</option>
                                 <option value="kitchen">Kitchen</option>
                             </select>

@@ -32,6 +32,7 @@ export default function CustomerRegister() {
     const [error, setError] = useState("");
     const [successMsg, setSuccessMsg] = useState(""); 
     const [agreeTerms, setAgreeTerms] = useState(false);
+    const [emailStatus, setEmailStatus] = useState(null);
 
     const sessionInfo = JSON.parse(localStorage.getItem("session_info"));
     const restaurantId = sessionInfo.session.restaurantId._id;
@@ -56,6 +57,19 @@ export default function CustomerRegister() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         setError("");
     };
+
+    const handleCheckEmail = async () => {
+        try {
+            setLoading(true);
+            await authService.checkEmail({ email: formData.email, restaurantId });
+            setEmailStatus('available');
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || err.response?.data?.error || "Registration failed.";
+            setEmailStatus('unavailable');
+        } finally {
+            setLoading(false);
+        }
+    }
 
     // --- OTP LOGIC ---
     const handleOtpChange = (element, index) => {
@@ -310,7 +324,27 @@ export default function CustomerRegister() {
 
                                     {/* Email */}
                                     <div className="space-y-1">
-                                        <label className="text-sm font-bold text-gray-700 ml-1">Email</label>
+                                        <label className="text-sm font-bold text-gray-700 ml-1">
+                                            Email
+                                            {loading ? (
+                                                <span className="text-blue-500 font-normal ml-3">
+                                                    <i className="fa-solid fa-spinner mr-1"></i>
+                                                    Checking
+                                                </span>
+                                            ) : (emailStatus && (
+                                                emailStatus === 'available' ? (
+                                                    <span className="text-green-500 font-normal ml-3">
+                                                        <i className="fa-solid fa-circle-check mr-1"></i>
+                                                        Available
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-red-500 font-normal ml-3">
+                                                        <i className="fa-solid fa-circle-xmark mr-1"></i>
+                                                        Email is already exists.
+                                                    </span>
+                                                )
+                                            ))}
+                                        </label>
                                         <input 
                                             type="email"
                                             name="email"
@@ -319,6 +353,7 @@ export default function CustomerRegister() {
                                             onChange={handleChange}
                                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-[#800020] focus:ring-1 focus:ring-[#800020] transition-all font-medium"
                                             placeholder="you@example.com"
+                                            onBlur={handleCheckEmail}
                                         />
                                     </div>
 
@@ -385,7 +420,7 @@ export default function CustomerRegister() {
 
                                     <button 
                                         type="submit" 
-                                        disabled={loading || successMsg} 
+                                        disabled={loading || successMsg || emailStatus === 'unavailable'} 
                                         className="w-full py-3.5 bg-[#800020] hover:bg-[#600018] text-white font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all transform active:scale-[0.98] text-base mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
                                     >
                                         {loading ? (

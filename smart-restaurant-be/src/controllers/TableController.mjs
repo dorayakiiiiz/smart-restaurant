@@ -17,11 +17,15 @@ class TableController {
     // [GET] /api/tables
     async getTables(req, res) {
         try {
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
             const tables = await Table.find({ 
-                restaurantId: restaurant._id
+                restaurantId,
             }).sort({ name: 1 });
 
             //Tất cả bàn của nhà hàng
@@ -36,16 +40,21 @@ class TableController {
     async createTable(req, res) {
         try {
             const { name, capacity, location, description } = req.body;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found." });
+            
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
             
             // Check trùng tên
-            const existing = await Table.findOne({ restaurantId: restaurant._id, name });
+            const existing = await Table.findOne({ restaurantId, name });
             if (existing) return res.status(400).json({ message: "Table name already exists." });
             
             // Tạo bàn tạm để lấy ID
             const newTable = new Table({
-                restaurantId: restaurant._id,
+                restaurantId,
                 name,
                 capacity,
                 location,
@@ -54,7 +63,7 @@ class TableController {
             });
             
             // Sinh token thật dựa trên ID vừa tạo
-            newTable.token = generateTableToken(newTable._id, restaurant._id);
+            newTable.token = generateTableToken(newTable._id, restaurantId);
             await newTable.save();
 
             res.status(201).json({ message: "Table created", table: newTable });
