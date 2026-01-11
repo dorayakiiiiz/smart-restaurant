@@ -75,7 +75,10 @@ export default function WaiterDashboard() {
                         ...session,
                         status: 'payment_requested',
                         paymentMethod: data.method,
-                        totalAmount: data.amount
+                        totalAmount: data.amount,
+                        discountPercentage: data.discountPercentage || 0,
+                        discountAmount: data.discountAmount || 0,
+                        finalAmount: data.finalAmount || data.amount
                     };
                 }
                 return session;

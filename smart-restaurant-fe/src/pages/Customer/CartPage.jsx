@@ -14,6 +14,24 @@ export default function CartPage() {
 
     const navigate = useNavigate();
 
+    const calculateDiscount = (subtotal) => {
+        if (subtotal >= 200) return { percentage: 15, amount: subtotal * 0.15 };
+        if (subtotal >= 100) return { percentage: 10, amount: subtotal * 0.10 };
+        if (subtotal >= 50) return { percentage: 5, amount: subtotal * 0.05 };
+        return { percentage: 0, amount: 0 };
+    };
+
+    const getNextTierMessage = (subtotal) => {
+        if (subtotal < 50) return `Add $${(50 - subtotal).toFixed(2)} for 5% off!`;
+        if (subtotal < 100) return `Add $${(100 - subtotal).toFixed(2)} for 10% off!`;
+        if (subtotal < 200) return `Add $${(200 - subtotal).toFixed(2)} for 15% off!`;
+        return null;
+    };
+
+    const discount = calculateDiscount(cartTotal);
+    const finalTotal = cartTotal - discount.amount;
+    const nextTierMessage = getNextTierMessage(cartTotal);
+
     // Fetch menu data (có thể dùng chung với MenuPage)
     const { data: menuData } = useQuery({
         queryKey: ['customer-menu', sessionInfo?.restaurant?._id],
@@ -130,9 +148,24 @@ export default function CartPage() {
 
             {/* Total & Checkout */}
             <div className="fixed bottom-[100px] left-6 right-6 bg-[#1a1a1a] p-5 rounded-2xl shadow-2xl text-white z-30">
+                {discount.percentage > 0 ? (
+                    <>
+                        <div className="flex justify-between mb-2 items-center">
+                            <span className="text-gray-400 text-sm">Subtotal</span>
+                            <span className="font-semibold text-white">${cartTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between mb-4 items-center">
+                            <span className="text-[#D4AF37] text-sm flex items-center gap-1">
+                                Discount ({discount.percentage}%)
+                            </span>
+                            <span className="font-semibold text-[#D4AF37]">${discount.amount.toFixed(2)}</span>
+                        </div>
+                    </>
+                ) : null}
+                
                 <div className="flex justify-between mb-4 items-center">
                     <span className="text-gray-400 text-sm">Total Amount</span>
-                    <span className="font-momo font-bold text-2xl text-[#D4AF37]">${cartTotal.toFixed(2)}</span>
+                    <span className="font-momo font-bold text-2xl text-[#D4AF37]">${finalTotal.toFixed(2)}</span>
                 </div>
                 <button 
                     onClick={handlePlaceOrder}

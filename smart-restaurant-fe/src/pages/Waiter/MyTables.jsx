@@ -153,7 +153,8 @@ export default function MyTables() {
     let paymentRequested = 0;
 
     sessions.forEach((session) => {
-      totalAmount += session.totalAmount || 0;
+      const displayAmount = session.discountPercentage > 0 ? session.finalAmount : session.totalAmount;
+      totalAmount += displayAmount || 0;
       if (session.status === "payment_requested") paymentRequested++;
     });
 
@@ -272,6 +273,25 @@ export default function MyTables() {
       </span>
     );
   };
+  
+  const renderTableAmount = (session) => {
+    const hasDiscount = session.discountPercentage > 0;
+    const displayAmount = hasDiscount ? session.finalAmount : session.totalAmount;
+    
+    return (
+      <div className="text-right">
+        {hasDiscount && (
+          <div className="text-xs text-gray-400 line-through opacity-50 mb-1">
+            ${session.totalAmount?.toFixed(2)}
+          </div>
+        )}
+        <div className="font-bold text-lg text-gray-800 mb-2">
+          ${displayAmount?.toFixed(2)}
+        </div>
+        <div className="text-xs text-gray-400">Total</div>
+      </div>
+    );
+  };
   return (
     <>
       {/* Summary Card */}
@@ -370,15 +390,18 @@ export default function MyTables() {
                       >
                         {getItemsStatusText(session)}
                       </span>
+                      {session.discountPercentage > 0 && (
+                        <>
+                          <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                          <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">
+                            Discount {session.discountPercentage}%
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-lg text-gray-800 mb-2">
-                    ${session.totalAmount?.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-gray-400">Total</div>
-                </div>
+                {renderTableAmount(session)}
               </div>
             </div>
 

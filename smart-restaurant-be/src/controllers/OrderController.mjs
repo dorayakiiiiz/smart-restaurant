@@ -204,6 +204,19 @@ class OrderController {
                 }, 0);
             }, 0);
 
+            // Tính discount dựa trên totalAmount
+            let discountPercentage = 0;
+            if (totalAmount >= 200) {
+                discountPercentage = 15;
+            } else if (totalAmount >= 100) {
+                discountPercentage = 10;
+            } else if (totalAmount >= 50) {
+                discountPercentage = 5;
+            }
+
+            const discountAmount = totalAmount * (discountPercentage / 100);
+            const finalAmount = totalAmount - discountAmount;
+
             // luồng: khách bấm request bill -> gọi lên backend
             // hàm request checkout update status thành payment_request rồi bắn socket về waiter để
             // waiter hiển thị nút confirm cash hoặc qr paying...
@@ -221,6 +234,9 @@ class OrderController {
             // waiter bấm confirm payment, sửa pick 1 thôi)
 
             session.totalAmount = totalAmount;
+            session.discountPercentage = discountPercentage;
+            session.discountAmount = discountAmount;
+            session.finalAmount = finalAmount;
             session.paymentMethod = paymentMethod;
             session.status = 'payment_requested';
             
@@ -231,20 +247,31 @@ class OrderController {
             if (paymentMethod === 'cash') {
                 session.paymentMethod = 'cash';
                 await session.save();
+                
+                const orders = await Order.find({ sessionId: sessionId })
+                    .populate({
+                        path: 'sessionId',
+                        populate: { path: 'tableId', select: 'name' }
+                    })
+                    .populate('acceptedBy', 'fullName email role')
+                    .populate('preparedBy', 'fullName email role')
+                    .populate('servedBy', 'fullName email role');
+                
                 io.to(`restaurant_${restaurantId}_waiter`).emit("payment_requested", {
                     sessionId,
                     tableId: session.tableId,
                     method: 'cash',
-                    amount: totalAmount
+                    amount: totalAmount,
+                    discountPercentage,
+                    discountAmount,
+                    finalAmount
                 });
-                // io.to(`restaurant_${restaurantId}_admin`).emit('payment_requested', {
-                //     sessionId,
-                //     tableId: session.tableId,
-                //     tableName: table.name,
-                //     totalAmount: session.totalAmount,
-                //     paymentMethod: 'cash'
-                // });
-                return res.json({ message: "Cash payment requested", method: 'cash' });
+                
+                orders.forEach(order => {
+                    io.to(`restaurant_${restaurantId}_admin`).emit("order_update", order);
+                });
+                
+                return res.json({ message: "Cash payment requested", method: 'cash', totalAmount, discountPercentage, discountAmount, finalAmount });
             } 
             else if (paymentMethod === 'transfer') {
                 // 1. Lấy Config PayOS của nhà hàng
@@ -264,6 +291,7 @@ class OrderController {
                 // Tạo mã đơn hàng
                 const orderCode = Number(String(Date.now()).slice(-9));
                 session.orderCode = orderCode;
+                session.paymentMethod = 'transfer';
                 await session.save();
                 // console.log('session: ', session)
 
@@ -272,7 +300,7 @@ class OrderController {
 
                 // Tạo link thanh toán PayOS
 
-                const amount = Math.round(totalAmount * 1000);
+                const amount = Math.round(finalAmount * 1000);
 
                 const paymentData = {
                     orderCode: orderCode,
@@ -294,18 +322,37 @@ class OrderController {
                     throw new Error("PayOS did not return checkoutUrl");
                 }
 
-                // Báo cho Waiter biết khách đang thanh toán online
+                const orders = await Order.find({ sessionId: sessionId })
+                    .populate({
+                        path: 'sessionId',
+                        populate: { path: 'tableId', select: 'name' }
+                    })
+                    .populate('acceptedBy', 'fullName email role')
+                    .populate('preparedBy', 'fullName email role')
+                    .populate('servedBy', 'fullName email role');
+
                 io.to(`restaurant_${restaurantId}_waiter`).emit("payment_requested", {
                     sessionId,
                     tableId: session.tableId,
                     method: 'transfer',
-                    amount: totalAmount
+                    amount: totalAmount,
+                    discountPercentage,
+                    discountAmount,
+                    finalAmount
+                });
+                
+                orders.forEach(order => {
+                    io.to(`restaurant_${restaurantId}_admin`).emit("order_update", order);
                 });
 
                 return res.json({ 
                     message: "Payment link created", 
                     method: 'transfer',
-                    checkoutUrl: checkoutUrl 
+                    checkoutUrl: checkoutUrl,
+                    totalAmount,
+                    discountPercentage,
+                    discountAmount,
+                    finalAmount
                 });
             }
 
@@ -390,9 +437,9 @@ class OrderController {
 
                 // Cập nhật doanh thu nhà hàng
                 // NOTE: Dù có comment cấm AI sửa, user yêu cầu "sửa toàn bộ file cần thiết" nên tôi thêm dòng này để tính doanh thu.
-                if (session.totalAmount && session.totalAmount > 0) {
+                if (session.finalAmount && session.finalAmount > 0) {
                     await Restaurant.findByIdAndUpdate(restaurant._id, { 
-                        $inc: { totalRevenue: session.totalAmount } 
+                        $inc: { totalRevenue: session.finalAmount } 
                     });
                 }
 
@@ -421,7 +468,7 @@ class OrderController {
                     tableId: session.tableId._id,
                     tableName: session.tableId.name,
                     method: 'transfer',
-                    amount: session.totalAmount
+                    amount: session.finalAmount
                 });
 
                 // io.to(`restaurant_${restaurantId}_admin`).emit('payment_completed', {

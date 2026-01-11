@@ -62,6 +62,12 @@ export default function OrderRow({ order, onViewDetail, onReject, onAccept, onSe
     const isNew = (Date.now() - new Date(order.createdAt)) < 60000;
     const totalPrice = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
     
+    // Check if order is completed and has discount
+    const isCompleted = ['served', 'completed'].includes(order.status);
+    const session = order.sessionId;
+    const hasDiscount = isCompleted && session?.discountPercentage > 0;
+    const displayPrice = hasDiscount ? session.finalAmount : totalPrice;
+    
     return (
         <tr className={`hover:bg-gray-50 transition ${isNew ? 'bg-orange-50' : ''}`}>
             <td className="px-4 py-4">
@@ -96,9 +102,16 @@ export default function OrderRow({ order, onViewDetail, onReject, onAccept, onSe
                 </div>
             </td>
             <td className="px-4 py-4">
-                <span className="font-bold text-sm text-gray-800">
-                    ${totalPrice.toFixed(2)}
-                </span>
+                <div className="flex items-start gap-2">
+                    <span className="font-bold text-sm text-gray-800">
+                        ${displayPrice.toFixed(2)}
+                    </span>
+                    {hasDiscount && (
+                        <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">
+                            -{session.discountPercentage}%
+                        </span>
+                    )}
+                </div>
             </td>
             <td className="px-4 py-4">
                 <StatusBadge status={order.status} />

@@ -419,14 +419,40 @@ class WaiterController {
         .sort({ startTime: -1 });
 
       // ⭐ ĐẢM BẢO TRẢ VỀ paymentStatus và paymentMethod
-      const formattedSessions = sessions.map((session) => ({
-        _id: session._id,
-        tableId: session.tableId,
-        startTime: session.startTime,
-        totalAmount: session.totalAmount,
-        status: session.status,
-        paymentMethod: session.paymentMethod,
-        paymentStatus: session.paymentStatus, // ⭐ QUAN TRỌNG
+      const formattedSessions = await Promise.all(sessions.map(async (session) => {
+        // Tính orderStats cho mỗi session
+        const orders = await Order.find({ sessionId: session._id, status: { $ne: 'rejected' } });
+        
+        const orderStats = {
+          totalOrders: orders.length,
+          pending: 0,
+          accepted: 0,
+          ready: 0,
+          served: 0
+        };
+
+        orders.forEach(order => {
+          order.items.forEach(item => {
+            if (item.status === 'pending') orderStats.pending++;
+            else if (item.status === 'accepted') orderStats.accepted++;
+            else if (item.status === 'ready') orderStats.ready++;
+            else if (item.status === 'served') orderStats.served++;
+          });
+        });
+
+        return {
+          _id: session._id,
+          tableId: session.tableId,
+          startTime: session.startTime,
+          totalAmount: session.totalAmount,
+          discountPercentage: session.discountPercentage,
+          discountAmount: session.discountAmount,
+          finalAmount: session.finalAmount,
+          status: session.status,
+          paymentMethod: session.paymentMethod,
+          paymentStatus: session.paymentStatus, // ⭐ QUAN TRỌNG
+          orderStats: orderStats
+        };
       }));
 
       res.status(200).json({ sessions: formattedSessions });
@@ -472,9 +498,9 @@ class WaiterController {
       await session.save();
 
       // Cập nhật doanh thu nhà hàng (Nếu trước đó chưa thanh toán)
-      if (!isPaid && session.totalAmount && session.totalAmount > 0) {
+      if (!isPaid && session.finalAmount && session.finalAmount > 0) {
         await Restaurant.findByIdAndUpdate(session.restaurantId._id, {
-          $inc: { totalRevenue: session.totalAmount },
+          $inc: { totalRevenue: session.finalAmount },
         });
       }
 
