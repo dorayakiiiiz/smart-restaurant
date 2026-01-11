@@ -134,21 +134,23 @@ const StaffInformation = ({ order }) => {
     
     const staffList = [];
     
-    if (order.acceptedBy && order.acceptedBy._id) {
+    if (order.acceptedBy && order.acceptedBy._id && order.acceptedBy.role !== 'admin') {
         staffList.push({ staff: order.acceptedBy, role: 'waiter' });
     }
-    if (order.preparedBy && order.preparedBy._id) {
+    if (order.preparedBy && order.preparedBy._id && order.preparedBy.role !== 'admin') {
         const alreadyAdded = staffList.find(s => s.staff._id === order.preparedBy._id);
         if (!alreadyAdded) {
             staffList.push({ staff: order.preparedBy, role: 'kitchen' });
         }
     }
-    if (order.servedBy && order.servedBy._id) {
+    if (order.servedBy && order.servedBy._id && order.servedBy.role !== 'admin') {
         const alreadyAdded = staffList.find(s => s.staff._id === order.servedBy._id);
         if (!alreadyAdded) {
             staffList.push({ staff: order.servedBy, role: 'waiter' });
         }
     }
+    
+    if (staffList.length === 0) return null;
     
     return (
         <div className="mb-6">
@@ -217,6 +219,36 @@ const OrderItems = ({ items }) => (
     </div>
 );
 
+const PaymentSummary = ({ order }) => {
+    const totalPrice = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+    const isCompleted = ['served', 'completed'].includes(order.status);
+    const session = order.sessionId;
+    const hasDiscount = isCompleted && session?.discountPercentage > 0;
+    
+    if (!hasDiscount) return null;
+    
+    return (
+        <div className="mb-6">
+            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">Payment Summary</h3>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Subtotal</span>
+                    <span className="font-semibold text-gray-800">${totalPrice.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Discount ({session.discountPercentage}%)</span>
+                    <span className="font-semibold text-gray-800">${session.discountAmount.toFixed(2)}</span>
+                </div>
+                <div className="h-px bg-gray-200"></div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-gray-800">Total</span>
+                    <span className="text-lg font-bold text-[#1a1a1a]">${session.finalAmount.toFixed(2)}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const OrderNotes = ({ order }) => (
     <>
         {order.note && (
@@ -238,58 +270,65 @@ const OrderNotes = ({ order }) => (
     </>
 );
 
-const ModalFooter = ({ order, onClose, onReject, onAccept, onServe }) => (
-    <div className="p-6 border-t border-gray-100 bg-gray-50">
-        <div className="flex justify-between items-center">
-            <div>
-                <span className="text-sm text-gray-500">Total Amount</span>
-                <div className="text-2xl font-bold text-[#1a1a1a]">
-                    ${order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2) || '0.00'}
+const ModalFooter = ({ order, onClose, onReject, onAccept, onServe }) => {
+    const totalPrice = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+    const isCompleted = ['served', 'completed'].includes(order.status);
+    const session = order.sessionId;
+    const hasDiscount = isCompleted && session?.discountPercentage > 0;
+    const displayPrice = hasDiscount ? session.finalAmount : totalPrice;
+    
+    return (
+        <div className="p-6 border-t border-gray-100 bg-gray-50">
+            <div className="flex justify-between items-center">
+                <div>
+                    <span className="text-sm text-gray-500">Total Amount</span>
+                    <div className="text-2xl font-bold text-[#1a1a1a]">
+                        ${displayPrice.toFixed(2)}
+                    </div>
+                </div>
+                <div className="flex gap-3">
+                    {order.status === 'pending' && (
+                        <>
+                            <button 
+                                onClick={() => { onClose(); onReject(order); }} 
+                                className="px-6 py-3 text-sm font-bold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition"
+                            >
+                                Reject
+                            </button>
+                            <button 
+                                onClick={() => { onAccept(order._id); onClose(); }} 
+                                className="px-6 py-3 text-sm font-bold text-white bg-[#1a1a1a] rounded-xl hover:bg-[#333] transition"
+                            >
+                                Accept Order
+                            </button>
+                        </>
+                    )}
+                    {order.status === 'ready' && (
+                        <button 
+                            onClick={() => { onServe(order._id); onClose(); }} 
+                            className="px-6 py-3 text-sm font-bold text-white bg-green-600 rounded-xl hover:bg-green-700 transition"
+                        >
+                            Mark as Served
+                        </button>
+                    )}
+                    <button 
+                        onClick={onClose} 
+                        className="px-6 py-3 text-sm font-bold text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-100 transition"
+                    >
+                        Close
+                    </button>
                 </div>
             </div>
-            <div className="flex gap-3">
-                {order.status === 'pending' && (
-                    <>
-                        <button 
-                            onClick={() => { onClose(); onReject(order); }} 
-                            className="px-6 py-3 text-sm font-bold text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition"
-                        >
-                            Reject
-                        </button>
-                        <button 
-                            onClick={() => { onAccept(order._id); onClose(); }} 
-                            className="px-6 py-3 text-sm font-bold text-white bg-[#1a1a1a] rounded-xl hover:bg-[#333] transition"
-                        >
-                            Accept Order
-                        </button>
-                    </>
-                )}
-                {order.status === 'ready' && (
-                    <button 
-                        onClick={() => { onServe(order._id); onClose(); }} 
-                        className="px-6 py-3 text-sm font-bold text-white bg-green-600 rounded-xl hover:bg-green-700 transition"
-                    >
-                        Mark as Served
-                    </button>
-                )}
-                <button 
-                    onClick={onClose} 
-                    className="px-6 py-3 text-sm font-bold text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-100 transition"
-                >
-                    Close
-                </button>
-            </div>
         </div>
-    </div>
-);
+    );
+};
 
 // ============ MAIN MODAL COMPONENT ============
 export default function OrderDetailModal({ show, order, onClose, onReject, onAccept, onServe }) {
     if (!show || !order) return null;
 
-    const actualServedAt = (order.status === 'served' || order.status === 'completed') 
-        ? (order.servedAt || order.updatedAt) 
-        : order.servedAt;
+    // For old orders that don't have readyAt/servedAt, use fallback logic
+    const actualServedAt = order.servedAt || (order.status === 'served' || order.status === 'completed' ? order.updatedAt : null);
     const actualReadyAt = order.readyAt || (order.status === 'ready' || actualServedAt ? order.updatedAt : null);
     
     const waitTime = calcDiffSeconds(order.createdAt, order.acceptedAt);
@@ -335,6 +374,7 @@ export default function OrderDetailModal({ show, order, onClose, onReject, onAcc
                         totalTime={totalTime} 
                     />
                     <OrderItems items={order.items} />
+                    <PaymentSummary order={order} />
                     <OrderNotes order={order} />
                 </div>
 
