@@ -39,7 +39,8 @@ export default function RestaurantProfilePage() {
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState("");
     const [editingReviewId, setEditingReviewId] = useState(null);
-    const [showAllReviews, setShowAllReviews] = useState(false);
+    const [reviewPage, setReviewPage] = useState(1);
+    const reviewsPerPage = 5;
 
     // Filter & Pagination State
     //State lọc đánh giá theo số rating
@@ -144,8 +145,12 @@ export default function RestaurantProfilePage() {
     // Apply Filter
     const filteredReviews = otherReviews.filter(r => ratingFilter === 0 || r.rating === ratingFilter);
     
-    // Apply Pagination (Limit 3)
-    const displayedReviews = showAllReviews ? filteredReviews : filteredReviews.slice(0, 3);
+    // Apply Pagination
+    const totalPages = Math.ceil(filteredReviews.length / reviewsPerPage);
+    const paginatedReviews = filteredReviews.slice(
+        (reviewPage - 1) * reviewsPerPage,
+        reviewPage * reviewsPerPage
+    );
 
     // Count số review theo từng rating
     const countByRating = (star) => {
@@ -455,7 +460,7 @@ export default function RestaurantProfilePage() {
                     {/* Filter Tabs */}
                     <div className="flex flex-wrap gap-2 mb-6">
                         <button 
-                            onClick={() => { setRatingFilter(0); setShowAllReviews(false); }}
+                            onClick={() => { setRatingFilter(0); setReviewPage(1); }}
                             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all ${
                                 ratingFilter === 0 
                                 ? 'bg-[#1a1a1a] text-[#D4AF37] border-[#1a1a1a]' 
@@ -467,7 +472,7 @@ export default function RestaurantProfilePage() {
                         {[5, 4, 3, 2, 1].map(star => (
                             <button 
                                 key={star}
-                                onClick={() => { setRatingFilter(star); setShowAllReviews(false); }}
+                                onClick={() => { setRatingFilter(star); setReviewPage(1); }}
                                 className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-1 ${
                                     ratingFilter === star 
                                     ? 'bg-[#1a1a1a] text-[#D4AF37] border-[#1a1a1a]' 
@@ -513,27 +518,64 @@ export default function RestaurantProfilePage() {
                     )}
 
                     {/* Other Reviews */}
-                    {displayedReviews.length > 0 ? displayedReviews.map(review => (
-                        <div key={review._id} className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
-                            <div className="flex justify-between items-start mb-2 gap-4">
-                                <div className="flex items-center gap-3 flex-1">
-                                    {review.userId?.avatar ? (
-                                        <img src={review.userId.avatar} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
-                                    ) : (
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400 flex items-center justify-center font-black text-sm border border-gray-200">
-                                            {review.userId.avatar?.url || review.userId.fullName[0]}
+                    {paginatedReviews.length > 0 ? (
+                        <>
+                            {paginatedReviews.map(review => (
+                                <div key={review._id} className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300">
+                                    <div className="flex justify-between items-start mb-2 gap-4">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            {review.userId?.avatar ? (
+                                                <img src={review.userId.avatar.url} alt={review.userId.fullName} className="w-11 h-11 rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.1)]" />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-50 text-gray-400 flex items-center justify-center font-black text-sm border border-gray-200">
+                                                    {review.userId.avatar?.url || review.userId.fullName[0]}
+                                                </div>
+                                            )}
+                                            <div>
+                                                <span className="font-black text-gray-900 block text-sm tracking-tight">{review.userId.fullName}</span>
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Guest</span>
+                                            </div>
                                         </div>
-                                    )}
-                                    <div>
-                                        <span className="font-black text-gray-900 block text-sm tracking-tight">{review.userId.fullName}</span>
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Guest</span>
+                                        <StarRating rating={review.rating} editable={false} />
                                     </div>
+                                    <p className="text-gray-650 text-sm leading-relaxed italic font-medium ml-13">"{review.comment}"</p>
                                 </div>
-                                <StarRating rating={review.rating} editable={false} />
-                            </div>
-                            <p className="text-gray-650 text-sm leading-relaxed italic font-medium ml-13">"{review.comment}"</p>
-                        </div>
-                    )) : !myReview && (
+                            ))}
+                            
+                            {/* Pagination Controls */}
+                            {totalPages > 1 && (
+                                <div className="flex justify-center items-center gap-4 mt-8">
+                                    <button
+                                        onClick={() => setReviewPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={reviewPage === 1}
+                                        className={`w-10 h-10 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                                            reviewPage === 1 
+                                                ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' 
+                                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-[#1a1a1a]'
+                                        }`}
+                                    >
+                                        <i className="fa-solid fa-chevron-left text-xs"></i>
+                                    </button>
+
+                                    <span className="text-sm font-medium text-gray-600">
+                                        Page <span className="text-[#1a1a1a] font-bold">{reviewPage}</span> of {totalPages}
+                                    </span>
+
+                                    <button
+                                        onClick={() => setReviewPage(prev => Math.min(prev + 1, totalPages))}
+                                        disabled={reviewPage === totalPages}
+                                        className={`w-10 h-10 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                                            reviewPage === totalPages 
+                                                ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' 
+                                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-[#1a1a1a]'
+                                        }`}
+                                    >
+                                        <i className="fa-solid fa-chevron-right text-xs"></i>
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    ) : !myReview && (
                         <div className="py-10 flex flex-col items-center justify-center bg-gray-50/50 rounded-[2rem] border border-gray-100">
                             <div className="relative mb-4">
                                 <i className="fa-light fa-feather-pointed text-gray-200 text-5xl"></i>
