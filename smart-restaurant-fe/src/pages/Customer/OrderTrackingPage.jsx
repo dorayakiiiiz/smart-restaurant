@@ -11,7 +11,16 @@ export default function OrderTrackingPage() {
     const navigate = useNavigate();
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [waitingForWaiter, setWaitingForWaiter] = useState(false); // State mới cho cash
+    const [waitingForWaiter, setWaitingForWaiter] = useState(false);
+    const [discountInfo, setDiscountInfo] = useState({ percentage: 0, amount: 0, finalAmount: 0 }); // State mới cho cash
+
+    // Helper function to calculate discount (same logic as CartPage)
+    const calculateDiscount = (subtotal) => {
+        if (subtotal >= 200) return { percentage: 15, amount: subtotal * 0.15 };
+        if (subtotal >= 100) return { percentage: 10, amount: subtotal * 0.10 };
+        if (subtotal >= 50) return { percentage: 5, amount: subtotal * 0.05 };
+        return { percentage: 0, amount: 0 };
+    };
    
     // Thay thế useState/useEffect bằng useQuery
     const { data: orders = [], isLoading: loading } = useQuery({
@@ -58,11 +67,17 @@ export default function OrderTrackingPage() {
         try {
             const res = await orderService.requestCheckout(sessionInfo.session._id, method);
             
+            if (res.discountPercentage !== undefined) {
+                setDiscountInfo({
+                    percentage: res.discountPercentage || 0,
+                    amount: res.discountAmount || 0,
+                    finalAmount: res.finalAmount || res.totalAmount || sessionTotal
+                });
+            }
+            
             if (method === 'transfer' && res.checkoutUrl) {
-                // Redirect sang PayOS
                 window.location.href = res.checkoutUrl;
             } else if (method === 'cash') {
-                // Tiền mặt: Đóng modal, hiện trạng thái chờ waiter
                 setShowPaymentModal(false);
                 setWaitingForWaiter(true);
             }
@@ -84,6 +99,14 @@ export default function OrderTrackingPage() {
             return itemAcc + (item.price + modPrice) * item.quantity;
         }, 0);
     }, 0);
+
+    // Calculate discount preview (before user clicks Request Bill)
+    const discountPreview = calculateDiscount(sessionTotal);
+    const finalTotalPreview = sessionTotal - discountPreview.amount;
+
+    // Use actual discount from API if available (after Request Bill), otherwise use preview
+    const displayDiscount = discountInfo.percentage > 0 ? discountInfo : discountPreview;
+    const displayFinalAmount = discountInfo.finalAmount > 0 ? discountInfo.finalAmount : finalTotalPreview;
 
     // UI khi đang chờ Waiter thu tiền mặt
     // if (waitingForWaiter) {
@@ -124,6 +147,9 @@ export default function OrderTrackingPage() {
     //     );
     // }
     if (waitingForWaiter) {
+        const displayAmount = discountInfo.finalAmount > 0 ? discountInfo.finalAmount : sessionTotal;
+        const hasDiscount = discountInfo.percentage > 0;
+        
         return (
             <div className="fixed inset-0 bg-[#0a0a0a] z-50 flex flex-col items-center justify-center p-6">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-900/20 rounded-full blur-[120px]"></div>
@@ -141,9 +167,19 @@ export default function OrderTrackingPage() {
                     </h2>
                     
                     <p className="text-zinc-400 mb-8 leading-relaxed">
+                        {hasDiscount && (
+                            <>
+                                <span className="block text-sm line-through text-zinc-500">
+                                    ${sessionTotal.toFixed(2)}
+                                </span>
+                                <span className="block text-xs text-[#D4AF37] mb-2">
+                                    Discount {discountInfo.percentage}% applied
+                                </span>
+                            </>
+                        )}
                         Please prepare <br />
                         <span className="text-2xl font-mono font-bold text-white tracking-wider">
-                            ${sessionTotal.toFixed(2)}
+                            ${displayAmount.toFixed(2)}
                         </span> 
                         <span className="block text-xs uppercase tracking-[0.2em] mt-1 text-amber-500/70">In Cash</span>
                     </p>
@@ -168,8 +204,30 @@ export default function OrderTrackingPage() {
             {/* Header Summary */}
             <div className="bg-[#1a1a1a] rounded-2xl p-6 text-white mb-8 shadow-lg relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37] opacity-10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                <h2 className="text-gray-400 text-sm mb-1">Current Session Total</h2>
-                <div className="font-momo font-bold text-4xl text-[#D4AF37] mb-4">${sessionTotal.toFixed(2)}</div>
+                <h2 className="text-gray-400 text-sm mb-1">Current Session</h2>
+                
+                {displayDiscount.percentage > 0 ? (
+                    <>
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-gray-400 text-sm">Subtotal</span>
+                            <span className="text-white font-semibold">${sessionTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="text-[#D4AF37] text-sm flex items-center gap-1">
+                                Discount ({displayDiscount.percentage}%)
+                            </span>
+                            <span className="text-[#D4AF37] font-semibold">${displayDiscount.amount.toFixed(2)}</span>
+                        </div>
+                        <div className="font-momo font-bold text-4xl text-[#D4AF37] mb-4">
+                            ${displayFinalAmount.toFixed(2)}
+                        </div>
+                    </>
+                ) : (
+                    <div className="font-momo font-bold text-4xl text-[#D4AF37] mb-4">
+                        ${sessionTotal.toFixed(2)}
+                    </div>
+                )}
+                
                 <button 
                     onClick={() => setShowPaymentModal(true)}
                     disabled={sessionTotal === 0}

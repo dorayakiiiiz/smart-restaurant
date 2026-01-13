@@ -75,13 +75,19 @@ export const calculateGrandTotal = (items) => {
 export const prepareBillData = (session, orders) => {
     const restaurant = session.restaurantId;
     const items = flattenOrderItems(orders);
-    const grandTotal = calculateGrandTotal(items);
+    const subtotal = calculateGrandTotal(items);
+    const discountPercentage = session.discountPercentage || 0;
+    const discountAmount = session.discountAmount || 0;
+    const grandTotal = session.finalAmount || subtotal;
     
     return {
         session,
         orders,
         restaurant,
         items,
+        subtotal,
+        discountPercentage,
+        discountAmount,
         grandTotal,
         tableName: session.tableId?.name || 'N/A',
         tableLocation: session.tableId?.location || '',
@@ -92,7 +98,7 @@ export const prepareBillData = (session, orders) => {
 // ============ BILL CONTENT RENDERER ============
 
 export const renderBillContent = (doc, data) => {
-    const { session, orders, restaurant, items, grandTotal, tableName, tableLocation, paymentMethod } = data;
+    const { session, orders, restaurant, items, subtotal, discountPercentage, discountAmount, grandTotal, tableName, tableLocation, paymentMethod } = data;
     
     // Header - Restaurant Info
     doc.fontSize(11).font('Courier-Bold').text(restaurant.name.toUpperCase(), { align: 'center' });
@@ -149,10 +155,24 @@ export const renderBillContent = (doc, data) => {
     // Total
     doc.moveDown(0.5);
     doc.text('------------------------------------------');
+    doc.fontSize(9).font('Courier');
+    const subtotalY = doc.y;
+    doc.text('Subtotal:', 10, subtotalY);
+    doc.text(`$${formatCurrency(subtotal)}`, 10, subtotalY, { width: 200, align: 'right' });
+    
+    if (discountPercentage > 0) {
+        doc.moveDown(0.3);
+        const discountY = doc.y;
+        doc.text(`Discount (${discountPercentage}%):`, 10, discountY);
+        doc.text(`$${formatCurrency(discountAmount)}`, 10, discountY, { width: 200, align: 'right' });
+    }
+    
+    doc.moveDown(0.5);
+    doc.text('--------------------------------------');
     const totalY = doc.y;
     doc.fontSize(10).font('Courier-Bold');
     doc.text('TOTAL:', 10, totalY);
-    doc.text(`$${formatCurrency(grandTotal)}`, 10, totalY, { width: 200, align: 'right' });
+    doc.text(`${formatCurrency(grandTotal)}`, 10, totalY, { width: 200, align: 'right' });
     doc.moveDown(0.5);
     
     // Payment Info

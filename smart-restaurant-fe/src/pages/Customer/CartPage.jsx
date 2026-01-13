@@ -14,6 +14,24 @@ export default function CartPage() {
 
     const navigate = useNavigate();
 
+    const calculateDiscount = (subtotal) => {
+        if (subtotal >= 200) return { percentage: 15, amount: subtotal * 0.15 };
+        if (subtotal >= 100) return { percentage: 10, amount: subtotal * 0.10 };
+        if (subtotal >= 50) return { percentage: 5, amount: subtotal * 0.05 };
+        return { percentage: 0, amount: 0 };
+    };
+
+    const getNextTierMessage = (subtotal) => {
+        if (subtotal < 50) return `Add $${(50 - subtotal).toFixed(2)} for 5% off!`;
+        if (subtotal < 100) return `Add $${(100 - subtotal).toFixed(2)} for 10% off!`;
+        if (subtotal < 200) return `Add $${(200 - subtotal).toFixed(2)} for 15% off!`;
+        return null;
+    };
+
+    const discount = calculateDiscount(cartTotal);
+    const finalTotal = cartTotal - discount.amount;
+    const nextTierMessage = getNextTierMessage(cartTotal);
+
     // Fetch menu data (có thể dùng chung với MenuPage)
     const { data: menuData } = useQuery({
         queryKey: ['customer-menu', sessionInfo?.restaurant?._id],

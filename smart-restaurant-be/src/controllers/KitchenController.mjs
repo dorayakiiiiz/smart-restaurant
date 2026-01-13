@@ -108,6 +108,7 @@ class KitchenController {
                     order.items.forEach(item => { item.status = 'preparing'; });
                 } else if (status === 'ready') {
                     order.status = 'ready';
+                    order.readyAt = new Date();
                     order.items.forEach(item => { item.status = 'ready'; item.finishedAt = new Date(); });
                 }
             } else {
@@ -129,6 +130,7 @@ class KitchenController {
                     order.status = 'served';
                 } else if (allReady) {
                     order.status = 'ready';
+                    if (!order.readyAt) order.readyAt = new Date();
                 } else if (allAccepted) {
                     order.status = 'accepted';
                 } else {
