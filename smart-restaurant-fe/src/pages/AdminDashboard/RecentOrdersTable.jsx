@@ -1,5 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatMoney } from "../../utils/helper";
+import { useAuth } from "../../context/AuthContext";
 
 // ============ HELPER FUNCTIONS (Copied from OrdersPage) ============
 const formatDateTime = (dateString) => {
@@ -34,7 +36,9 @@ const StatusBadge = ({ status }) => {
 const OrderRow = ({ order }) => {
     const isNew = (Date.now() - new Date(order.createdAt)) < 60000;
     const totalPrice = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
-    
+    const { user } = useAuth();
+    const currency = user?.restaurant?.currency;
+
     return (
         <tr className={`hover:bg-gray-50 transition ${isNew ? 'bg-orange-50' : ''} border-b border-gray-100 last:border-0`}>
             <td className="px-4 py-4">
@@ -53,7 +57,7 @@ const OrderRow = ({ order }) => {
                     {order.items?.length > 2 && <div className="text-xs text-blue-600 font-semibold">+{order.items.length - 2} more</div>}
                 </div>
             </td>
-            <td className="px-4 py-4"><span className="font-bold text-sm text-gray-800">${totalPrice.toFixed(2)}</span></td>
+            <td className="px-4 py-4"><span className="font-bold text-sm text-gray-800">{formatMoney(totalPrice, currency)}</span></td>
             <td className="px-4 py-4"><StatusBadge status={order.status} /></td>
             <td className="px-4 py-4"><span className="text-xs text-gray-500">{formatDateTime(order.createdAt)}</span></td>
         </tr>

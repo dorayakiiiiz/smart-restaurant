@@ -8,6 +8,8 @@ import MenuModal from "../../components/Modal/MenuModal";
 import { useNavigate } from "react-router-dom";
 import MenuTrashModal from "./Modal/MenuTrashModal";
 import Fuse from "fuse.js";
+import { formatMoney } from "../../utils/helper";
+import { useAuth } from "../../context/AuthContext";
 
 export default function MenuManagement() {
     const navigate = useNavigate();
@@ -19,6 +21,9 @@ export default function MenuManagement() {
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [status, setStatus] = useState("All");
     const [sortBy, setSortBy] = useState("newest");
+
+    const { user } = useAuth();
+    const currency = user?.restaurant?.currency;
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -287,7 +292,7 @@ export default function MenuManagement() {
                                         {/* Price and Prep Time */}
                                         <div className="flex justify-between items-center mb-3 mt-auto">
                                             <div className="text-xl font-bold text-red-500">
-                                                ${item.price.toFixed(2)}
+                                                {formatMoney(item.price, currency)}
                                             </div>
                                             <div className="flex items-center text-gray-400 text-sm">
                                                 <i className="fa-regular fa-clock mr-1"></i>

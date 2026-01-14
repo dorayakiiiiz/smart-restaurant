@@ -12,16 +12,20 @@ class StaffController {
         try {
             const { email, fullName, password, role } = req.body;
             const adminId = req.user.id;
+            const userRestaurantId = req.user.restaurantId;
 
-            // 1. Validate Role (Chỉ được tạo waiter hoặc kitchen)
+            
+            // 1. Validate Role (Chỉ được tạo admin hoặc waiter hoặc kitchen)
             if (!['admin', 'waiter', 'kitchen'].includes(role)) {
                 return res.status(400).json({ message: "Invalid role. Must be 'admin', 'waiter' or 'kitchen'." });
             }
-
+            
             // 2. Tìm nhà hàng của Admin này
-            const restaurant = await Restaurant.findOne({ adminId });
-            if (!restaurant) {
-                return res.status(404).json({ message: "Restaurant not found. You must setup restaurant first." });
+            let restaurant = null;
+            if (userRestaurantId) {
+                restaurant = await Restaurant.findById(userRestaurantId);
+            } else {
+                restaurant = await Restaurant.findOne({ adminId });
             }
 
             // 3. Check email tồn tại
@@ -91,8 +95,9 @@ class StaffController {
                 restaurant: {
                     _id: restaurant._id,
                     name: restaurant.name,
-                    isActive: restaurant.isActive
-                }
+                    isActive: restaurant.isActive,
+                },
+                isOwner: restaurant.adminId.toString() === s._id.toString()
             }));
 
             res.status(200).json({ staff: staffWithRestaurant });
@@ -110,21 +115,22 @@ class StaffController {
             const adminId = req.user.id;
 
             // 1. Validate Role
-            if (role && !['waiter', 'kitchen'].includes(role)) {
-                return res.status(400).json({ message: "Invalid role. Must be 'waiter' or 'kitchen'." });
+            if (role && !['admin', 'waiter', 'kitchen'].includes(role)) {
+                return res.status(400).json({ message: "Invalid role. Must be 'admin', 'waiter' or 'kitchen'." });
             }
 
             // 2. Tìm nhà hàng của Admin
-            const restaurant = await Restaurant.findOne({ adminId });
+            let restaurant = await Restaurant.findById(req.user.restaurantId);
             if (!restaurant) {
-                return res.status(404).json({ message: "Restaurant not found." });
+                restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
             }
 
             // 3. Tìm staff
             const staff = await User.findOne({ 
                 _id: id, 
                 restaurantId: restaurant._id,
-                role: { $in: ['waiter', 'kitchen'] }
+                role: { $in: ['admin', 'waiter', 'kitchen'] }
             });
 
             if (!staff) {
@@ -174,16 +180,17 @@ class StaffController {
             const adminId = req.user.id;
 
             // 1. Tìm nhà hàng của Admin
-            const restaurant = await Restaurant.findOne({ adminId });
+            let restaurant = await Restaurant.findById(req.user.restaurantId);
             if (!restaurant) {
-                return res.status(404).json({ message: "Restaurant not found." });
+                restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
             }
 
             // 2. Tìm staff và kiểm tra có thuộc nhà hàng này không
             const staff = await User.findOne({ 
                 _id: id, 
                 restaurantId: restaurant._id,
-                role: { $in: ['waiter', 'kitchen'] }
+                role: { $in: ['admin', 'waiter', 'kitchen'] }
             });
 
             if (!staff) {

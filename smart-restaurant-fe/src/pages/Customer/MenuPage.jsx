@@ -9,6 +9,7 @@ import { socket } from "../../services/socket";
 import ProductModal from "../../components/Modal/ProductModal"; // Import Modal mới
 import { useNavigate } from "react-router-dom";
 import Fuse from "fuse.js";
+import { formatMoney } from "../../utils/helper";
 
 // Component hiển thị sao
 const StarRating = ({ rating, setRating, editable = true, size = "text-sm" }) => {
@@ -48,21 +49,18 @@ export default function MenuPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const tableToken = searchParams.get("token");
     const { setSessionInfo, addToCart, sessionInfo } = useCart();
+    const currency = sessionInfo?.restaurant?.currency;
     
     const [searchTerm, setSearchTerm] = useState("");
-; // State cho sort
     
     // State để quản lý món đang xem
     const [selectedItem, setSelectedItem] = useState(null);
-
-
 
     // Pagination
     //Logic bấm vào detail món ăn rồi quay lại vẫn giữ page cũ
     const [currentPage, setCurrentPage] = useState(() => {
         //Lấy page từ url
         const page = parseInt(searchParams.get("page"));
-        console.log("Initial URL Page:", page);
         return !isNaN(page) && page > 0 ? page : 1;
     });
 
@@ -78,11 +76,10 @@ export default function MenuPage() {
         return sort ? sort : "price-asc";
     })
 
-    console.log("Current Page State:", currentPage);
     // Ref để chặn reset page khi mount lại
     const prevFiltersRef = useRef({ searchTerm, selectedCategory, sortBy });
 
-    const itemsPerPage = 3;
+    const itemsPerPage = 5;
 
     const handleAddItem = (e, item) => {
         e.stopPropagation();
@@ -192,12 +189,17 @@ export default function MenuPage() {
     const filteredItems = fuseResults
         .filter(item => {
             const matchCat = selectedCategory === "all" || item.categoryId._id === selectedCategory;
-            return matchCat;
+            const matchChef = sortBy === 'chefRecommended' ? item.isChefRecommended : true;
+            return matchCat && matchCat;
         })
         .sort((a, b) => {
             if (sortBy === 'price-asc') return a.price - b.price;
             if (sortBy === 'price-desc') return b.price - a.price;
             if (sortBy === 'popular') return b.orderCount - a.orderCount;
+
+            // Nếu đang chọn Chef Choice, ta sort theo logic mặc định (ví dụ mới nhất trước)
+            if (sortBy === 'chefRecommended') return new Date(b.createdAt) - new Date(a.createdAt);
+
             return 0;
         });
 
@@ -233,6 +235,7 @@ export default function MenuPage() {
                             className="h-12 pl-4 pr-8 bg-gray-100 rounded-xl outline-none text-sm font-bold text-gray-700 appearance-none border-none focus:ring-2 focus:ring-[#D4AF37]/50 transition cursor-pointer"
                         >
                             <option value="popular">Most Popular</option>
+                            <option value="chefRecommended">Chef's Choice</option>
                             <option value="price-asc">Price (Low)</option>
                             <option value="price-desc">Price (High)</option>
                         </select>
@@ -299,7 +302,7 @@ export default function MenuPage() {
                             </div>
                             
                             <div className="flex justify-between items-center">
-                                <span className={`mt-2 font-momo font-bold text-xl text-[#1a1a1a]`}>${item.price}</span>
+                                <span className={`mt-2 font-momo font-bold text-xl text-[#1a1a1a]`}>{formatMoney(item.price, currency)}</span>
                                 <button 
                                     onClick={(e) => handleAddItem(e, item)}
                                     className={`${item.isSoldOut && 'hidden'} w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition ${item.isAvailable ? 'bg-[#D4AF37] text-white' : 'bg-gray-200 text-gray-400'}`}
