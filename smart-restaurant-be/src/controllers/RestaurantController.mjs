@@ -9,10 +9,10 @@ import { PayOS } from "@payos/node"; // Import PayOS để check key
 
 class RestaurantController {
     // [POST] /api/restaurant
-    //Chỉ có admin (chủ quán) mới được tạo nhà hàng
+    // Chỉ có admin (chủ quán) mới được tạo nhà hàng
     async createRestaurant(req, res) {
         try {
-            const { name, address, bio, contactPhone, contactEmail } = req.body;
+            const { name, address, bio, currency, contactPhone, contactEmail } = req.body;
             
             // Kiểm tra xem user đã có nhà hàng chưa (Single restaurant system)
             const existing = await Restaurant.findOne({ adminId: req.user.id });
@@ -23,6 +23,7 @@ class RestaurantController {
                 name,
                 address,
                 bio,
+                currency,
                 contact: {
                     phone: contactPhone || "",
                     email: contactEmail || ""
@@ -34,10 +35,12 @@ class RestaurantController {
             if (req.files?.cover?.[0]) data.coverUrl = req.files.cover[0].path;
 
             const restaurant = await Restaurant.create(data);
+
             await User.findByIdAndUpdate(req.user.id, { restaurantId: restaurant._id });
 
             res.status(201).json({ message: "Restaurant created!", restaurant });
         } catch (err) {
+            console.log(err);
             res.status(500).json({ error: err.message });
         }
     }
@@ -151,8 +154,10 @@ class RestaurantController {
                 delete updates.payosChecksumKey;
             }
 
-            const restaurant = await Restaurant.findOneAndUpdate(
-                { adminId: req.user.id },
+            const userRestaurantId = req.user.restaurantId;
+
+            const restaurant = await Restaurant.findByIdAndUpdate(
+                userRestaurantId,
                 updates,
                 { new: true }
             );

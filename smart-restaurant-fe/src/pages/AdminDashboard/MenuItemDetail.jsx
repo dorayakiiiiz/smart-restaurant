@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { menuService } from "../../services/menuService";
 import { reviewService } from "../../services/reviewService";
 import Button from "../../components/Shared/Button";
+import { useAuth } from "../../context/AuthContext";
+import { formatMoney } from "../../utils/helper";
 
 // Component hiển thị sao
 const StarRating = ({ rating, setRating, editable = true, size = "text-sm" }) => {
@@ -27,6 +29,9 @@ export default function MenuItemDetail() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [uploading, setUploading] = useState(false);
+
+    const { user } = useAuth();
+    const currency = user?.restaurant?.currency;
     
     // Filter & Pagination State for Reviews
     const [ratingFilter, setRatingFilter] = useState(0); // 0 = All
@@ -39,7 +44,6 @@ export default function MenuItemDetail() {
     });
 
     const item = data?.item;
-    console.log("Menu Item Detail:", item);
 
     // Fetch reviews - Only fetch if item is loaded and has restaurantId
     const { data: reviews = [] } = useQuery({
@@ -180,7 +184,7 @@ export default function MenuItemDetail() {
                         <div className="space-y-5">
                             <div>
                                 <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Price</label>
-                                <p className="text-3xl font-bold text-[#D4AF37] mt-1">${item.price.toFixed(2)}</p>
+                                <p className="text-3xl font-bold text-[#D4AF37] mt-1">{formatMoney(item.price, currency)}</p>
                             </div>
                             <div>
                                 <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Preparation Time</label>

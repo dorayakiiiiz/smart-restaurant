@@ -8,6 +8,7 @@ import { useCart } from "../../context/CartContext";
 import Button from "../../components/Shared/Button";
 import ProductModal from "../../components/Modal/ProductModal";
 import { useAuth } from "../../context/AuthContext";
+import { formatMoney } from "../../utils/helper";
 
 // Component hiển thị sao
 const StarRating = ({ rating, setRating, editable = true, size = "text-sm" }) => {
@@ -68,6 +69,7 @@ export default function MenuDetailPage() {
     const reviewsPerPage = 5;
 
     const { user } = useAuth();
+    const currency = sessionInfo?.restaurant?.currency;
 
     // Fetch item detail
     const { data, isLoading, error } = useQuery({
@@ -288,7 +290,7 @@ export default function MenuDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-gray-800 font-bold">Price</p>
-                                    <p className="text-2xl font-bold text-red-500/90">${item.price.toFixed(2)}</p>
+                                    <p className="text-2xl font-bold text-red-500/90">{formatMoney(item.price, currency)}</p>
                                 </div>
                             </div>
                             

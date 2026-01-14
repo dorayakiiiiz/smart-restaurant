@@ -40,7 +40,7 @@ class UserController {
                     restaurant: restaurant ? {
                         id: restaurant._id,
                         name: restaurant.name,
-                        slug: restaurant.slug,
+                        currency: restaurant.currency,
                         isActive: restaurant.isActive,
                         isOwner: restaurant.adminId.toString() === user._id.toString()
                     } : null
