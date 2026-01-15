@@ -190,7 +190,7 @@ export default function MenuPage() {
         .filter(item => {
             const matchCat = selectedCategory === "all" || item.categoryId._id === selectedCategory;
             const matchChef = sortBy === 'chefRecommended' ? item.isChefRecommended : true;
-            return matchCat && matchCat;
+            return matchCat && matchChef;
         })
         .sort((a, b) => {
             if (sortBy === 'price-asc') return a.price - b.price;
