@@ -247,7 +247,9 @@ class TableController {
     // [GET] /api/tables/batch/download-zip
     async downloadBatchZIP(req, res) {
         try {
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+            const restaurant = await Restaurant.findById(req.user.restaurantId);
+            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
             const tables = await Table.find({ restaurantId: restaurant._id });
 
             if (tables.length === 0) return res.status(400).json({ message: "No tables found" });
@@ -291,7 +293,9 @@ class TableController {
     // [GET] /api/tables/batch/download-pdf
     async downloadBatchPDF(req, res) {
         try {
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+            const restaurant = await Restaurant.findById(req.user.restaurantId);
+            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
             const tables = await Table.find({ restaurantId: restaurant._id }).sort({ name: 1 });
 
             if (tables.length === 0) return res.status(400).json({ message: "No tables found" });
