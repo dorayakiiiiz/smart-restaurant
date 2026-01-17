@@ -309,8 +309,24 @@ class RestaurantController {
             //     ...
             //     ]
 
-            // 1. Total Revenue (Lấy từ DB Restaurant)
-            const totalRevenueFromDB = restaurant.totalRevenue || 0;
+            // 1. Daily Revenue (Tính toán dựa trên OrderSession đã thanh toán hôm nay)
+            const dailyRevenueResult = await OrderSession.aggregate([
+                {
+                    $match: {
+                        restaurantId: restaurant._id,
+                        paymentStatus: 'paid',
+                        updatedAt: { $gte: today, $lt: tomorrow }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: "$totalAmount" }
+                    }
+                }
+            ]);
+            console.log(dailyRevenueResult);
+            const dailyRevenue = dailyRevenueResult.length > 0 ? dailyRevenueResult[0].total : 0;
 
             // 2. Active Orders (Đơn đang phục vụ - chưa hoàn thành/hủy)
             const activeOrders = await Order.countDocuments({
@@ -387,7 +403,7 @@ class RestaurantController {
 
 
             res.status(200).json({
-                revenue: totalRevenueFromDB,
+                revenue: dailyRevenue,
                 activeOrders,
                 totalOrders,
                 occupiedTables,
