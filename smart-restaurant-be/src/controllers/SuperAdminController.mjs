@@ -133,12 +133,13 @@ class SuperAdminController {
             
             const totalUsers = await User.countDocuments(); // Tổng user toàn hệ thống
 
-            // Tính tổng doanh thu từ tất cả các nhà hàng
-            const revenueAgg = await Restaurant.aggregate([
+            // Tính tổng doanh thu từ tất cả các nhà hàng (dựa trên OrderSession thực tế)
+            const revenueAgg = await OrderSession.aggregate([
+                { $match: { paymentStatus: 'paid' } },
                 {
                     $group: {
                         _id: null,
-                        totalSystemRevenue: { $sum: "$totalRevenue" }
+                        totalSystemRevenue: { $sum: "$totalAmount" }
                     }
                 }
             ]);
