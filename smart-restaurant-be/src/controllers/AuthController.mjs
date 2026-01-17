@@ -36,6 +36,7 @@ class AuthController {
         }
     }
     
+    
     // [POST] /auth/register-otp
     // Step 1: Validate info, check duplicate, send OTP
     async sendRegisterOtp(req, res, next) {
