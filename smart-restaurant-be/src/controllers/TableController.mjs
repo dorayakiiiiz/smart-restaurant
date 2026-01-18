@@ -40,14 +40,11 @@ class TableController {
     async createTable(req, res) {
         try {
             const { name, capacity, location, description } = req.body;
-            
-            let restaurantId = req.user.restaurantId;
-            if (!restaurantId) {
-                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
-                restaurantId = restaurant._id;
-            }
-            
+
+            const restaurant = await Restaurant.findById(req.user.restaurantId);
+            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            const restaurantId = restaurant._id;
+
             // Check trùng tên
             const existing = await Table.findOne({ restaurantId, name });
             if (existing) return res.status(400).json({ message: "Table name already exists." });
