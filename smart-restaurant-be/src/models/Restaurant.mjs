@@ -54,10 +54,6 @@ const RestaurantSchema = new Schema({
         type: Boolean,
         default: true
     },
-    totalRevenue: {
-        type: Number,
-        default: 0
-    }
 }, { timestamps: true });
 
 export default mongoose.model('Restaurant', RestaurantSchema);
