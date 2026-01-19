@@ -96,7 +96,7 @@ export default function OrderTrackingPage() {
         if (order.status === 'rejected') return acc;
         return acc + order.items.reduce((itemAcc, item) => {
             const modPrice = item.modifiers?.reduce((m, mod) => m + (mod.price || 0), 0) || 0;
-            return itemAcc + (item.price + modPrice) * item.quantity;
+            return itemAcc + item.price * item.quantity;
         }, 0);
     }, 0);
 
