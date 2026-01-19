@@ -43,7 +43,7 @@ export default function Navbar() {
                         <span className="hidden md:block text-gray-600">
                             Hi, <span className="font-bold text-black">{user?.fullName}</span>
                         </span>
-                        <Link to={user?.role === 'super_admin' ? '/super-admin' : '/admin'} className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">
+                        <Link to={user?.role === 'super_admin' ? '/system/super/admin' : '/system/admin'} className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">
                             Dashboard
                         </Link>
                         <button onClick={handleLogOut} className="text-red-600 font-medium hover:underline">

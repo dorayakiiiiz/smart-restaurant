@@ -45,6 +45,7 @@ class TableController {
             if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
             const restaurantId = restaurant._id;
 
+            
             // Check trùng tên
             const existing = await Table.findOne({ restaurantId, name });
             if (existing) return res.status(400).json({ message: "Table name already exists." });
@@ -62,9 +63,11 @@ class TableController {
             // Sinh token thật dựa trên ID vừa tạo
             newTable.token = generateTableToken(newTable._id, restaurantId);
             await newTable.save();
+            console.log('hi')
 
             res.status(201).json({ message: "Table created", table: newTable });
         } catch (err) {
+            console.log(err)
             res.status(500).json({ error: err.message });
         }
     }
