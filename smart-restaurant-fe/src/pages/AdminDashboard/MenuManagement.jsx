@@ -319,12 +319,6 @@ export default function MenuManagement() {
                                         <i className="fa-solid fa-pen"></i>
                                     </button>
                                     <button 
-                                        className="flex-1 py-2 rounded-lg bg-gray-50 text-gray-600 hover:bg-[#1a1a1a] hover:text-white font-medium text-sm transition-all"
-                                        title="Duplicate"
-                                    >
-                                        <i className="fa-regular fa-copy"></i>
-                                    </button>
-                                    <button 
                                         onClick={() => handleDeleteMenu(item._id)}
                                         className="flex-1 py-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all"
                                     >
