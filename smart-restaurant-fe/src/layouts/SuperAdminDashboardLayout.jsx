@@ -32,11 +32,6 @@ export default function SuperAdminDashboardLayout() {
                     {/* Page Header */}
                     <div className="h-[70px] flex justify-between items-center px-8 bg-white border-b border-gray-200 shrink-0">
                         <h1 className="font-bold text-2xl text-[#1a1a1a] font-momo">{getTitle()}</h1>
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                                <i className="fa-regular fa-bell"></i>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Scrollable Content */}

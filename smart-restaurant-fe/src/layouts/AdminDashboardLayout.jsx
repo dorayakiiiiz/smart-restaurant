@@ -67,11 +67,6 @@ export default function AdminDashboardLayout() {
                     {/* Page Header */}
                     <div className="h-[70px] flex justify-between items-center px-8 bg-white border-b border-gray-200 shrink-0">
                         <h1 className="font-bold text-2xl text-[#1a1a1a] font-momo">{getTitle()}</h1>
-                        <div className="flex items-center gap-3">
-                            <button className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition">
-                                <i className="fa-regular fa-bell"></i>
-                            </button>
-                        </div>
                     </div>
 
                     {/* Scrollable Content */}
