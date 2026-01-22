@@ -1,26 +1,28 @@
-import nodemailer from 'nodemailer'; // Thư viện gửi email
+import nodemailer from "nodemailer"; // Thư viện gửi email
 
 const sendEmail = async (email, subject, text) => {
-    try {
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: subject,
-            text: text
-        });
-        
-        console.log("Email sent successfully");
-    } catch (error) {
-        console.log("Email cannot be sent: ", error);
-    }
-}
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: subject,
+      text: text,
+    });
+
+    console.log("Email sent successfully");
+  } catch (error) {
+    console.log("Email cannot be sent: ", error);
+  }
+};
 
 export default sendEmail;
+
+// Gửi email thông báo cho người dùng qua Gmail SMTP
