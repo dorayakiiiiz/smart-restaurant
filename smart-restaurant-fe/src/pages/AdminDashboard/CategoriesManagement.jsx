@@ -168,7 +168,7 @@ export default function CategoriesManagement() {
                         <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
                             {/* Order */}
                             <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                <span>Order: {cat.itemCount}</span>
+                                <span>Item: {cat.itemCount}</span>
                             </div>
                             {/* Active or inactive */}
                             <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${

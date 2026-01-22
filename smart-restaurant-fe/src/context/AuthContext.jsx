@@ -5,12 +5,15 @@ import axios from "axios";
 import { userService } from "../services/userService";
 import { orderService } from "../services/orderService"; // Import service
 import { injectTokenUtils, API_URL } from "../services/api";
+import { useQueryClient } from '@tanstack/react-query';
 
 const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
+    const queryClient = useQueryClient();
+
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -125,7 +128,7 @@ export const AuthProvider = ({ children }) => {
     //     window.location.reload();
     // }
 
-    // --- SỬA LẠI HÀM LOGIN ---
+    // login
     const login = async (refreshTokenValue, accessTokenValue) => {
         setIsLoading(true); 
         try {
@@ -172,6 +175,7 @@ export const AuthProvider = ({ children }) => {
         setAccessToken(null);
         setRefreshToken('');
         localStorage.removeItem('refreshToken');
+        queryClient.clear();
     }
 
     if (isLoading) {
