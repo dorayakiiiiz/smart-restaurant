@@ -235,10 +235,6 @@ class CategoryController {
 
             // Có thể cân nhắc restore trạng thái món ăn, nhưng an toàn nhất là để user tự active lại món ăn
             // Hoặc chỉ active lại nếu category active
-            if (category.isActive) {
-                 // Tùy chọn: Khôi phục trạng thái món ăn (cần logic phức tạp hơn để biết món nào trước đó active)
-                 // Ở đây ta chỉ khôi phục category, user sẽ tự vào menu chỉnh lại status món ăn
-            }
 
             res.status(200).json({ message: "Category restored", category });
         } catch (err) {

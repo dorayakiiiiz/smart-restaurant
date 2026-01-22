@@ -20,6 +20,7 @@ const deleteAdmin = async (id) => {
     return response.data;
 }
 
+//Filter: week, month, year
 const getSystemStats = async (filter = 'week') => {
     const response = await api.get(`/super/admin/stats?filter=${filter}`);
     return response.data;
