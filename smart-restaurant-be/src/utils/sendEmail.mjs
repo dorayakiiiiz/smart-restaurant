@@ -54,4 +54,12 @@ const sendEmail = async (email, subject, text) => {
     }
 }
 
+    console.log("Email sent successfully");
+  } catch (error) {
+    console.log("Email cannot be sent: ", error);
+  }
+};
+
 export default sendEmail;
+
+// Gửi email thông báo cho người dùng qua Gmail SMTP

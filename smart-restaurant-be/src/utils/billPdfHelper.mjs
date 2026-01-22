@@ -289,3 +289,5 @@ export const generateBillPDF = (res, session, orders) => {
 
   doc.end();
 };
+
+// Tạo file PDF hóa đơn thanh toán cho khách hàng với định dạng nhiệt K58 (58mm)
