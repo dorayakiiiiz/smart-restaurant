@@ -34,5 +34,3 @@ export const decrypt = (hash) => {
   ]);
   return decrpyted.toString();
 };
-
-// Mã hóa/Giải mã dữ liệu nhạy cảm bằng thuật toán AES-256-CTR
