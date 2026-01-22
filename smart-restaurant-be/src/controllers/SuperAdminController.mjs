@@ -12,17 +12,32 @@ class SuperAdminController {
     // Lấy danh sách các chủ nhà hàng (Role: admin)
     async getAllRestaurantAdmins(req, res) {
         try {
-            const admins = await User.find({ role: 'admin' })
-                .select('-password') // Không trả về password
+            // Lấy danh sách các nhà hàng và adminId của chúng
+            const restaurants = await Restaurant.find().select('adminId');
+            const ownerAdminIds = restaurants.map(r => r.adminId);
+
+            // Chỉ lấy admin là owner (adminId có trong danh sách nhà hàng)
+            const admins = await User.find({ 
+                role: 'admin',
+                $or: [
+                    { _id: { $in: ownerAdminIds } },
+                    { restaurantId: null },
+                ],
+            })
+                .select('-password')
                 .sort({ createdAt: -1 });
 
-            // Lấy thêm thông tin nhà hàng của từng owner (nếu có)
+            // Lấy thêm thông tin nhà hàng của từng owner
             const adminWithRestaurant = await Promise.all(admins.map(async (admin) => {
-                // Tìm nhà hàng do admin này sở hữu chỉ trả về tên và trạng thái kích hoạt
-                const restaurant = await Restaurant.findOne({ adminId: admin._id }).select('name isActive');
+                const restaurant = await Restaurant.findOne({ adminId: admin._id });
                 return {
                     ...admin.toObject(),
-                    restaurant: restaurant || null
+                    restaurant: restaurant ? {
+                        _id: restaurant._id,
+                        name: restaurant.name,
+                        slug: restaurant.slug,
+                        isActive: restaurant.isActive
+                    } : null
                 };
             }));
 
@@ -111,15 +126,20 @@ class SuperAdminController {
             const { filter } = req.query; // 'week', 'month', 'year'
 
             const totalRestaurants = await Restaurant.countDocuments();
-            const totalAdmins = await User.countDocuments({ role: 'admin' });
+            
+            // Đếm số chủ nhà hàng (admin có restaurant)
+            const restaurants = await Restaurant.find().select('adminId');
+            const totalAdmins = restaurants.length; // Mỗi restaurant có 1 owner
+            
             const totalUsers = await User.countDocuments(); // Tổng user toàn hệ thống
 
-            // Tính tổng doanh thu từ tất cả các nhà hàng
-            const revenueAgg = await Restaurant.aggregate([
+            // Tính tổng doanh thu từ tất cả các nhà hàng (dựa trên OrderSession thực tế)
+            const revenueAgg = await OrderSession.aggregate([
+                { $match: { paymentStatus: 'paid' } },
                 {
                     $group: {
                         _id: null,
-                        totalSystemRevenue: { $sum: "$totalRevenue" }
+                        totalSystemRevenue: { $sum: "$totalAmount" }
                     }
                 }
             ]);

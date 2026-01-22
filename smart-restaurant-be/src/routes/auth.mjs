@@ -5,6 +5,8 @@ import authController from "../controllers/AuthController.mjs";
 
 const router = Router();
 
+// Check email realtime
+router.post('/check-email', authController.checkEmail);
 // Auth bằng pass
 router.post('/login', authController.login);
 // router.post('/register', authController.register); // customer register

@@ -6,6 +6,7 @@ import { v2 as cloudinary } from "cloudinary"; // Import để xóa ảnh cũ
 const saltRounds = 10;
 
 class UserController {
+    
     // [GET] /api/user/account
     async getAccount(req, res, next) {
         try {
@@ -15,13 +16,14 @@ class UserController {
 
             let restaurant = null;
 
-            // Nếu là Admin (Chủ quán) -> Tìm nhà hàng do họ sở hữu
-            if (user.role === 'admin') {
-                restaurant = await Restaurant.findOne({ adminId: user._id });
-            } 
-            // Nếu là Staff (Waiter/Kitchen) -> Tìm nhà hàng họ đang làm việc
-            else if (user.restaurantId) {
+            // Nếu user đã được gán vào một nhà hàng (Admin phụ, Waiter, Kitchen...)
+            if (user.restaurantId) {
                 restaurant = await Restaurant.findById(user.restaurantId);
+            } 
+            // Fallback: Nếu là Admin Owner mới tạo chưa có restaurantId trong user,
+            // nhưng có thể đã tạo nhà hàng (trường hợp data cũ hoặc lỗi sync)
+            else if (user.role === 'admin') {
+                restaurant = await Restaurant.findOne({ adminId: user._id });
             }
 
             res.status(200).json({
@@ -38,8 +40,9 @@ class UserController {
                     restaurant: restaurant ? {
                         id: restaurant._id,
                         name: restaurant.name,
-                        slug: restaurant.slug,
-                        isActive: restaurant.isActive
+                        currency: restaurant.currency,
+                        isActive: restaurant.isActive,
+                        isOwner: restaurant.adminId.toString() === user._id.toString()
                     } : null
                 }
             })

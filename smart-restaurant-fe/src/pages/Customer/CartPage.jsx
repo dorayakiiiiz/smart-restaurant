@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { menuService } from "../../services/menuService";
+import { formatMoney } from "../../utils/helper";
 
 export default function CartPage() {
     const { cartItems, updateQuantity, removeFromCart, cartTotal, sessionInfo, clearCart, updateCartItem } = useCart();

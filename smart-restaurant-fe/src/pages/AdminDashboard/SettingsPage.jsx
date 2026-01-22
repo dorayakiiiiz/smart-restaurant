@@ -22,8 +22,9 @@ export default function SettingsPage() {
     const [address, setAddress] = useState("");
     const [bio, setBio] = useState("");
     const [wifi, setWifi] = useState("");
+    const [currency, setCurrency] = useState("");
     
-    // Contact state (MỚI)
+    // Contact state 
     const [contactPhone, setContactPhone] = useState("");
     const [contactEmail, setContactEmail] = useState("");
     
@@ -33,7 +34,7 @@ export default function SettingsPage() {
     const [logoPreview, setLogoPreview] = useState("");
     const [coverPreview, setCoverPreview] = useState("");
 
-    // --- PAYOS STATE (MỚI) ---
+    // --- PAYOS STATE ---
     const [payosClientId, setPayosClientId] = useState("");
     const [payosApiKey, setPayosApiKey] = useState("");
     const [payosChecksumKey, setPayosChecksumKey] = useState("");
@@ -57,6 +58,7 @@ export default function SettingsPage() {
             setContactPhone(r.contact.phone || "");
             setContactEmail(r.contact.email || "");
             setWifi(r.wifiPassword || "");
+            setCurrency(r.currency || "USD");
             setLogoPreview(r.logoUrl || "");
             setCoverPreview(r.coverUrl || "");
 
@@ -115,6 +117,7 @@ export default function SettingsPage() {
         formData.append('contactPhone', contactPhone);
         formData.append('contactEmail', contactEmail);
         formData.append('wifiPassword', wifi);
+        formData.append('currency', currency);
         
         if (logo) formData.append('logo', logo);
         if (cover) formData.append('cover', cover);
@@ -195,6 +198,17 @@ export default function SettingsPage() {
                             <label className="block text-sm font-bold text-gray-600 mb-1">Wifi Password (for Guests)</label>
                             <Input type="text" value={wifi} placeholder="Optional" setState={setWifi} />
                         </div>
+                        {/* <div>
+                            <label className="block text-sm font-bold text-gray-600 mb-1">Currency</label>
+                            <select 
+                                className="w-full h-[50px] my-[10px] px-5 bg-[#f7f8f6] rounded-xl outline-none cursor-pointer"
+                                value={currency}
+                                onChange={e => setCurrency(e.target.value)}
+                            >
+                                <option value="USD">USD ($)</option>
+                                <option value="VND">VND (₫)</option>
+                            </select>
+                        </div> */}
                     </div>
                 </div>
 

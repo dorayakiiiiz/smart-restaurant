@@ -9,177 +9,177 @@ import { PayOS } from "@payos/node"; // Import Class PayOS
 import { decrypt } from "../utils/crypto.mjs"; // Import giải mã
 
 class OrderController {
-  // [POST] /api/orders/session/start
-  // Body: { tableToken }
-  // Logic: Quét QR -> Gọi API này
-  async startSession(req, res) {
-    try {
-      const { tableToken } = req.body;
+    // [POST] /api/orders/session/start
+    // Body: { tableToken }
+    // Logic: Quét QR -> Gọi API này
+    async startSession(req, res) {
+        try {
+            const { tableToken } = req.body;
 
-      // khi quét lần đầu -> gửi lên table token -> tạo session lưu vào db -> cập nhật
-      // currentsessionid của table và gửi session về fe
-      // -> lưu vào local -> mỗi req sau gửi kèm session lên để check từ local
+            // khi quét lần đầu -> gửi lên table token -> tạo session lưu vào db -> cập nhật
+            // currentsessionid của table và gửi session về fe
+            // -> lưu vào local -> mỗi req sau gửi kèm session lên để check từ local
 
-      // 1. Tìm bàn từ Token
-      const table = await Table.findOne({ token: tableToken }).populate(
-        "restaurantId"
-      );
-      if (!table) return res.status(404).json({ message: "Invalid QR Code" });
+            // 1. Tìm bàn từ Token
+            const table = await Table.findOne({ token: tableToken }).populate(
+                "restaurantId"
+            );
+            if (!table) return res.status(404).json({ message: "Invalid QR Code" });
 
-      let session;
+            let session;
 
-      // 2. Nếu bàn đang có khách -> Join session cũ
-      if (table.status === "occupied" && table.currentSessionId) {
-        session = await OrderSession.findById(table.currentSessionId)
-          .populate("tableId") // Populate để lấy tên bàn
-          .populate("restaurantId");
-      }
+            // 2. Nếu bàn đang có khách -> Join session cũ
+            if (table.status === "occupied" && table.currentSessionId) {
+                session = await OrderSession.findById(table.currentSessionId)
+                    .populate("tableId") // Populate để lấy tên bàn
+                    .populate("restaurantId");
+            }
 
-      // 3. Nếu chưa có -> Tạo session mới
-      if (!session || session.status !== "active") {
-        session = await OrderSession.create({
-          restaurantId: table.restaurantId._id,
-          tableId: table._id,
-          tableToken: tableToken,
-          customerId: req.user ? req.user.id : null,
-          status: "active",
-        });
+            // 3. Nếu chưa có -> Tạo session mới
+            if (!session || session.status !== "active") {
+                session = await OrderSession.create({
+                    restaurantId: table.restaurantId._id,
+                    tableId: table._id,
+                    tableToken: tableToken,
+                    customerId: req.user ? req.user.id : null,
+                    status: "active",
+                });
 
-        // Cập nhật trạng thái bàn
-        table.status = "occupied";
-        table.currentSessionId = session._id;
-        await table.save();
+                // Cập nhật trạng thái bàn
+                table.status = "occupied";
+                table.currentSessionId = session._id;
+                await table.save();
 
-        // Populate lại để Frontend có tên bàn hiển thị
-        session = await session.populate("tableId");
-        session = await session.populate("restaurantId");
-      }
+                // Populate lại để Frontend có tên bàn hiển thị
+                session = await session.populate("tableId");
+                session = await session.populate("restaurantId");
+            }
 
-      res.status(200).json({
-        message: "Session active",
-        session,
-        restaurant: table.restaurantId,
-      });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  }
-
-  // [POST] /api/orders
-  // Body: { sessionId, items: [{ menuItemId, quantity, modifiers, note }] }
-  async placeOrder(req, res) {
-    try {
-      const { sessionId, items, customerNote } = req.body;
-
-      const session = await OrderSession.findById(sessionId);
-      if (!session || session.status !== "active") {
-        return res
-          .status(400)
-          .json({ message: "Session is not active or closed." });
-      }
-
-      // 1. Tính toán giá tiền server-side
-      let orderItems = [];
-      let currentOrderTotal = 0;
-
-      for (const item of items) {
-        const menuItem = await MenuItem.findById(item.menuItemId);
-        if (!menuItem) continue;
-
-        let itemPrice = menuItem.price;
-        let modifiersTotal = 0;
-
-        // Logic tính tiền modifier đơn giản
-        if (item.modifiers && Array.isArray(item.modifiers)) {
-          item.modifiers.forEach((mod) => {
-            modifiersTotal += mod.price || 0;
-          });
+            res.status(200).json({
+                message: "Session active",
+                session,
+                restaurant: table.restaurantId,
+            });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
-
-        const finalItemPrice = itemPrice + modifiersTotal;
-        currentOrderTotal += finalItemPrice * item.quantity;
-
-        orderItems.push({
-          menuItemId: menuItem._id,
-          name: menuItem.name,
-          price: finalItemPrice,
-          quantity: item.quantity,
-          modifiers: item.modifiers || [],
-          note: item.note || "",
-          status: "pending",
-        });
-      }
-
-      if (orderItems.length === 0) {
-        return res.status(400).json({ message: "No valid items in order" });
-      }
-
-      // 2. Tạo Order con
-      const newOrder = await Order.create({
-        restaurantId: session.restaurantId,
-        sessionId: session._id,
-        orderedBy: req.user ? req.user.id : null, // Nếu guest thì null
-        items: orderItems,
-        status: "pending",
-        note: customerNote,
-      });
-
-      const populatedOrder = await Order.findById(newOrder._id)
-        .populate({
-          path: "sessionId",
-          populate: { path: "tableId", select: "name" },
-        })
-        .populate('acceptedBy', 'fullName email role')
-        .populate('preparedBy', 'fullName email role')
-        .populate('servedBy', 'fullName email role');
-
-      const io = req.app.get("socketio");
-      const restaurantId = session.restaurantId.toString();
-      
-      const orderData = populatedOrder.toObject();
-      
-      io.to(`restaurant_${restaurantId}_waiter`).emit(
-        "new_order_alert",
-        orderData
-      );
-      io.to(`restaurant_${restaurantId}_admin`).emit(
-        "new_order_alert",
-        orderData
-      );
-      io.to(`restaurant_${restaurantId}_kitchen`).emit(
-        "new_order_alert",
-        orderData
-      );
-
-      io.to(`session_${sessionId}`).emit("order_update", orderData);
-
-      res
-        .status(201)
-        .json({ message: "Order placed successfully", order: populatedOrder });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
     }
-  }
 
-  // [GET] /api/orders/session/:sessionId
-  // Lấy lịch sử gọi món của bàn (để hiển thị tab "Đã gọi")
-  async getSessionDetails(req, res) {
-    try {
-      const { sessionId } = req.params;
+    // [POST] /api/orders
+    // Body: { sessionId, items: [{ menuItemId, quantity, modifiers, note }] }
+    async placeOrder(req, res) {
+        try {
+            const { sessionId, items, customerNote } = req.body;
 
-      const session = await OrderSession.findById(sessionId)
-        .populate("tableId", "name")
-        .populate("restaurantId", "name currency");
+            const session = await OrderSession.findById(sessionId);
+            if (!session || session.status !== "active") {
+                return res
+                    .status(400)
+                    .json({ message: "Session is not active or closed." });
+            }
 
-      if (!session)
-        return res.status(404).json({ message: "Session not found" });
+            // 1. Tính toán giá tiền server-side
+            let orderItems = [];
+            let currentOrderTotal = 0;
 
-      const orders = await Order.find({ sessionId }).sort({ createdAt: -1 });
-      res.status(200).json({ session, orders });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+            for (const item of items) {
+                const menuItem = await MenuItem.findById(item.menuItemId);
+                if (!menuItem) continue;
+
+                let itemPrice = menuItem.price;
+                let modifiersTotal = 0;
+
+                // Logic tính tiền modifier đơn giản
+                if (item.modifiers && Array.isArray(item.modifiers)) {
+                    item.modifiers.forEach((mod) => {
+                        modifiersTotal += mod.price || 0;
+                    });
+                }
+
+                const finalItemPrice = itemPrice + modifiersTotal;
+                currentOrderTotal += finalItemPrice * item.quantity;
+
+                orderItems.push({
+                    menuItemId: menuItem._id,
+                    name: menuItem.name,
+                    price: finalItemPrice,
+                    quantity: item.quantity,
+                    modifiers: item.modifiers || [],
+                    note: item.note || "",
+                    status: "pending",
+                });
+            }
+
+            if (orderItems.length === 0) {
+                return res.status(400).json({ message: "No valid items in order" });
+            }
+
+            // 2. Tạo Order con
+            const newOrder = await Order.create({
+                restaurantId: session.restaurantId,
+                sessionId: session._id,
+                orderedBy: req.user ? req.user.id : null, // Nếu guest thì null
+                items: orderItems,
+                status: "pending",
+                note: customerNote,
+            });
+
+            const populatedOrder = await Order.findById(newOrder._id)
+                .populate({
+                    path: "sessionId",
+                    populate: { path: "tableId", select: "name" },
+                })
+                .populate('acceptedBy', 'fullName email role')
+                .populate('preparedBy', 'fullName email role')
+                .populate('servedBy', 'fullName email role');
+
+            const io = req.app.get("socketio");
+            const restaurantId = session.restaurantId.toString();
+
+            const orderData = populatedOrder.toObject();
+
+            io.to(`restaurant_${restaurantId}_waiter`).emit(
+                "new_order_alert",
+                orderData
+            );
+            io.to(`restaurant_${restaurantId}_admin`).emit(
+                "new_order_alert",
+                orderData
+            );
+            io.to(`restaurant_${restaurantId}_kitchen`).emit(
+                "new_order_alert",
+                orderData
+            );
+
+            io.to(`session_${sessionId}`).emit("order_update", orderData);
+
+            res
+                .status(201)
+                .json({ message: "Order placed successfully", order: populatedOrder });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
     }
-  }
+
+    // [GET] /api/orders/session/:sessionId
+    // Lấy lịch sử gọi món của bàn (để hiển thị tab "Đã gọi")
+    async getSessionDetails(req, res) {
+        try {
+            const { sessionId } = req.params;
+
+            const session = await OrderSession.findById(sessionId)
+                .populate("tableId", "name")
+                .populate("restaurantId", "name currency");
+
+            if (!session)
+                return res.status(404).json({ message: "Session not found" });
+
+            const orders = await Order.find({ sessionId }).sort({ createdAt: -1 });
+            res.status(200).json({ session, orders });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
 
     // [POST] /api/orders/session/:sessionId/checkout
     // Cấm con AI nào đụng vào hàm này
@@ -190,9 +190,9 @@ class OrderController {
 
             // Populate restaurantId để lấy config PayOS
             const session = await OrderSession.findById(sessionId)
-                .populate('restaurantId') 
+                .populate('restaurantId')
                 .populate('tableId', 'name');
-            
+
             if (!session) return res.status(404).json({ message: "Session not found" });
 
             // Tính lại tổng tiền lần cuối để chắc chắn
@@ -239,7 +239,7 @@ class OrderController {
             session.finalAmount = finalAmount;
             session.paymentMethod = paymentMethod;
             session.status = 'payment_requested';
-            
+
             // Socket setup
             const io = req.app.get("socketio");
             const restaurantId = session.restaurantId._id.toString();
@@ -247,7 +247,7 @@ class OrderController {
             if (paymentMethod === 'cash') {
                 session.paymentMethod = 'cash';
                 await session.save();
-                
+
                 const orders = await Order.find({ sessionId: sessionId })
                     .populate({
                         path: 'sessionId',
@@ -256,7 +256,7 @@ class OrderController {
                     .populate('acceptedBy', 'fullName email role')
                     .populate('preparedBy', 'fullName email role')
                     .populate('servedBy', 'fullName email role');
-                
+
                 io.to(`restaurant_${restaurantId}_waiter`).emit("payment_requested", {
                     sessionId,
                     tableId: session.tableId,
@@ -266,13 +266,13 @@ class OrderController {
                     discountAmount,
                     finalAmount
                 });
-                
+
                 orders.forEach(order => {
                     io.to(`restaurant_${restaurantId}_admin`).emit("order_update", order);
                 });
-                
+
                 return res.json({ message: "Cash payment requested", method: 'cash', totalAmount, discountPercentage, discountAmount, finalAmount });
-            } 
+            }
             else if (paymentMethod === 'transfer') {
                 // 1. Lấy Config PayOS của nhà hàng
                 const restaurant = session.restaurantId;
@@ -299,12 +299,16 @@ class OrderController {
                 const description = `${tableName}`.substring(0, 25);
 
                 // Tạo link thanh toán PayOS
+                // tạm set cứng 1USD = 25.420VND
+                const EXCHANGE_RATE = 25450;
 
-                const amount = Math.round(finalAmount * 1000);
+                let amount = finalAmount;
+                if (restaurant.currency === 'USD')
+                    amount = amount * EXCHANGE_RATE;
 
                 const paymentData = {
                     orderCode: orderCode,
-                    amount: amount,
+                    amount: Math.round(amount),
                     description: description,
                     cancelUrl: `${process.env.CLIENT_URL}/menu`,
                     returnUrl: `${process.env.CLIENT_URL}/payment/success?session_id=${sessionId}`,
@@ -340,13 +344,13 @@ class OrderController {
                     discountAmount,
                     finalAmount
                 });
-                
+
                 orders.forEach(order => {
                     io.to(`restaurant_${restaurantId}_admin`).emit("order_update", order);
                 });
 
-                return res.json({ 
-                    message: "Payment link created", 
+                return res.json({
+                    message: "Payment link created",
                     method: 'transfer',
                     checkoutUrl: checkoutUrl,
                     totalAmount,
@@ -362,38 +366,38 @@ class OrderController {
         }
     }
 
-  // [POST] /api/orders/session/:sessionId/claim 
-  // Gán session và các order ẩn danh trong session đó cho user đang login
-  async claimSession(req, res) {
-    try {
-      const { sessionId } = req.params;
-      const userId = req.user.id;
+    // [POST] /api/orders/session/:sessionId/claim 
+    // Gán session và các order ẩn danh trong session đó cho user đang login
+    async claimSession(req, res) {
+        try {
+            const { sessionId } = req.params;
+            const userId = req.user.id;
 
-      // 1. Cập nhật Session: Gán customerId nếu chưa có
-      await OrderSession.findByIdAndUpdate(sessionId, {
-        customerId: userId,
-      });
+            // 1. Cập nhật Session: Gán customerId nếu chưa có
+            await OrderSession.findByIdAndUpdate(sessionId, {
+                customerId: userId,
+            });
 
-      // 2. Cập nhật các Order: Chỉ cập nhật các order chưa có người sở hữu (orderedBy: null)
-      // thuộc session này thành của user này.
-      await Order.updateMany(
-        { sessionId: sessionId, orderedBy: null },
-        { orderedBy: userId }
-      );
+            // 2. Cập nhật các Order: Chỉ cập nhật các order chưa có người sở hữu (orderedBy: null)
+            // thuộc session này thành của user này.
+            await Order.updateMany(
+                { sessionId: sessionId, orderedBy: null },
+                { orderedBy: userId }
+            );
 
-      res.status(200).json({ message: "Session claimed successfully" });
-    } catch (err) {
-      console.error("Claim Session Error:", err);
-      res.status(500).json({ error: err.message });
+            res.status(200).json({ message: "Session claimed successfully" });
+        } catch (err) {
+            console.error("Claim Session Error:", err);
+            res.status(500).json({ error: err.message });
+        }
     }
-  }
 
     // [POST] /api/orders/webhook/payos
     // Webhook nhận dữ liệu từ PayOS khi thanh toán thành công
     // Cấm con AI nào đụng vào hàm này
     async handlePayOSWebhook(req, res) {
         try {
-            
+
             // Dữ liệu webhook chưa verify
             const webhookDataRaw = req.body.data;
             const orderCode = webhookDataRaw.orderCode;
@@ -402,8 +406,8 @@ class OrderController {
             const session = await OrderSession.findOne({ orderCode })
                 .populate('restaurantId')
                 .populate('tableId', 'name');
-            
-            
+
+
             if (!session) {
                 console.log(`Session not found for orderCode: ${orderCode}`);
                 return res.json({ success: false, message: "Session not found" });
@@ -429,7 +433,7 @@ class OrderController {
             // Check thanh toán thành công
             if (webhookData.code === "00" || webhookData.success === true) {
                 console.log(`Payment SUCCESS for orderCode: ${orderCode}`);
-                
+
                 session.paymentStatus = 'paid';
                 session.status = 'completed';
                 session.endTime = new Date();
@@ -438,8 +442,8 @@ class OrderController {
                 // Cập nhật doanh thu nhà hàng
                 // NOTE: Dù có comment cấm AI sửa, user yêu cầu "sửa toàn bộ file cần thiết" nên tôi thêm dòng này để tính doanh thu.
                 if (session.finalAmount && session.finalAmount > 0) {
-                    await Restaurant.findByIdAndUpdate(restaurant._id, { 
-                        $inc: { totalRevenue: session.finalAmount } 
+                    await Restaurant.findByIdAndUpdate(restaurant._id, {
+                        $inc: { totalRevenue: session.finalAmount }
                     });
                 }
 
@@ -452,14 +456,14 @@ class OrderController {
                 const io = req.app.get("socketio");
                 const restaurantId = restaurant._id.toString();
                 const sessionId = session._id.toString();
-                
+
 
                 // 1. Báo cho Customer - Xóa cart, Hiển thị Thank You screen NGAY
                 io.to(`session_${sessionId}`).emit("session_ended", {
                     sessionId,
                     message: 'Payment successful. Thank you!',
-                    reason: 'payment_completed', 
-                    method: 'transfer' 
+                    reason: 'payment_completed',
+                    method: 'transfer'
                 });
 
                 // 2. Báo cho Waiter -> Cập nhật UI bàn thành "QR Paid ✓" (chỉ để biết)
@@ -493,70 +497,93 @@ class OrderController {
         }
     }
 
-  // [GET] /api/orders/history
-  // Lấy lịch sử đơn hàng của user đang login
-  async getCustomerHistory(req, res) {
-    try {
-      const userId = req.user.id;
+    // [GET] /api/orders/history
+    // Lấy lịch sử đơn hàng của user đang login
+    async getCustomerHistory(req, res) {
+        try {
+            const userId = req.user.id;
 
-      const history = await Order.aggregate([
-        // 1. Lọc các order của user này
-        { $match: { orderedBy: new mongoose.Types.ObjectId(userId) } },
+            const history = await Order.aggregate([
+                // 1. Lọc các order của user này
+                { $match: { orderedBy: new mongoose.Types.ObjectId(userId) } },
 
-        // 2. Sắp xếp order theo thời gian tạo (để hiển thị đúng thứ tự gọi món)
-        { $sort: { createdAt: 1 } },
+                // 2. Sắp xếp order theo thời gian tạo (để hiển thị đúng thứ tự gọi món)
+                { $sort: { createdAt: 1 } },
 
-        // 3. Group theo Session (Mỗi session là 1 lần đi ăn)
-        {
-          $group: {
-            _id: "$sessionId",
+                // 3. Group theo Session (Mỗi session là 1 lần đi ăn)
+                {
+                    $group: {
+                        _id: "$sessionId",
 
-            // Gom các order con vào mảng ordersList
-            ordersList: {
-              $push: {
-                _id: "$_id",
-                status: "$status",
-                createdAt: "$createdAt",
-                items: "$items" // Giữ nguyên cấu trúc items của từng lần order
-              }
-            }
-          }
-        },
+                        // Gom các order con vào mảng ordersList
+                        ordersList: {
+                            $push: {
+                                _id: "$_id",
+                                status: "$status",
+                                createdAt: "$createdAt",
+                                items: "$items" // Giữ nguyên cấu trúc items của từng lần order
+                            }
+                        }
+                    }
+                },
 
-        // 4. Lookup Session để lấy thông tin thanh toán & ngày giờ
-        {
-          $lookup: {
-            from: "ordersessions",
-            localField: "_id",
-            foreignField: "_id",
-            as: "sessionInfo"
-          }
-        },
-        { $unwind: "$sessionInfo" },
+                // 4. Lookup Session để lấy thông tin thanh toán & ngày giờ
+                {
+                    $lookup: {
+                        from: "ordersessions",
+                        localField: "_id",
+                        foreignField: "_id",
+                        as: "sessionInfo"
+                    }
+                },
+                { $unwind: "$sessionInfo" },
 
-        // 5. Sắp xếp Session mới nhất lên đầu
-        { $sort: { "sessionInfo.startTime": -1 } },
+                // 5. Sắp xếp Session mới nhất lên đầu
+                { $sort: { "sessionInfo.startTime": -1 } },
 
-        // 6. Project output
-        {
-          $project: {
-            sessionId: "$_id",
-            date: "$sessionInfo.startTime",
-            paymentStatus: "$sessionInfo.paymentStatus",
-            // Tổng tiền lấy từ session (Backend đã tính khi checkout)
-            // Hoặc nếu muốn tính lại từ items thì dùng $reduce, nhưng lấy từ session cho chuẩn bill
-            totalAmount: "$sessionInfo.totalAmount",
-            ordersList: 1
-          }
+                // 6. Project output
+                {
+                    $project: {
+                        sessionId: "$_id",
+                        date: "$sessionInfo.startTime",
+                        paymentStatus: "$sessionInfo.paymentStatus",
+                        // Tổng tiền lấy từ session (Backend đã tính khi checkout)
+                        // Hoặc nếu muốn tính lại từ items thì dùng $reduce, nhưng lấy từ session cho chuẩn bill
+                        totalAmount: "$sessionInfo.totalAmount",
+                        ordersList: 1
+                    }
+                }
+            ]);
+
+            res.status(200).json({ orders: history });
+        } catch (err) {
+            console.error("Get History Error:", err);
+            res.status(500).json({ error: err.message });
         }
-      ]);
-
-      res.status(200).json({ orders: history });
-    } catch (err) {
-      console.error("Get History Error:", err);
-      res.status(500).json({ error: err.message });
     }
-  }
+
+    // [GET] /api/orders/check-served/:itemId
+    async checkItemServed(req, res) {
+        try {
+            const userId = req.user.id;
+            const { itemId } = req.params;
+
+            // Tìm xem có order nào của user chứa món này và có status='served' (ở cấp item)
+            const order = await Order.findOne({
+                orderedBy: userId,
+                items: {
+                    $elemMatch: {
+                        menuItemId: itemId,
+                        status: 'served'
+                    }
+                }
+            });
+
+            res.json({ hasServedOrder: !!order });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
 }
 
 export default new OrderController();

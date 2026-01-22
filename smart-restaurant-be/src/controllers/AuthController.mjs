@@ -22,35 +22,21 @@ const generateAuthScript = (type, data) => {
 };
 
 class AuthController {
-    // [POST] /auth/register -> của customer
-    // async register(req, res, next) {
-    //     try {
-    //         // Nhận thêm restaurantId từ Frontend gửi lên
-    //         const { email, fullName, password, restaurantId } = req.body;
-
-    //         // Tìm user có email này TRONG NHÀ HÀNG NÀY
-    //         const user = await User.findOne({ email, restaurantId });
-            
-    //         if (user) {
-    //             return res.status(400).json({ message: 'Email already exists in this restaurant.' });
-    //         }
-
-    //         const hashPassword = await bcrypt.hash(password, saltRounds);
-            
-    //         const newUser = await User.create({
-    //             email,
-    //             fullName,
-    //             password: hashPassword,
-    //             restaurantId: restaurantId // Lưu khóa ngoại
-    //         });
-
-    //         res.json({ message: 'Register successfully!', userId: newUser._id });
-            
-    //     } catch (err) {
-    //         res.status(500).json({ error: err.message });
-    //     }
-    // }
-
+    // [POST] /api/user/check-email
+    async checkEmail(req, res, next) {
+        try {
+            const { email, restaurantId } = req.body;
+            const user = await User.findOne({ email, restaurantId });
+            if (user) {
+                return res.status(400).json({ message: "Email already exists in this restaurant." });
+            }
+            return res.status(200).json({ message: "Email is available."});
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+    
+    
     // [POST] /auth/register-otp
     // Step 1: Validate info, check duplicate, send OTP
     async sendRegisterOtp(req, res, next) {

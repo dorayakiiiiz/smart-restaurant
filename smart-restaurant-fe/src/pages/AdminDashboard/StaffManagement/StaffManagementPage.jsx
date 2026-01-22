@@ -7,6 +7,7 @@ import DeleteModal from "../../../components/Modal/DeleteModal";
 import RoleSelectionModal from "./components/RoleSelectionModal";
 import StaffFormModal from "./components/StaffFormModal";
 import FilterModal from "./components/FilterModal";
+import { useAuth } from "../../../context/AuthContext";
 
 export default function StaffManagementPage() {
     const queryClient = useQueryClient();
@@ -91,10 +92,13 @@ export default function StaffManagementPage() {
         setSelectedStatusFilter("all");
     };
 
+    const { user } = useAuth(); // Lấy user hiện tại để check isOwner
+    const isOwner = user?.restaurant?.isOwner; // Check quyền
+
     // Table columns
     const columns = [
         {
-            header: "Staff Name",
+            header: "Employee",
             render: (item) => (
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs text-gray-600">
@@ -115,15 +119,21 @@ export default function StaffManagementPage() {
         },
         {
             header: "Role",
-            render: (item) => (
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                    item.role === 'waiter' 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'bg-orange-100 text-orange-700'
-                }`}>
-                    {item.role === 'waiter' ? '🍽️ Waiter' : '👨‍🍳 Kitchen'}
-                </span>
-            )
+            render: (item) => {
+                return (
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        item.isOwner ? 
+                            'bg-red-100 text-red-700'
+                            : item.role === 'admin'
+                                ? 'bg-orange-100 text-orange-700'
+                                : item.role === 'waiter' 
+                                    ? 'bg-blue-100 text-blue-700' 
+                                    : 'bg-green-100 text-green-700'
+                    }`}>
+                        {item.isOwner ? '👑 Owner' : item.role === 'admin' ? '🔑 Admin' : item.role === 'waiter' ? '🍽️ Waiter' : '👨‍🍳 Kitchen'}
+                    </span>
+                )
+            }
         },
         {
             header: "Status",
@@ -141,8 +151,11 @@ export default function StaffManagementPage() {
         <div className="flex gap-2">
             <button 
                 onClick={() => handleEdit(item)}
-                className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition"
+                className={`${(item.role === 'admin' && !isOwner) ? 'text-gray-300 cursor-not-allowed' 
+                    : 'text-blue-600 hover:bg-blue-50'}
+                    p-2 rounded-lg transition`}
                 title="Edit Staff"
+                disabled={item.role === 'admin' && !isOwner}
             >
                 <i className="fa-solid fa-pen"></i>
             </button>
@@ -150,17 +163,21 @@ export default function StaffManagementPage() {
             <button 
                 onClick={() => handleToggleLock(item._id)}
                 className={`p-2 rounded-lg transition ${
-                    item.isLocked ? 'text-green-600 hover:bg-green-50' : 'text-orange-500 hover:bg-orange-50'
+                    ((item.role === 'admin' && !isOwner) || (item._id === user.id)) ? 'text-gray-300 cursor-not-allowed' :
+                        item.isLocked ? 'text-green-600 hover:bg-green-50' 
+                        : 'text-orange-500 hover:bg-orange-50'
                 }`}
                 title={item.isLocked ? "Unlock Account" : "Lock Account"}
+                disabled={(item.role === 'admin' && !isOwner) || (item._id === user.id)}
             >
                 <i className={`fa-solid ${item.isLocked ? 'fa-lock-open' : 'fa-lock'}`}></i>
             </button>
 
             <button 
                 onClick={() => handleDelete(item._id)}
-                className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition"
+                className={`${((item.role === 'admin' && !isOwner) || (item._id === user.id)) ? 'text-gray-300 cursor-not-allowed' : 'text-red-600 hover:bg-red-50'} p-2 rounded-lg transition`}
                 title="Delete Account"
+                disabled={(item.role === 'admin' && !isOwner) || (item._id === user.id)}
             >
                 <i className="fa-solid fa-trash"></i>
             </button>
@@ -173,7 +190,7 @@ export default function StaffManagementPage() {
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h2 className="text-2xl font-bold font-momo text-[#1a1a1a]">Manage Staff</h2>
-                    <p className="text-gray-500">Create and manage waiter and kitchen staff accounts.</p>
+                    <p className="text-gray-500">Create and manage admin, waiter and kitchen staff accounts.</p>
                 </div>
                 <Button 
                     backgrond={{ normal: "#1a1a1a", hover: "#333" }}

@@ -9,6 +9,8 @@ export default function AdminDashboardLayout() {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
 
+    const isOwner = user?.restaurant?.isOwner;
+
     useEffect(() => {
         if (!user?.restaurantId) return;
         
@@ -42,11 +44,11 @@ export default function AdminDashboardLayout() {
         <div className="w-full h-screen flex flex-col font-quicksand font-medium bg-[#f8f9fa]">
             {/* Header */}
             <div className="bg-[#1a1a1a] h-[70px] w-full flex items-center justify-between px-6 shadow-md z-20">
-                <Link to="/system/admin/dashboard" className="text-[#D4AF37] font-momo text-2xl font-bold flex items-center gap-2">
+                <Link to="/" className="text-[#D4AF37] font-momo text-2xl font-bold flex items-center gap-2">
                     <i className="fa-solid fa-utensils text-yellow-700"></i>
                     Smart Restaurant 
                     <span className="text-[10px] tracking-wider text-white font-bold border border-gray-600 px-2 py-0.5 rounded ml-2 uppercase bg-gray-800">
-                        Restaurant Admin
+                        {isOwner ? 'Restaurant Owner' : 'Restaurant Admin'}
                     </span>
                 </Link>
                 <div className="flex items-center gap-4">
@@ -65,11 +67,6 @@ export default function AdminDashboardLayout() {
                     {/* Page Header */}
                     <div className="h-[70px] flex justify-between items-center px-8 bg-white border-b border-gray-200 shrink-0">
                         <h1 className="font-bold text-2xl text-[#1a1a1a] font-momo">{getTitle()}</h1>
-                        <div className="flex items-center gap-3">
-                            <button className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition">
-                                <i className="fa-regular fa-bell"></i>
-                            </button>
-                        </div>
                     </div>
 
                     {/* Scrollable Content */}

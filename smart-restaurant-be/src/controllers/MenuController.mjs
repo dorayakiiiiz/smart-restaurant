@@ -41,14 +41,16 @@ class MenuController {
     // [GET] /api/menu
     async getMenu(req, res) {
         try {
-            // Tìm nhà hàng dựa trên adminId (người dùng đang đăng nhập)
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) {
-                return res.status(404).json({ message: "Restaurant not found for this user" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
             }
+
             // Lấy tất cả món ăn thuộc nhà hàng này, kèm thông tin category
             const items = await MenuItem.find({ 
-                restaurantId: restaurant._id,
+                restaurantId,
                 isDeleted: { $ne: true } // Lấy item không có cờ isDeleted hoặc isDeleted = false
             })
                 .populate('categoryId', 'name isActive') // Chỉ lấy tên category
@@ -56,7 +58,7 @@ class MenuController {
 
             // Calculate order counts
             const orderCounts = await Order.aggregate([
-                { $match: { restaurantId: restaurant._id } },
+                { $match: { restaurantId } },
                 { $unwind: "$items" },
                 { $match: { "items.status": "served" } }, // Chỉ tính các món đã served
                 { $group: {
@@ -120,17 +122,21 @@ class MenuController {
     async getMenuItem(req, res) {
         try {
             const { id } = req.params;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
-            const item = await MenuItem.findOne({ _id: id, restaurantId: restaurant._id })
+            const item = await MenuItem.findOne({ _id: id, restaurantId })
                 .populate('categoryId', 'name isActive');
             
             if (!item) return res.status(404).json({ message: "Item not found" });
 
             // Calculate order count for this specific item
             const orderCountResult = await Order.aggregate([
-                { $match: { restaurantId: restaurant._id } },
+                { $match: { restaurantId } },
                 { $unwind: "$items" },
                 { $match: { "items.menuItemId": item._id } },
                 { $group: {
@@ -185,13 +191,15 @@ class MenuController {
             }
 
             // 2. Tìm nhà hàng
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) {
-                return res.status(404).json({ message: "Restaurant not found. Please set up your restaurant first." });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
             }
 
             // 3. Kiểm tra Category có thuộc nhà hàng này không
-            const category = await Category.findOne({ _id: categoryId, restaurantId: restaurant._id });
+            const category = await Category.findOne({ _id: categoryId, restaurantId });
             if (!category) {
                 return res.status(400).json({ message: "Invalid category for this restaurant" });
             }
@@ -207,7 +215,7 @@ class MenuController {
             }
             // 4. Chuẩn bị dữ liệu
             const data = {
-                restaurantId: restaurant._id,
+                restaurantId,
                 categoryId,
                 name,
                 price: numPrice,
@@ -243,8 +251,12 @@ class MenuController {
             console.log("Update Data:", updates);
             
             // 1. Tìm nhà hàng để đảm bảo quyền sở hữu
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
             // Validation update
             if (updates.name && (updates.name.length < 2 || updates.name.length > 80)) {
@@ -262,7 +274,7 @@ class MenuController {
             }
 
             // 2. Kiểm tra món ăn có tồn tại và thuộc nhà hàng này không
-            const item = await MenuItem.findOne({ _id: id, restaurantId: restaurant._id });
+            const item = await MenuItem.findOne({ _id: id, restaurantId });
             if (!item) return res.status(404).json({ message: "Menu item not found" });
 
             // Xử lý upload thêm ảnh
@@ -300,7 +312,7 @@ class MenuController {
             
             // Xử lý category nếu có thay đổi
             if (updates.categoryId) {
-                const category = await Category.findOne({ _id: updates.categoryId, restaurantId: restaurant._id });
+                const category = await Category.findOne({ _id: updates.categoryId, restaurantId });
                 if (!category) return res.status(400).json({ message: "Invalid category" });
             }
 
@@ -322,13 +334,16 @@ class MenuController {
     async deleteMenuItem(req, res) {
         try {
             const { id } = req.params;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
             //Soft delete món ăn
             const deletedItem = await MenuItem.findOneAndUpdate(
-                { _id: id, restaurantId: restaurant._id },
+                { _id: id, restaurantId },
                 { isDeleted: true },
                 { new: true }
             );
@@ -350,9 +365,14 @@ class MenuController {
     async deleteMenuImage(req, res) {
         try {
             const { id, imageId } = req.params;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
             
-            const item = await MenuItem.findOne({ _id: id, restaurantId: restaurant._id });
+            const item = await MenuItem.findOne({ _id: id, restaurantId });
             if (!item) return res.status(404).json({ message: "Item not found" });
 
             // Lọc bỏ ảnh cần xóa
@@ -374,9 +394,14 @@ class MenuController {
     async setPrimaryImage(req, res) {
         try {
             const { id, imageId } = req.params;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
             
-            const item = await MenuItem.findOne({ _id: id, restaurantId: restaurant._id });
+            const item = await MenuItem.findOne({ _id: id, restaurantId });
             if (!item) return res.status(404).json({ message: "Item not found" });
 
             // Reset tất cả về false, set ảnh được chọn về true
@@ -395,11 +420,15 @@ class MenuController {
     // [GET] /api/menu/trash
     async getTrashMenu(req, res) {
         try {
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
             const items = await MenuItem.find({ 
-                restaurantId: restaurant._id,
+                restaurantId,
                 isDeleted: true 
             })
             .populate('categoryId', 'name')
@@ -415,10 +444,15 @@ class MenuController {
     async restoreMenuItem(req, res) {
         try {
             const { id } = req.params;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
             
             const item = await MenuItem.findOneAndUpdate(
-                { _id: id, restaurantId: restaurant._id, isDeleted: true },
+                { _id: id, restaurantId, isDeleted: true },
                 { isDeleted: false },
                 { new: true }
             );
@@ -435,11 +469,16 @@ class MenuController {
     async forceDeleteMenuItem(req, res) {
         try {
             const { id } = req.params;
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+            let restaurantId = req.user.restaurantId;
+            if (!restaurantId) {
+                const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+                restaurantId = restaurant._id;
+            }
 
             const item = await MenuItem.findOneAndDelete({ 
                 _id: id, 
-                restaurantId: restaurant._id,
+                restaurantId,
                 isDeleted: true 
             });
 

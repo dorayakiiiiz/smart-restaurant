@@ -11,16 +11,16 @@ const RestaurantSchema = new Schema({
         type: String,
         required: true 
     },
-    slug: { // Dùng cho URL thân thiện
-        type: String,
-        unique: true
-    },
     logoUrl: { type: String },
     coverUrl: { type: String },
-    bio: { type: String }, // Giới thiệu quán
+    bio: { type: String }, 
     address: { type: String },
     wifiPassword: { type: String },
-    currency: { type: String, default: 'VND' },
+    currency: { 
+        type: String, 
+        enum: ['USD', 'VND'],
+        default: 'USD' 
+    },
     
     // Contact info
     contact: {
@@ -54,10 +54,6 @@ const RestaurantSchema = new Schema({
         type: Boolean,
         default: true
     },
-    totalRevenue: {
-        type: Number,
-        default: 0
-    }
 }, { timestamps: true });
 
 export default mongoose.model('Restaurant', RestaurantSchema);

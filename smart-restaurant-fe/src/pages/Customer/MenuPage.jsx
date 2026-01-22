@@ -9,6 +9,7 @@ import { socket } from "../../services/socket";
 import ProductModal from "../../components/Modal/ProductModal"; // Import Modal mới
 import { useNavigate } from "react-router-dom";
 import Fuse from "fuse.js";
+import { formatMoney } from "../../utils/helper";
 
 // Component hiển thị sao
 const StarRating = ({ rating, setRating, editable = true, size = "text-sm" }) => {
@@ -45,18 +46,39 @@ const StarRating = ({ rating, setRating, editable = true, size = "text-sm" }) =>
 
 export default function MenuPage() {
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const tableToken = searchParams.get("token");
     const { setSessionInfo, addToCart, sessionInfo } = useCart();
-    const [selectedCategory, setSelectedCategory] = useState("all");
+    const currency = sessionInfo?.restaurant?.currency;
+    
     const [searchTerm, setSearchTerm] = useState("");
-    const [sortBy, setSortBy] = useState("price-asc"); // State cho sort
     
     // State để quản lý món đang xem
     const [selectedItem, setSelectedItem] = useState(null);
 
     // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
+    //Logic bấm vào detail món ăn rồi quay lại vẫn giữ page cũ
+    const [currentPage, setCurrentPage] = useState(() => {
+        //Lấy page từ url
+        const page = parseInt(searchParams.get("page"));
+        return !isNaN(page) && page > 0 ? page : 1;
+    });
+
+    //Category
+    const [selectedCategory, setSelectedCategory] = useState(() => {
+        const category = searchParams.get("category");
+        return category ? category : "all";
+    })
+
+    //Sort
+    const [sortBy, setSortBy] = useState(() => {
+        const sort = searchParams.get("sortBy");
+        return sort ? sort : "price-asc";
+    })
+
+    // Ref để chặn reset page khi mount lại
+    const prevFiltersRef = useRef({ searchTerm, selectedCategory, sortBy });
+
     const itemsPerPage = 5;
 
     const handleAddItem = (e, item) => {
@@ -107,8 +129,33 @@ export default function MenuPage() {
         };
     }, [sessionInfo]);
 
+    // 3. Đồng bộ currentPage lên URL
     useEffect(() => {
-        setCurrentPage(1);
+        setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.set("page", currentPage);
+            newParams.set("category", selectedCategory);
+            newParams.set("sortBy", sortBy);
+            return newParams;
+        }, { replace: true });
+    }, [currentPage, setSearchParams]);
+
+    useEffect(() => {
+        const prev = prevFiltersRef.current;
+        //Mấu chốt là so sánh với giá trị trước đó (searchTerm, selectedCategory, sortBy)
+        //Nếu thay đổi thì mới reset page về 1
+        // Kiểm tra xem có filter nào thay đổi thực sự không
+        //ĐÂY LÀ CHÌA KHÓA GIỮ PAGE CŨ
+        const isFilterChanged = 
+            prev.searchTerm !== searchTerm || 
+            prev.selectedCategory !== selectedCategory || 
+            prev.sortBy !== sortBy;
+
+        if (isFilterChanged) {
+            setCurrentPage(1);
+            // Cập nhật lại giá trị ref
+            prevFiltersRef.current = { searchTerm, selectedCategory, sortBy };
+        }
     }, [searchTerm, selectedCategory, sortBy]);
 
     // Lấy ID nhà hàng từ sessionInfo
@@ -142,12 +189,17 @@ export default function MenuPage() {
     const filteredItems = fuseResults
         .filter(item => {
             const matchCat = selectedCategory === "all" || item.categoryId._id === selectedCategory;
-            return matchCat;
+            const matchChef = sortBy === 'chefRecommended' ? item.isChefRecommended : true;
+            return matchCat && matchChef;
         })
         .sort((a, b) => {
             if (sortBy === 'price-asc') return a.price - b.price;
             if (sortBy === 'price-desc') return b.price - a.price;
             if (sortBy === 'popular') return b.orderCount - a.orderCount;
+
+            // Nếu đang chọn Chef Choice, ta sort theo logic mặc định (ví dụ mới nhất trước)
+            if (sortBy === 'chefRecommended') return new Date(b.createdAt) - new Date(a.createdAt);
+
             return 0;
         });
 
@@ -183,6 +235,7 @@ export default function MenuPage() {
                             className="h-12 pl-4 pr-8 bg-gray-100 rounded-xl outline-none text-sm font-bold text-gray-700 appearance-none border-none focus:ring-2 focus:ring-[#D4AF37]/50 transition cursor-pointer"
                         >
                             <option value="popular">Most Popular</option>
+                            <option value="chefRecommended">Chef's Choice</option>
                             <option value="price-asc">Price (Low)</option>
                             <option value="price-desc">Price (High)</option>
                         </select>
@@ -217,7 +270,7 @@ export default function MenuPage() {
             <div className="p-6 grid grid-cols-1 gap-6">
                 {paginatedItems.map((item) => (
                     <div 
-                        onClick={() => navigate(`/menu/public/${item._id}/${restaurantId}`)}
+                        onClick={() => navigate(`/menu/public/${item._id}/${restaurantId}?page=${currentPage}&category=${selectedCategory}&sortBy=${sortBy}`)}
                         key={item._id} 
                         className={`bg-white p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 flex items-center gap-4 relative overflow-hidden group transition active:scale-[0.98] ${!item.isAvailable ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
                     >
@@ -249,7 +302,7 @@ export default function MenuPage() {
                             </div>
                             
                             <div className="flex justify-between items-center">
-                                <span className={`mt-2 font-momo font-bold text-xl text-[#1a1a1a]`}>${item.price}</span>
+                                <span className={`mt-2 font-momo font-bold text-xl text-[#1a1a1a]`}>{formatMoney(item.price, currency)}</span>
                                 <button 
                                     onClick={(e) => handleAddItem(e, item)}
                                     className={`${item.isSoldOut && 'hidden'} w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition ${item.isAvailable ? 'bg-[#D4AF37] text-white' : 'bg-gray-200 text-gray-400'}`}

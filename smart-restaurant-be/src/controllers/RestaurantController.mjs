@@ -9,10 +9,10 @@ import { PayOS } from "@payos/node"; // Import PayOS để check key
 
 class RestaurantController {
     // [POST] /api/restaurant
-    //Chỉ có admin (chủ quán) mới được tạo nhà hàng
+    // Chỉ có admin (chủ quán) mới được tạo nhà hàng
     async createRestaurant(req, res) {
         try {
-            const { name, address, bio, contactPhone, contactEmail } = req.body;
+            const { name, address, bio, currency, contactPhone, contactEmail } = req.body;
             
             // Kiểm tra xem user đã có nhà hàng chưa (Single restaurant system)
             const existing = await Restaurant.findOne({ adminId: req.user.id });
@@ -23,6 +23,7 @@ class RestaurantController {
                 name,
                 address,
                 bio,
+                currency,
                 contact: {
                     phone: contactPhone || "",
                     email: contactEmail || ""
@@ -34,8 +35,12 @@ class RestaurantController {
             if (req.files?.cover?.[0]) data.coverUrl = req.files.cover[0].path;
 
             const restaurant = await Restaurant.create(data);
+
+            await User.findByIdAndUpdate(req.user.id, { restaurantId: restaurant._id });
+
             res.status(201).json({ message: "Restaurant created!", restaurant });
         } catch (err) {
+            console.log(err);
             res.status(500).json({ error: err.message });
         }
     }
@@ -43,12 +48,15 @@ class RestaurantController {
     // [GET] /api/restaurant/me
     async getMyRestaurant(req, res) {
         try {
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
+            const restaurant = await Restaurant.findById(req.user.restaurantId);
             
             if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
+            const isOwner = restaurant.adminId.toString() === req.user.id;
+
             // Clone object để xử lý dữ liệu trả về
             const restaurantData = restaurant.toObject();
+            restaurantData.isOwner = isOwner;
 
             // Giải mã thông tin PayOS để hiển thị lại trên form (nếu có)
             if (restaurantData.payosConfig && restaurantData.payosConfig.isConfigured) {
@@ -146,8 +154,10 @@ class RestaurantController {
                 delete updates.payosChecksumKey;
             }
 
-            const restaurant = await Restaurant.findOneAndUpdate(
-                { adminId: req.user.id },
+            const userRestaurantId = req.user.restaurantId;
+
+            const restaurant = await Restaurant.findByIdAndUpdate(
+                userRestaurantId,
                 updates,
                 { new: true }
             );
@@ -174,17 +184,20 @@ class RestaurantController {
     // [GET] /api/restaurant/stats/:filter
     async getDashboardStats(req, res) {
         try {
-            const restaurant = await Restaurant.findOne({ adminId: req.user.id });
-            if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
 
-            //Chart filter
-            const {filter} = req.query; //'week', 'month', 'year'
+            // Chart filter
+            const { filter } = req.query; // 'week', 'month', 'year'
+
+            let restaurant = await Restaurant.findById(req.user.restaurantId);
+            if (!restaurant) {
+                restaurant = await Restaurant.findOne({ adminId: req.user.id });
+                if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+            }
 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
-
 
 
             // --- CHART LOGIC START ---
@@ -287,6 +300,7 @@ class RestaurantController {
                     }
                 });
             }
+
             // --- CHART LOGIC END ---
             //Kết quả cuối cùng của chartData
             // chartData = [
@@ -295,8 +309,24 @@ class RestaurantController {
             //     ...
             //     ]
 
-            // 1. Total Revenue (Lấy từ DB Restaurant)
-            const totalRevenueFromDB = restaurant.totalRevenue || 0;
+            // 1. Daily Revenue (Tính toán dựa trên OrderSession đã thanh toán hôm nay)
+            const dailyRevenueResult = await OrderSession.aggregate([
+                {
+                    $match: {
+                        restaurantId: restaurant._id,
+                        paymentStatus: 'paid',
+                        updatedAt: { $gte: today, $lt: tomorrow }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: "$totalAmount" }
+                    }
+                }
+            ]);
+            console.log(dailyRevenueResult);
+            const dailyRevenue = dailyRevenueResult.length > 0 ? dailyRevenueResult[0].total : 0;
 
             // 2. Active Orders (Đơn đang phục vụ - chưa hoàn thành/hủy)
             const activeOrders = await Order.countDocuments({
@@ -373,7 +403,7 @@ class RestaurantController {
 
 
             res.status(200).json({
-                revenue: totalRevenueFromDB,
+                revenue: dailyRevenue,
                 activeOrders,
                 totalOrders,
                 occupiedTables,

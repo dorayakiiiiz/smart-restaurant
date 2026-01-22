@@ -4,11 +4,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import RecentOrdersTable from './RecentOrdersTable';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { formatMoney } from "../../utils/helper";
+import { useAuth } from "../../context/AuthContext";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 export default function DashboardOverview() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [chartFilter, setChartFilter] = useState('week');
+    const { user } = useAuth();
+    const currency = user?.restaurant?.currency;
 
     const { data: statsData, isLoading, isRefetching, refetch } = useQuery({
         queryKey: ['dashboardStats', chartFilter], 
@@ -31,7 +35,7 @@ export default function DashboardOverview() {
     const stats = [
         { 
             title: "Today's Revenue", 
-            value: isLoading ? "..." : formatCurrency(statsData?.revenue), 
+            value: isLoading ? "..." : formatMoney(statsData?.revenue, currency), 
             icon: "fa-sack-dollar", 
             color: "bg-green-500", 
             trend: "Today" 
@@ -219,7 +223,7 @@ export default function DashboardOverview() {
 
             </div>
                 {/* Recent Orders List */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-100%">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 w-100% mt-8">
                     <h3 className="font-bold text-gray-800 mb-4">Recent Orders</h3>
                     <div className="space-y-4">
                         <RecentOrdersTable 

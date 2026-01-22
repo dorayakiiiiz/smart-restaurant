@@ -60,8 +60,8 @@ export default function AdminManagementPage() {
 
     const columns = [
         {
-            header: "Admin Name",
-            //item ở đây là 1 object admin
+            header: "Owner Name",
+            // item ở đây là 1 object admin
             render: (item) => (
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-xs text-gray-600">
@@ -128,7 +128,7 @@ export default function AdminManagementPage() {
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h2 className="text-xl font-bold text-gray-800">Manage Owners</h2>
-                    <p className="text-sm text-gray-500">Create and manage restaurant administrator accounts.</p>
+                    <p className="text-sm text-gray-500">Create and manage restaurant owner accounts.</p>
                 </div>
                 <Button 
                     backgrond={{ normal: "#1a1a1a", hover: "#333" }}
@@ -187,12 +187,12 @@ function AdminModal({ editAdmin = null, onClose, onSuccess }) {
         mutationFn: (data) => superAdminService.createAdmin(data),
         onSuccess: () => {
             onSuccess();
-            setLog({ type: 'success', content: 'Created admin successfully.' });
+            setLog({ type: 'success', content: 'Created new restaurant owner successfully.' });
 
             setTimeout(onClose, 2000);
         },
         onError: (err) => {
-            setLog({ type: 'error', content: err.response?.data?.message || "Failed to create admin." });
+            setLog({ type: 'error', content: err.response?.data?.message || "Failed to create owner." });
         }
     })
 
@@ -200,12 +200,12 @@ function AdminModal({ editAdmin = null, onClose, onSuccess }) {
         mutationFn: ({ id, data }) => superAdminService.updateAdmin(id, data),
         onSuccess: () => {
             onSuccess();
-            setLog({ type: 'success', content: 'Updated admin information successfully.' });
+            setLog({ type: 'success', content: 'Updated owner information successfully.' });
 
             setTimeout(onClose, 2000);
         },
         onError: (err) => {
-            setLog({ type: 'error', content: err.response?.data?.message || "Failed to update admin." });
+            setLog({ type: 'error', content: err.response?.data?.message || "Failed to update owner." });
         }
     })
 

@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { menuService } from "../../services/menuService";
 import { reviewService } from "../../services/reviewService";
+import { orderService } from "../../services/orderService";
 import { useCart } from "../../context/CartContext";
 import Button from "../../components/Shared/Button";
 import ProductModal from "../../components/Modal/ProductModal";
 import { useAuth } from "../../context/AuthContext";
+import { formatMoney } from "../../utils/helper";
 
 // Component hiển thị sao
 const StarRating = ({ rating, setRating, editable = true, size = "text-sm" }) => {
@@ -48,6 +50,12 @@ export default function MenuDetailPage() {
     const [uploading, setUploading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { addToCart, sessionInfo } = useCart();
+    const location = useLocation();
+
+    //Lấy page từ URL để giữ trạng thái khi điều hướng
+    const page = new URLSearchParams(location.search).get("page");
+    const category = new URLSearchParams(location.search).get("category");
+    const sortBy = new URLSearchParams(location.search).get("sortBy");
 
     // State cho Review
     const [rating, setRating] = useState(5);
@@ -57,9 +65,11 @@ export default function MenuDetailPage() {
     // Filter & Pagination State
     //State lọc đánh giá theo số rating
     const [ratingFilter, setRatingFilter] = useState(0); // 0 = All
-    const [showAllReviews, setShowAllReviews] = useState(false);
+    const [reviewPage, setReviewPage] = useState(1);
+    const reviewsPerPage = 5;
 
     const { user } = useAuth();
+    const currency = sessionInfo?.restaurant?.currency;
 
     // Fetch item detail
     const { data, isLoading, error } = useQuery({
@@ -73,6 +83,18 @@ export default function MenuDetailPage() {
         queryFn: () => reviewService.getReviews(restaurantId, id),
         enabled: !!id
     });
+
+    // Check if user bought and served
+    //Ở đây không tự động refetch, chỉ fetchi khi mount
+    //Nhưng do khi cus sẽ bấm vào tracking page để xem trạng thái nên khi status là served
+    //Thì quay lại revie nênw sẽ thấy luôn nút review hiện lên, không cần socket
+    const { data: purchaseStatus } = useQuery({
+        queryKey: ['checkServed', id],
+        queryFn: () => orderService.checkItemServed(id),
+        enabled: !!user && !!id // Chỉ chạy khi đã đăng nhập và có id món
+    });
+
+    const hasServedOrder = purchaseStatus?.hasServedOrder;
 
     const item = data?.item;
 
@@ -176,8 +198,12 @@ export default function MenuDetailPage() {
     // Apply Filter
     const filteredReviews = otherReviews.filter(r => ratingFilter === 0 || r.rating === ratingFilter);
 
-    // Apply Pagination (Limit 3)
-    const displayedReviews = showAllReviews ? filteredReviews : filteredReviews.slice(0, 3);
+    // Apply Pagination
+    const totalPages = Math.ceil(filteredReviews.length / reviewsPerPage);
+    const paginatedReviews = filteredReviews.slice(
+        (reviewPage - 1) * reviewsPerPage,
+        reviewPage * reviewsPerPage
+    );
 
     // Count số review theo từng rating
     const countByRating = (star) => {
@@ -192,7 +218,7 @@ export default function MenuDetailPage() {
 
             {/* 1. Navigation */}
             <div className="absolute z-10 mb-6 mt-4" title="Return">
-                <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full text-xs bg-white/80 border border-gray-100 flex items-center justify-center hover:bg-white hover:shadow-md transition-all">
+                <button onClick={() => navigate(`/menu?${page ? `page=${page}` : ""}&${category ? `category=${category}` : ""}&${sortBy ? `sortBy=${sortBy}` : ""}`)} className="w-8 h-8 rounded-full text-xs bg-white/80 border border-gray-100 flex items-center justify-center hover:bg-white hover:shadow-md transition-all">
                     <i className="fa-solid fa-arrow-left text-gray-900"></i>
                 </button>
                 
@@ -264,7 +290,7 @@ export default function MenuDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-gray-800 font-bold">Price</p>
-                                    <p className="text-2xl font-bold text-red-500/90">${item.price.toFixed(2)}</p>
+                                    <p className="text-2xl font-bold text-red-500/90">{formatMoney(item.price, currency)}</p>
                                 </div>
                             </div>
                             
@@ -436,8 +462,24 @@ export default function MenuDetailPage() {
                 </div>
 
                 {/* Form Review */}
-                {/* Có đăng nhập mới cho review */}
-                {user ? (
+                {/* Có đăng nhập  và đã đc served món đó mới cho review*/}
+                {!user && (
+                    <div className="mb-10 p-8 bg-gray-50 rounded-2xl border border-gray-200 text-center">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-[#D4AF37]">
+                            <i className="fa-solid fa-user-lock text-2xl"></i>
+                        </div>
+                        <h4 className="text-lg font-bold text-gray-800 mb-2">Want to share your experience?</h4>
+                        <p className="text-gray-500 text-sm mb-6">Please sign in and taste the food to leave a review for this item.</p>
+                        <button 
+                            onClick={() => navigate('/auth/login')}
+                            className="px-6 py-2.5 bg-[#1a1a1a] text-[#D4AF37] rounded-xl font-bold text-sm hover:bg-black transition-colors"
+                        >
+                            Sign In Now
+                        </button>
+                    </div>
+                )}
+
+                {hasServedOrder ? (
                     (!myReview || editingReviewId) && (
                         <div className="bg-white p-8 rounded-[2rem] shadow-sm border-2 border-[#D4AF37]/5 mb-10">
                             <h4 className="font-black text-gray-800 mb-6 uppercase text-xs tracking-widest flex items-center gap-2">
@@ -477,13 +519,8 @@ export default function MenuDetailPage() {
                             <i className="fa-solid fa-user-lock text-2xl"></i>
                         </div>
                         <h4 className="text-lg font-bold text-gray-800 mb-2">Want to share your experience?</h4>
-                        <p className="text-gray-500 text-sm mb-6">Please sign in to leave a review for this item.</p>
-                        <button 
-                            onClick={() => navigate('/auth/login')}
-                            className="px-6 py-2.5 bg-[#1a1a1a] text-[#D4AF37] rounded-xl font-bold text-sm hover:bg-black transition-colors"
-                        >
-                            Sign In Now
-                        </button>
+                        <p className="text-gray-500 text-sm mb-6">Want to leave review? Place order now!</p>
+                        
                     </div>
                 )}
 
@@ -492,7 +529,7 @@ export default function MenuDetailPage() {
                     {/* Filter Tabs */}
                     <div className="flex flex-wrap gap-2 mb-6">
                         <button 
-                            onClick={() => { setRatingFilter(0); setShowAllReviews(false); }}
+                            onClick={() => { setRatingFilter(0); setReviewPage(1); }}
                             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all ${
                                 ratingFilter === 0 
                                 ? 'bg-[#1a1a1a] text-[#D4AF37] border-[#1a1a1a]' 
@@ -504,7 +541,7 @@ export default function MenuDetailPage() {
                         {[5, 4, 3, 2, 1].map(star => (
                             <button 
                                 key={star}
-                                onClick={() => { setRatingFilter(star); setShowAllReviews(false); }}
+                                onClick={() => { setRatingFilter(star); setReviewPage(1); }}
                                 className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-1 ${
                                     ratingFilter === star 
                                     ? 'bg-[#1a1a1a] text-[#D4AF37] border-[#1a1a1a]' 
@@ -558,9 +595,9 @@ export default function MenuDetailPage() {
                     )}
 
                     {/* Other Reviews */}
-                    {displayedReviews.length > 0 ? (
+                    {paginatedReviews.length > 0 ? (
                         <>
-                            {displayedReviews.map(review => (
+                            {paginatedReviews.map(review => (
                                 <div key={review._id} className="bg-white p-7 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 mb-5">
                                     <div className="flex justify-between items-start mb-2 gap-4">
                                         <div className="flex items-center gap-3 flex-1">
@@ -584,24 +621,35 @@ export default function MenuDetailPage() {
                                 </div>
                             ))}
                             
-                            {/* Show All Button */}
-                            {filteredReviews.length > 3 && (
-                                <div className="text-center pt-6">
-                                    <button 
-                                        onClick={() => setShowAllReviews(!showAllReviews)}
-                                        className="group flex items-center gap-2 mx-auto px-8 py-4 mb-1 bg-white border border-gray-200 rounded-full text-xs font-black uppercase tracking-[0.2em] text-gray-600 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all shadow-xs hover:shadow-md active:scale-95"
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex justify-center items-center gap-4 mt-2">
+                                    <button
+                                        onClick={() => setReviewPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={reviewPage === 1}
+                                        className={`w-10 h-10 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                                            reviewPage === 1 
+                                                ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' 
+                                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-[#1a1a1a]'
+                                        }`}
                                     >
-                                        {showAllReviews ? (
-                                            <>
-                                                Show Less 
-                                                <i className="fa-solid fa-chevron-up text-[10px] group-hover:-translate-y-0.5 transition-transform"></i>
-                                            </>
-                                        ) : (
-                                            <>
-                                                View All {filteredReviews.length} Reviews 
-                                                <i className="fa-solid fa-chevron-down text-[10px] group-hover:translate-y-0.5 transition-transform"></i>
-                                            </>
-                                        )}
+                                        <i className="fa-solid fa-chevron-left text-xs"></i>
+                                    </button>
+
+                                    <span className="text-sm font-medium text-gray-600">
+                                        Page <span className="text-[#1a1a1a] font-bold">{reviewPage}</span> of {totalPages}
+                                    </span>
+
+                                    <button
+                                        onClick={() => setReviewPage(prev => Math.min(prev + 1, totalPages))}
+                                        disabled={reviewPage === totalPages}
+                                        className={`w-10 h-10 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                                            reviewPage === totalPages 
+                                                ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' 
+                                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:text-[#1a1a1a]'
+                                        }`}
+                                    >
+                                        <i className="fa-solid fa-chevron-right text-xs"></i>
                                     </button>
                                 </div>
                             )}
