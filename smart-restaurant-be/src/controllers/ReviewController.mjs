@@ -163,7 +163,7 @@ class ReviewController {
             }
 
             const populatedReview = await Review.findById(id)
-                .populate('userId', 'fullName'); // ✅ Populate fullName
+                .populate('userId', 'fullName'); 
 
             res.status(200).json({ message: "Review updated", review: populatedReview });
         } catch (err) {

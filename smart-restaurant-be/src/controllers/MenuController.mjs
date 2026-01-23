@@ -122,21 +122,21 @@ class MenuController {
     async getMenuItem(req, res) {
         try {
             const { id } = req.params;
-            let restaurantId = req.user.restaurantId;
-            if (!restaurantId) {
+            // let restaurantId = req.user.restaurantId;
+            // if (!restaurantId) {
                 const restaurant = await Restaurant.findOne({ adminId: req.user.id });
                 if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
-                restaurantId = restaurant._id;
-            }
-
-            const item = await MenuItem.findOne({ _id: id, restaurantId })
+            //     restaurantId = restaurant._id;
+            // }
+            console.log("IDDDDDDD", restaurant._id);
+            const item = await MenuItem.findOne({ _id: id, restaurantId: restaurant._id })
                 .populate('categoryId', 'name isActive');
             
             if (!item) return res.status(404).json({ message: "Item not found" });
 
             // Calculate order count for this specific item
             const orderCountResult = await Order.aggregate([
-                { $match: { restaurantId } },
+                { $match: { restaurantId: restaurant._id } },
                 { $unwind: "$items" },
                 { $match: { "items.menuItemId": item._id } },
                 { $group: {
