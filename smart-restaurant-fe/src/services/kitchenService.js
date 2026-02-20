@@ -16,6 +16,7 @@ const updateItemStatus = async (orderId, itemId, status) => {
     return api.patch(`/kitchen/orders/${orderId}/status`, { itemId, status });
 };
 
+// Lấy lịch sử đơn hàng đã hoàn thành
 const getHistory = async () => {
     return api.get('/kitchen/history');
 };

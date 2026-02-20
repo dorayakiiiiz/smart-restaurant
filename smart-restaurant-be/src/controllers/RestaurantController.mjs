@@ -308,6 +308,7 @@ class RestaurantController {
             //     { name: 'Tue', value: 800 },
             //     ...
             //     ]
+            //Tương ứng tùy theo filter
 
             // 1. Daily Revenue (Tính toán dựa trên OrderSession đã thanh toán hôm nay)
             const dailyRevenueResult = await OrderSession.aggregate([
