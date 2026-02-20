@@ -16,7 +16,7 @@
 //             subject: subject,
 //             text: text
 //         });
-        
+
 //         console.log("Email sent successfully");
 //     } catch (error) {
 //         console.log("Email cannot be sent: ", error);
@@ -36,11 +36,11 @@ const sendEmail = async (email, subject, text) => {
         const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
         const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-        
+
         sendSmtpEmail.subject = subject;
         sendSmtpEmail.htmlContent = `<html><body>${text.replace(/\n/g, '<br>')}</body></html>`;
-        sendSmtpEmail.sender = { 
-            "name": "Smart Restaurant", 
+        sendSmtpEmail.sender = {
+            "name": "Smart Restaurant",
             "email": "travansy2305@gmail.com" // Mail này PHẢI được verify trên Brevo
         };
         sendSmtpEmail.to = [{ "email": email }];
@@ -52,14 +52,6 @@ const sendEmail = async (email, subject, text) => {
         console.error("Email cannot be sent. Error detail:", error.response ? error.response.body : error);
         return false;
     }
-}
-
-    console.log("Email sent successfully");
-  } catch (error) {
-    console.log("Email cannot be sent: ", error);
-  }
 };
 
 export default sendEmail;
-
-// Gửi email thông báo cho người dùng qua Gmail SMTP
